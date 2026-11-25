@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="XjLaunch" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#ff1e1e1e</item>
+        <item name="android:statusBarColor">#ff1e1e1e</item>
+        <item name="android:navigationBarColor">#ff1e1e1e</item>
+    </style>
+</resources>

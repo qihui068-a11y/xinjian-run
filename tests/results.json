@@ -1,0 +1,163 @@
+{
+  "suite": "XinJian seven-language editor regression",
+  "environment": "Node.js v24.22.3 + jsdom 26.1.0; no Android install or pixel-layout test",
+  "passed": 31,
+  "failed": 0,
+  "results": [
+    {
+      "name": "Complete app boots and offers fourteen unique formats including all seven requested languages",
+      "passed": true,
+      "ms": 169
+    },
+    {
+      "name": "New py file defaults to correct extension and opens editable highlighting",
+      "passed": true,
+      "ms": 77
+    },
+    {
+      "name": "New html file defaults to correct extension and opens editable highlighting",
+      "passed": true,
+      "ms": 53
+    },
+    {
+      "name": "New css file defaults to correct extension and opens editable highlighting",
+      "passed": true,
+      "ms": 40
+    },
+    {
+      "name": "New java file defaults to correct extension and opens editable highlighting",
+      "passed": true,
+      "ms": 42
+    },
+    {
+      "name": "New json file defaults to correct extension and opens editable highlighting",
+      "passed": true,
+      "ms": 42
+    },
+    {
+      "name": "New js file defaults to correct extension and opens editable highlighting",
+      "passed": true,
+      "ms": 34
+    },
+    {
+      "name": "New xml file defaults to correct extension and opens editable highlighting",
+      "passed": true,
+      "ms": 38
+    },
+    {
+      "name": "Python tokenization: definitions, imports, decorators, numbers, comments, multiline strings",
+      "passed": true,
+      "ms": 25
+    },
+    {
+      "name": "Java tokenization: annotation, classes, methods, literals, text blocks and comments",
+      "passed": true,
+      "ms": 16
+    },
+    {
+      "name": "All languages preserve source and escape HTML; incomplete editing input is accepted",
+      "passed": true,
+      "ms": 513
+    },
+    {
+      "name": "Typing/paste/IME refresh highlighting, preserve caret and synchronize both scroll axes",
+      "passed": true,
+      "ms": 24
+    },
+    {
+      "name": "Saving and reopening py/java preserve exact source in native bridge mode",
+      "passed": true,
+      "ms": 67
+    },
+    {
+      "name": "Renaming switches txt -> py -> java -> txt without stale syntax or mode",
+      "passed": true,
+      "ms": 48
+    },
+    {
+      "name": "Save false/rejection leaves input editable and retries keep source",
+      "passed": true,
+      "ms": 25
+    },
+    {
+      "name": "Existing C/BF highlighters and Markdown reading continue to work",
+      "passed": true,
+      "ms": 30
+    },
+    {
+      "name": "Styles have distinct light/dark syntax colors and matched non-wrapping code layers",
+      "passed": true,
+      "ms": 11
+    },
+    {
+      "name": "JavaScript distinguishes keywords, regex, division and template interpolation",
+      "passed": true,
+      "ms": 14
+    },
+    {
+      "name": "CSS colors selectors, properties, variables, colors, units, at-rules and functions",
+      "passed": true,
+      "ms": 13
+    },
+    {
+      "name": "JSON keys differ from values while literals, escaped strings and scientific numbers are colored",
+      "passed": true,
+      "ms": 12
+    },
+    {
+      "name": "JSONC alias handles line and block comments without affecting JSON strings",
+      "passed": true,
+      "ms": 12
+    },
+    {
+      "name": "HTML colors markup, attributes, values, entities and comments as source, not rendered content",
+      "passed": true,
+      "ms": 13
+    },
+    {
+      "name": "HTML embeds CSS, module JavaScript, JSON, import maps and keeps unknown script types as text",
+      "passed": true,
+      "ms": 17
+    },
+    {
+      "name": "Markup tag names colliding with Object prototypes remain ordinary escaped tags",
+      "passed": true,
+      "ms": 14
+    },
+    {
+      "name": "XML preserves namespaces, declarations, CDATA and internal DOCTYPE subsets with quoted greater-than",
+      "passed": true,
+      "ms": 30
+    },
+    {
+      "name": "Uppercase and alias extensions open with canonical labels and the same syntax coloring",
+      "passed": true,
+      "ms": 51
+    },
+    {
+      "name": "All seven languages save and reopen through the native bridge without color HTML or display sentinels",
+      "passed": true,
+      "ms": 89
+    },
+    {
+      "name": "Renaming across all seven languages immediately changes status and highlighting without source loss",
+      "passed": true,
+      "ms": 42
+    },
+    {
+      "name": "Rapid input and composition coalesce per frame for every language and preserve the caret",
+      "passed": true,
+      "ms": 60
+    },
+    {
+      "name": "Unfinished web syntax, nested templates and malformed markup retain source and terminate promptly",
+      "passed": true,
+      "ms": 928
+    },
+    {
+      "name": "Large source tokenizer completes without hanging or source loss",
+      "passed": true,
+      "ms": 165
+    }
+  ]
+}
