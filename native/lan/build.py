@@ -1,4 +1,4 @@
-"""Compile the LAN Java sources into the smali used by the Apktool build."""
+"""Compile a native Java module into the smali used by the Apktool build."""
 
 import argparse
 from pathlib import Path
@@ -14,11 +14,16 @@ def main():
     parser.add_argument("r8_jar", type=Path)
     parser.add_argument("apktool_jar", type=Path)
     parser.add_argument("--java-bin", type=Path, help="JDK bin directory")
+    parser.add_argument("--component", choices=("lan", "keyboard"), default="lan")
     args = parser.parse_args()
-    source = Path(__file__).resolve().parent
+    native = Path(__file__).resolve().parents[1]
+    source = native / args.component
     package = Path("tt/xinjian/cn")
-    dest = source.parents[1] / "modified/smali" / package
-    owned = re.compile(r"Lan(?:Bridge|Transport)(?:\$[\w$-]+)?\.smali")
+    dest = native.parent / "modified/smali" / package
+    classes_to_compile = {"lan": ("LanBridge", "LanTransport"), "keyboard": ("KeyboardViewport",)}
+    classes_to_compile = classes_to_compile[args.component]
+    names_pattern = "|".join(map(re.escape, classes_to_compile))
+    owned = re.compile(rf"(?:{names_pattern})(?:\$[\w$-]+)?\.smali")
 
     def jdk(program):
         if not args.java_bin:
@@ -28,17 +33,17 @@ def main():
     def run(*command):
         subprocess.run([str(part) for part in command], check=True)
 
-    with TemporaryDirectory(prefix="xinjian-lan-") as path:
+    with TemporaryDirectory(prefix=f"xinjian-{args.component}-") as path:
         work = Path(path)
         classes = work / "classes"
         dex = work / "dex"
         smali = work / "smali"
-        jar = work / "lan.jar"
-        archive = work / "lan.apk"
+        jar = work / "module.jar"
+        archive = work / "module.apk"
         classes.mkdir()
         dex.mkdir()
         run(jdk("javac"), "--release", "8", "-Xlint:-options", "-encoding", "UTF-8", "-classpath", args.android_jar, "-d", classes,
-            source / package / "LanBridge.java", source / package / "LanTransport.java")
+            *(source / package / f"{name}.java" for name in classes_to_compile))
         run(jdk("jar"), "cf", jar, "-C", classes, ".")
         run(jdk("java"), "-cp", args.r8_jar, "com.android.tools.r8.D8", "--min-api", "21",
             "--lib", args.android_jar, "--output", dex, jar)
@@ -49,14 +54,14 @@ def main():
 
         generated = list((smali / "smali" / package).glob("*.smali"))
         if not generated or any(not owned.fullmatch(file.name) for file in generated):
-            raise RuntimeError("Unexpected classes produced by the LAN build")
+            raise RuntimeError(f"Unexpected classes produced by the {args.component} build")
         names = {file.name for file in generated}
         for file in generated:
             (dest / file.name).write_bytes(file.read_bytes().replace(b"\r\n", b"\n"))
-        for file in dest.glob("Lan*.smali"):
+        for file in dest.glob("*.smali"):
             if owned.fullmatch(file.name) and file.name not in names:
                 file.unlink()
-        print(f"Updated {len(generated)} LAN smali classes in {dest}")
+        print(f"Updated {len(generated)} {args.component} smali classes in {dest}")
 
 
 if __name__ == "__main__":

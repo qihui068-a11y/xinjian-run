@@ -52,6 +52,8 @@
 
 .field private lan:Ltt/xinjian/cn/LanBridge;
 
+.field private keyboardViewport:Ltt/xinjian/cn/KeyboardViewport;
+
 .field private web:Landroid/webkit/WebView;
 
 
@@ -2617,6 +2619,12 @@
 
     invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
 
+    new-instance v1, Ltt/xinjian/cn/KeyboardViewport;
+
+    invoke-direct {v1, p0, v0}, Ltt/xinjian/cn/KeyboardViewport;-><init>(Landroid/app/Activity;Landroid/webkit/WebView;)V
+
+    iput-object v1, p0, Ltt/xinjian/cn/MainActivity;->keyboardViewport:Ltt/xinjian/cn/KeyboardViewport;
+
     .line 520
     iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->web:Landroid/webkit/WebView;
 
@@ -2668,6 +2676,13 @@
     invoke-virtual {v0}, Ltt/xinjian/cn/LanBridge;->onDestroy()V
 
     :lan_destroyed
+    iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->keyboardViewport:Ltt/xinjian/cn/KeyboardViewport;
+
+    if-eqz v0, :keyboard_viewport_closed
+
+    invoke-virtual {v0}, Ltt/xinjian/cn/KeyboardViewport;->close()V
+
+    :keyboard_viewport_closed
     .line 765
     iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->web:Landroid/webkit/WebView;
 

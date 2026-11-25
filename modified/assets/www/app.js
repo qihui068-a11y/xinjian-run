@@ -298,20 +298,44 @@
      给不到就是 0 —— 那顶栏就会被状态栏压住。所以这里优先问原生要像素值，
      CSS 里 --safe-t 仍然以 env() 兜底（浏览器演示模式走这条）。 */
   function applyInsets() {
-    var t = 0, b = 0;
+    var t = 0, b = 0, insets = null;
     try {
       if (window.Bridge && typeof Bridge.insets === 'function') {
         var raw = Bridge.insets();
-        var o = raw ? JSON.parse(raw) : null;
-        if (o) { t = o.top | 0; b = o.bottom | 0; }
+        insets = raw ? JSON.parse(raw) : null;
+        if (insets) { t = insets.top | 0; b = insets.bottom | 0; }
       }
     } catch (e) {}
     var root = document.documentElement;
     if (t > 0) root.style.setProperty('--safe-t', t + 'px');
-    if (b > 0) root.style.setProperty('--safe-b', b + 'px');
+    // 旧 Android 的可见区域可能把键盘也算作底部系统栏。
+    if (insets && !editorKeyboardVisible && b / (window.devicePixelRatio || 1) < 80) {
+      if (b > 0) root.style.setProperty('--safe-b', b + 'px');
+      else root.style.removeProperty('--safe-b');
+    }
     return { top: t, bottom: b };
   }
 
+  var editorNativeOverlap = 0, editorKeyboardVisible = false;
+  function applyEditorViewport() {
+    var root = document.documentElement;
+    var layoutHeight = root.clientHeight || window.innerHeight;
+    var viewport = window.visualViewport;
+    var visualOverlap = viewport ? layoutHeight - viewport.height - viewport.offsetTop : 0;
+    var scale = viewport ? viewport.scale || 1 : 1;
+    var nativeOverlap = editorNativeOverlap / ((window.devicePixelRatio || 1) * scale);
+    // 较新的 WebView 可能已在可见视口中报告了同一块遮挡。
+    var overlap = Math.ceil(Math.min(layoutHeight, Math.max(0, visualOverlap, nativeOverlap)));
+    root.style.setProperty('--editor-ime-offset', overlap + 'px');
+    root.classList.toggle('editor-ime-visible', editorKeyboardVisible || overlap > 0);
+  }
+
+  window.__xjKeyboardViewport = function (overlap, visible) {
+    editorNativeOverlap = Math.max(0, Number(overlap) || 0);
+    editorKeyboardVisible = visible === true;
+    if (!editorKeyboardVisible) applyInsets();
+    applyEditorViewport();
+  };
 
   /* ================= 返回键 / 层级栈 =================
      二级页面和弹窗都不是真正的页面跳转，原生返回键必须先问 Web

@@ -58,6 +58,58 @@ module.exports = async function ({ test, app, settle }) {
     } finally { a.close(); }
   });
 
+  await test('Symbol bar follows the IME with native overlap, visual viewport, and Android resize', async () => {
+    let viewport;
+    let layoutHeight = 800;
+    const a = app(false, undefined, w => {
+      viewport = Object.assign(new w.EventTarget(), { height: 800, offsetTop: 0, scale: 1 });
+      Object.defineProperty(w, 'visualViewport', { value: viewport });
+      Object.defineProperty(w, 'devicePixelRatio', { value: 2 });
+      Object.defineProperty(w.document.documentElement, 'clientHeight', { get: () => layoutHeight });
+    });
+    try {
+      const w = a.w;
+      const ta = await open(w, 'sample.py', 'print');
+      const root = w.document.documentElement;
+      const offset = () => root.style.getPropertyValue('--editor-ime-offset');
+      const isOpen = () => root.classList.contains('editor-ime-visible');
+      assert(ta.closest('.editor-view'));
+      assert.equal(offset(), '0px');
+
+      // Legacy WebViews can keep both CSS viewports full height.
+      w.__xjKeyboardViewport(600, true);
+      assert.equal(offset(), '300px');
+      assert.equal(isOpen(), true);
+
+      // Modern WebViews can also report the same overlap. It must count once.
+      viewport.height = 500;
+      viewport.dispatchEvent(new w.Event('resize'));
+      assert.equal(offset(), '300px');
+      w.__xjKeyboardViewport(0, false);
+      assert.equal(offset(), '300px');
+      viewport.offsetTop = 20;
+      viewport.dispatchEvent(new w.Event('scroll'));
+      assert.equal(offset(), '280px');
+
+      // A resized native WebView already ends at the keyboard's upper edge.
+      layoutHeight = 500;
+      viewport.offsetTop = 0;
+      w.__xjKeyboardViewport(0, true);
+      assert.equal(offset(), '0px');
+      assert.equal(isOpen(), true);
+      ta.setSelectionRange(5, 5);
+      w.document.querySelector('[data-key="()"]').click();
+      assert.equal(ta.value, 'print()');
+      assert.equal(ta.selectionStart, 6);
+      assert.equal(w.document.activeElement, ta);
+
+      layoutHeight = viewport.height = 800;
+      w.__xjKeyboardViewport(0, false);
+      assert.equal(offset(), '0px');
+      assert.equal(isOpen(), false);
+    } finally { a.close(); }
+  });
+
   await test('Custom symbol controls preserve text, persist by language, and allow removal', async () => {
     const a = app(true);
     try {

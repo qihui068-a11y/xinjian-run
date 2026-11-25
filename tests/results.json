@@ -1,208 +1,213 @@
 {
   "suite": "XinJian seven-language editor regression",
   "environment": "Node.js v24.22.3 + jsdom 26.1.0; no Android install or pixel-layout test",
-  "passed": 40,
+  "passed": 41,
   "failed": 0,
   "results": [
     {
       "name": "Complete app boots and offers fourteen unique formats including all seven requested languages",
       "passed": true,
-      "ms": 146
+      "ms": 94
     },
     {
       "name": "New py file defaults to correct extension and opens editable highlighting",
       "passed": true,
-      "ms": 64
+      "ms": 43
     },
     {
       "name": "New html file defaults to correct extension and opens editable highlighting",
       "passed": true,
-      "ms": 35
+      "ms": 26
     },
     {
       "name": "New css file defaults to correct extension and opens editable highlighting",
       "passed": true,
-      "ms": 37
+      "ms": 23
     },
     {
       "name": "New java file defaults to correct extension and opens editable highlighting",
       "passed": true,
-      "ms": 22
+      "ms": 20
     },
     {
       "name": "New json file defaults to correct extension and opens editable highlighting",
       "passed": true,
-      "ms": 23
+      "ms": 17
     },
     {
       "name": "New js file defaults to correct extension and opens editable highlighting",
       "passed": true,
-      "ms": 34
+      "ms": 18
     },
     {
       "name": "New xml file defaults to correct extension and opens editable highlighting",
       "passed": true,
-      "ms": 25
+      "ms": 19
     },
     {
       "name": "Python tokenization: definitions, imports, decorators, numbers, comments, multiline strings",
       "passed": true,
-      "ms": 15
+      "ms": 9
     },
     {
       "name": "Java tokenization: annotation, classes, methods, literals, text blocks and comments",
       "passed": true,
-      "ms": 12
+      "ms": 9
     },
     {
       "name": "All languages preserve source and escape HTML; incomplete editing input is accepted",
       "passed": true,
-      "ms": 259
+      "ms": 230
     },
     {
       "name": "Typing/paste/IME refresh highlighting, preserve caret and synchronize both scroll axes",
       "passed": true,
-      "ms": 18
+      "ms": 14
     },
     {
       "name": "Saving and reopening py/java preserve exact source in native bridge mode",
       "passed": true,
-      "ms": 35
+      "ms": 30
     },
     {
       "name": "Renaming switches txt -> py -> java -> txt without stale syntax or mode",
       "passed": true,
-      "ms": 21
+      "ms": 16
     },
     {
       "name": "Save false/rejection leaves input editable and retries keep source",
       "passed": true,
-      "ms": 23
+      "ms": 13
     },
     {
       "name": "Existing C/BF highlighters and Markdown reading continue to work",
       "passed": true,
-      "ms": 19
+      "ms": 28
     },
     {
       "name": "Styles have distinct light/dark syntax colors and matched non-wrapping code layers",
       "passed": true,
-      "ms": 9
+      "ms": 8
     },
     {
       "name": "JavaScript distinguishes keywords, regex, division and template interpolation",
       "passed": true,
-      "ms": 11
+      "ms": 8
     },
     {
       "name": "CSS colors selectors, properties, variables, colors, units, at-rules and functions",
       "passed": true,
-      "ms": 12
+      "ms": 8
     },
     {
       "name": "JSON keys differ from values while literals, escaped strings and scientific numbers are colored",
       "passed": true,
-      "ms": 9
+      "ms": 8
     },
     {
       "name": "JSONC alias handles line and block comments without affecting JSON strings",
       "passed": true,
-      "ms": 8
+      "ms": 7
     },
     {
       "name": "HTML colors markup, attributes, values, entities and comments as source, not rendered content",
       "passed": true,
-      "ms": 10
+      "ms": 8
     },
     {
       "name": "HTML embeds CSS, module JavaScript, JSON, import maps and keeps unknown script types as text",
       "passed": true,
-      "ms": 11
+      "ms": 9
     },
     {
       "name": "Markup tag names colliding with Object prototypes remain ordinary escaped tags",
       "passed": true,
-      "ms": 9
+      "ms": 8
     },
     {
       "name": "XML preserves namespaces, declarations, CDATA and internal DOCTYPE subsets with quoted greater-than",
       "passed": true,
-      "ms": 20
+      "ms": 8
     },
     {
       "name": "Uppercase and alias extensions open with canonical labels and the same syntax coloring",
       "passed": true,
-      "ms": 44
+      "ms": 37
     },
     {
       "name": "All seven languages save and reopen through the native bridge without color HTML or display sentinels",
       "passed": true,
-      "ms": 47
+      "ms": 42
     },
     {
       "name": "Renaming across all seven languages immediately changes status and highlighting without source loss",
       "passed": true,
-      "ms": 30
+      "ms": 33
     },
     {
       "name": "Rapid input and composition coalesce per frame for every language and preserve the caret",
       "passed": true,
-      "ms": 37
+      "ms": 35
     },
     {
       "name": "Unfinished web syntax, nested templates and malformed markup retain source and terminate promptly",
       "passed": true,
-      "ms": 458
+      "ms": 421
     },
     {
       "name": "Each file type offers formatting and language-specific keys in edit mode",
       "passed": true,
-      "ms": 36
+      "ms": 31
     },
     {
       "name": "Paired keys wrap the selection and single keys insert at the caret",
       "passed": true,
-      "ms": 16
+      "ms": 14
+    },
+    {
+      "name": "Symbol bar follows the IME with native overlap, visual viewport, and Android resize",
+      "passed": true,
+      "ms": 12
     },
     {
       "name": "Custom symbol controls preserve text, persist by language, and allow removal",
       "passed": true,
-      "ms": 33
+      "ms": 25
     },
     {
       "name": "Format button updates Java source and highlighting without formatting string contents",
       "passed": true,
-      "ms": 16
+      "ms": 19
     },
     {
       "name": "Formatting preserves Python blocks, JavaScript ASI, and interpolated strings",
       "passed": true,
-      "ms": 8
+      "ms": 7
     },
     {
       "name": "JSON and JSONC formatting retains numeric spelling and comments and rejects invalid JSON",
       "passed": true,
-      "ms": 13
+      "ms": 12
     },
     {
       "name": "Markup, CSS, BF and plain text keep meaningful whitespace",
       "passed": true,
-      "ms": 9
+      "ms": 8
     },
     {
       "name": "LAN chat starts on request, sends with receipt, and deduplicates received text",
       "passed": true,
-      "ms": 30
+      "ms": 15
     },
     {
       "name": "Local conversations retain the media panel without the native LAN bridge",
       "passed": true,
-      "ms": 13
+      "ms": 12
     },
     {
       "name": "Large source tokenizer completes without hanging or source loss",
       "passed": true,
-      "ms": 105
+      "ms": 88
     }
   ]
 }

@@ -1,12 +1,12 @@
-# 信笺·运行版 0.7
+# 信笺·运行版 0.7.1
 
-0.7 沿用应用 ID `tt.xinjian.cn.codeedit.run`，从此版本开始使用新签名。0.5 和 0.6 运行版用户需先在书架导出文件，卸载旧版后安装 0.7，再导入。书架导出只包含文件，卸载会清除旧版的本地设置和聊天记录。0.4 代码版可并存安装。
+0.7.1 沿用应用 ID `tt.xinjian.cn.codeedit.run` 和 0.7 的签名，可覆盖安装 0.7。0.5 和 0.6 运行版用户需先在书架导出文件，卸载旧版后安装新版，再导入。书架导出只包含文件，卸载会清除旧版的本地设置和聊天记录。0.4 代码版可并存安装。
 
 ## 编辑器
 
 打开已有文件或新建文件，顶栏按钮会随文件类型变化。执行时读取当前编辑内容，可在下方查看结果、输出和报错。
 
-编辑态可用顶栏的「格式化」在本地整理缩进和换行。底部符号栏随文件类型切换，可横向滑动。引号和括号键会包住选中的文字，或把光标放在新插入的一对符号中间。点右侧的「＋」可添加或移除当前语言的自定义符号。自定义符号保存在设备上，同语言的文件共用。
+编辑态可用顶栏的「格式化」在本地整理缩进和换行。底部符号栏随文件类型切换，可横向滑动。输入法弹出时，符号栏贴在键盘上沿。引号和括号键会包住选中的文字，或把光标放在新插入的一对符号中间。点右侧的「＋」可添加或移除当前语言的自定义符号。自定义符号保存在设备上，同语言的文件共用。
 
 | 文件 | 功能 |
 | --- | --- |
@@ -30,5 +30,7 @@ modified 中已包含前端和打包后的离线引擎。使用 Apktool 2.12.1 �
 若修改 QuickJS 适配代码，在 runner 目录运行 `npm ci` 和 `node build.cjs`。运行与预览入口位于 modified/assets/www/runner.js、run-formats.js 和 views/editor.js。许可证见 modified/assets/www/QuickJS-LICENSE.txt。
 
 修改局域网 Java 层后，用 JDK、Android 34 的 `android.jar`、R8 8.8.34 和 Apktool 2.12.1 执行 `python native/lan/build.py <android.jar> <r8.jar> <apktool.jar>`，再按上面的步骤重新打包。
+
+键盘适配的原生源码位于 `native/keyboard`。改动后使用同一构建命令并追加 `--component keyboard` 生成 smali。
 
 在工程根目录运行 `npm ci --prefix tests` 和 `node tests/regression.cjs`。安装 Python Playwright 和 Chromium 后执行 `python tests/run-preview.py` 检查面板、示例和错误路径（模拟在线服务）。设置 XJ_LIVE=1 后，测试会向 Wandbox 提交测试文件中专门编写的短示例。

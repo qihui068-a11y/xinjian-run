@@ -25,7 +25,7 @@ async function settle(w) {
   w.__flushFrames();
   for (let i = 0; i < 12; i++) await Promise.resolve();
 }
-function app(native = false, lanBridge) {
+function app(native = false, lanBridge, setup) {
   const errors = [], files = new Map(), vc = new VirtualConsole();
   vc.on('jsdomError', e => errors.push(e.message));
   const dom = new JSDOM(html, {
@@ -34,6 +34,7 @@ function app(native = false, lanBridge) {
   });
   const w = dom.window;
   if (lanBridge) w.XinJianLan = lanBridge;
+  if (setup) setup(w);
   let nextFrame = 1;
   const frames = new Map();
   w.requestAnimationFrame = cb => { const id = nextFrame++; frames.set(id, cb); return id; };

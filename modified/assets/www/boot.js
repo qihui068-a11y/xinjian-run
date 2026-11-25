@@ -14,6 +14,12 @@
      否则首屏顶栏会被状态栏压住，直到下一次重排才恢复。 */
   setTimeout(applyInsets, 300);
   window.addEventListener('resize', applyInsets);
+  applyEditorViewport();
+  window.addEventListener('resize', applyEditorViewport);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', applyEditorViewport);
+    window.visualViewport.addEventListener('scroll', applyEditorViewport);
+  }
 
   /* 预热：把「第一次换主题」的一次性开销提前付掉。
      首次加 .vt-run 会让整棵树重新匹配一遍样式（那条规则是 html.vt-run *），

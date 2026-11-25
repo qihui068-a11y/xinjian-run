@@ -5,6 +5,7 @@
 
   /* ================= 视图：编辑器 ================= */
   VIEWS.editor = function (el, p) {
+    el.classList.add('editor-view');
     var name = p.name;
     var mode = p.mode || 'read';
     var ext = Bridge.extOf(name);
