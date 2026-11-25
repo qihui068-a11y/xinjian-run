@@ -8,3 +8,6 @@ __pycache__/
 *.aab
 *.jks
 *.keystore
+*.p12
+*.pfx
+*.dpapi

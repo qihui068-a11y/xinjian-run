@@ -25,7 +25,7 @@ async function settle(w) {
   w.__flushFrames();
   for (let i = 0; i < 12; i++) await Promise.resolve();
 }
-function app(native = false) {
+function app(native = false, lanBridge) {
   const errors = [], files = new Map(), vc = new VirtualConsole();
   vc.on('jsdomError', e => errors.push(e.message));
   const dom = new JSDOM(html, {
@@ -33,6 +33,7 @@ function app(native = false) {
     pretendToBeVisual: true, virtualConsole: vc
   });
   const w = dom.window;
+  if (lanBridge) w.XinJianLan = lanBridge;
   let nextFrame = 1;
   const frames = new Map();
   w.requestAnimationFrame = cb => { const id = nextFrame++; frames.set(id, cb); return id; };
@@ -272,6 +273,7 @@ function input(w, source) {
   });
   await require('./web-cases.cjs')({ test, app, settle, preFor, texts, input, languages });
   await require('./editor-tools.cjs')({ test, app, settle });
+  await require('./lan.cjs')({ test, app, settle });
   await test('Large source tokenizer completes without hanging or source loss', async () => {
     const a = app(); try {
       for (const [ext,,line] of languages) {

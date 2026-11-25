@@ -50,6 +50,8 @@
 
 .field private locListener:Landroid/location/LocationListener;
 
+.field private lan:Ltt/xinjian/cn/LanBridge;
+
 .field private web:Landroid/webkit/WebView;
 
 
@@ -2605,6 +2607,16 @@
 
     invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
 
+    new-instance v1, Ltt/xinjian/cn/LanBridge;
+
+    invoke-direct {v1, p0, v0}, Ltt/xinjian/cn/LanBridge;-><init>(Landroid/content/Context;Landroid/webkit/WebView;)V
+
+    iput-object v1, p0, Ltt/xinjian/cn/MainActivity;->lan:Ltt/xinjian/cn/LanBridge;
+
+    const-string v2, "XinJianLan"
+
+    invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
+
     .line 520
     iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->web:Landroid/webkit/WebView;
 
@@ -2649,6 +2661,13 @@
 .method protected onDestroy()V
     .locals 2
 
+    iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->lan:Ltt/xinjian/cn/LanBridge;
+
+    if-eqz v0, :lan_destroyed
+
+    invoke-virtual {v0}, Ltt/xinjian/cn/LanBridge;->onDestroy()V
+
+    :lan_destroyed
     .line 765
     iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->web:Landroid/webkit/WebView;
 
@@ -2770,10 +2789,32 @@
     .line 378
     invoke-super {p0}, Landroid/app/Activity;->onResume()V
 
+    iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->lan:Ltt/xinjian/cn/LanBridge;
+
+    if-eqz v0, :lan_resumed
+
+    invoke-virtual {v0}, Ltt/xinjian/cn/LanBridge;->onResume()V
+
+    :lan_resumed
     .line 380
     const-string v0, "window.__xjPermRefresh&&window.__xjPermRefresh()"
 
     invoke-virtual {p0, v0}, Ltt/xinjian/cn/MainActivity;->toJs(Ljava/lang/String;)V
+
+    return-void
+.end method
+
+.method protected onStop()V
+    .locals 1
+
+    iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->lan:Ltt/xinjian/cn/LanBridge;
+
+    if-eqz v0, :lan_stopped
+
+    invoke-virtual {v0}, Ltt/xinjian/cn/LanBridge;->onStop()V
+
+    :lan_stopped
+    invoke-super {p0}, Landroid/app/Activity;->onStop()V
 
     return-void
 .end method

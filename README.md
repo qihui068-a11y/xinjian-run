@@ -1,6 +1,6 @@
-# 信笺·运行版 0.6
+# 信笺·运行版 0.7
 
-0.6 使用与 0.5 运行版相同的应用 ID 和证书，可覆盖升级。0.4 代码版用户可并存安装，在书架导出、导入想迁移的文件。
+0.7 沿用应用 ID `tt.xinjian.cn.codeedit.run`，从此版本开始使用新签名。0.5 和 0.6 运行版用户需先在书架导出文件，卸载旧版后安装 0.7，再导入。书架导出只包含文件，卸载会清除旧版的本地设置和聊天记录。0.4 代码版可并存安装。
 
 ## 编辑器
 
@@ -19,10 +19,16 @@
 
 在线运行依赖 Wandbox 的可用性。使用 CPython 3.13、OpenJDK 22、GCC 13（C++17）及 Mono 6.12。适合带常规入口的命令行单文件程序。在线请求设置 save=false，不申请分享链接。
 
+## 鸽屋局域网聊天
+
+两台 Android 设备连到同一局域网，在「鸽屋」开启局域网聊天，选择发现的设备发文字。使用另一位开发者工程的鸽屋 v1 协议，UDP 45789 用于发现，TCP 45790 用于文字和送达回执。消息保存在本机。应用退到后台时暂停网络通信，返回前台后恢复。这一协议使用局域网明文传输。
+
 ## 构建与验证
 
 modified 中已包含前端和打包后的离线引擎。使用 Apktool 2.12.1 执行 `apktool b modified -o unsigned.apk`，再用 Android SDK 的 zipalign 对齐并用 apksigner 签名。私钥独立管理。
 
 若修改 QuickJS 适配代码，在 runner 目录运行 `npm ci` 和 `node build.cjs`。运行与预览入口位于 modified/assets/www/runner.js、run-formats.js 和 views/editor.js。许可证见 modified/assets/www/QuickJS-LICENSE.txt。
+
+修改局域网 Java 层后，用 JDK、Android 34 的 `android.jar`、R8 8.8.34 和 Apktool 2.12.1 执行 `python native/lan/build.py <android.jar> <r8.jar> <apktool.jar>`，再按上面的步骤重新打包。
 
 在工程根目录运行 `npm ci --prefix tests` 和 `node tests/regression.cjs`。安装 Python Playwright 和 Chromium 后执行 `python tests/run-preview.py` 检查面板、示例和错误路径（模拟在线服务）。设置 XJ_LIVE=1 后，测试会向 Wandbox 提交测试文件中专门编写的短示例。

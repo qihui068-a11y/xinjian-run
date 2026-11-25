@@ -28,9 +28,7 @@
   })();
 
 
-  /* ================= 鸽屋数据（前端占位）
-     前端阶段先放本地，独立命名空间，不往书架里写。
-     以后接服务器只换这一个模块，视图不用动。 */
+  /* ================= 鸽屋数据（本地会话与局域网聊天记录） ================= */
   var Pigeon = (function () {
     var KEY = 'xj:pigeon:v1';
     var db = null;
@@ -73,6 +71,16 @@
         save();
         return d.sessions[id];
       },
+      openLan: function (peer, name) {
+        var d = load();
+        var id = 'lan-' + peer;
+        if (!d.sessions[id]) {
+          d.sessions[id] = { id: id, peer: peer, name: name || peer, msgs: [], mtime: Date.now() };
+          d.order.unshift(id);
+          save();
+        }
+        return d.sessions[id];
+      },
       /* extra 用来带图片/文件/位置这些附加信息（kind、name、size、lat、lon…） */
       add: function (id, text, dir, extra) {
         var d = load(), s = d.sessions[id];
@@ -83,6 +91,20 @@
         s.mtime = m.t;
         save();
         return m;
+      },
+      receiveLan: function (peer, name, mid, text) {
+        var s = this.openLan(peer, name);
+        if (!s.msgs.some(function (m) { return m.dir === 'in' && m.mid === mid; })) {
+          this.add(s.id, text, 'in', { mid: mid });
+        }
+      },
+      delivery: function (id, mid, ok) {
+        var s = this.get(id);
+        if (!s) return;
+        var message = s.msgs.find(function (m) { return m.dir === 'out' && m.mid === mid; });
+        if (!message) return;
+        message.delivery = ok ? 'delivered' : 'failed';
+        save();
       },
       remove: function (id) {
         var d = load(), o = [];

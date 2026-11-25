@@ -571,6 +571,16 @@ body.dark{
 .pg-name{flex:1;font-size:1rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pg-time{font-size:.75rem;opacity:.35;flex:none;}
 .pg-last{font-size:.8125rem;opacity:.5;margin-top:.2rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pg-sessions .pg-item{width:100%;text-align:left;}
+.pg-sessions .pg-last{display:block;}
+.lan-panel{margin:.5rem .875rem;padding:.7rem .875rem;border:1px solid rgba(var(--fg-rgb),.14);border-radius:.75rem;}
+.lan-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem;}
+.lan-panel p{margin:.35rem 0;font-size:.8rem;opacity:.7;}
+.lan-action{min-height:44px;padding:0 .75rem;border-radius:.4rem;background:rgba(var(--fg-rgb),.08);}
+.lan-peer{display:flex;align-items:center;justify-content:space-between;gap:.5rem;width:100%;min-height:44px;text-align:left;}
+.lan-peer span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lan-peer small{flex:none;opacity:.65;font-size:.7rem;}
+.lan-action:focus-visible,.lan-peer:focus-visible,.pg-sessions .pg-item:focus-visible{outline:2px solid currentColor;outline-offset:-2px;}
 
 /* ========== 鸽屋：会话页 ========== */
 .chat-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;}
