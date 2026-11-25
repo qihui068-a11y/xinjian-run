@@ -370,7 +370,7 @@
     return src.length;
   }
 
-  function tokenizeJavaScript(src) {
+  function tokenizeJavaScript(src, literal) {
     var out = [], i = 0, frames = [jsFrame(false)];
     while (i < src.length) {
       var frame = frames[frames.length - 1], c = src[i], token = '', cls = '', end, start;
@@ -382,6 +382,7 @@
           if (src[i] === '`') {
             i++;
             out.push(span('s', src.slice(start, i)));
+            if (literal && frames.length === 2) literal(frame.start, i);
             frames.pop();
             break;
           }
@@ -410,11 +411,13 @@
         frame.regex = false; frame.last = 'value'; frame.expect = ''; continue;
       }
       if (c === '`') {
-        out.push(span('s', c)); i++; frame.regex = false; frame.last = 'value'; frame.expect = '';
-        frames.push({ kind: 'template' }); continue;
+        out.push(span('s', c)); frame.regex = false; frame.last = 'value'; frame.expect = '';
+        frames.push({ kind: 'template', start: i++ }); continue;
       }
       if (c === '/' && frame.regex) {
-        end = jsRegexEnd(src, i); out.push(span('s', src.slice(i, end))); i = end;
+        end = jsRegexEnd(src, i); out.push(span('s', src.slice(i, end)));
+        if (literal && frames.length === 1) literal(i, end);
+        i = end;
         frame.regex = false; frame.last = 'value'; continue;
       }
       token = matchAt(JS_NUM, src, i);
@@ -466,6 +469,7 @@
       }
       out.push(esc(c)); i++;
     }
+    if (literal && frames.length > 1) literal(frames[1].start, src.length);
     return out.join('');
   }
 
@@ -750,5 +754,12 @@
     return out;
   }
 
-  global.HL = { highlight: highlight };
+  global.HL = {
+    highlight: highlight,
+    javascriptLiterals: function (source) {
+      var ranges = Object.create(null);
+      tokenizeJavaScript(source, function (start, end) { ranges[start] = end; });
+      return ranges;
+    }
+  };
 })(window);

@@ -15,7 +15,7 @@
     var showGutter = true;
 
     el.innerHTML =
-      '<div class="topbar" id="edBar"></div>' +
+      '<div class="topbar editor-bar" id="edBar"></div>' +
       '<div class="editor-wrap">' +
       '<div class="gutter"><div class="gutter-inner" id="gin"></div></div>' +
       '<div class="code-area' + (plain ? ' plain' : '') + '" id="ca">' +
@@ -33,7 +33,10 @@
       '<span id="stWords">0 字</span>' +
       '<span class="sp" id="stEnc">' + esc(p.enc || 'UTF-8') + '</span>' +
       '<span id="stSyn">' + esc(languageLabel()) + '</span>' +
-      '</div>';
+      '</div>' +
+      '<div class="editor-symbols" role="group" aria-label="常用符号" hidden>' +
+      '<div class="editor-symbol-list"></div>' +
+      '<button type="button" data-act="manageSymbols" aria-label="添加或管理符号" title="添加或管理符号">＋</button></div>';
 
     var bar = el.querySelector('#edBar');
     var ta = el.querySelector('#ta');
@@ -42,6 +45,10 @@
     var ca = el.querySelector('#ca');
     var wrap = el.querySelector('.editor-wrap');
     var mdView = el.querySelector('#mdView');
+    var symbols = el.querySelector('.editor-symbols');
+    var symbolList = symbols.querySelector('.editor-symbol-list');
+    var symbolsExt;
+    var composing = false;
     var isMd = (ext === 'md');
 
     var panel = el.querySelector('.run-panel');
@@ -49,6 +56,7 @@
     function paintBar() {
       var label = RunFormats.label(ext);
       var runButton = label ? '<button class="t-text" data-act="run">' + label + '</button>' : '';
+      var formatButton = EditorTools.canFormat(ext) ? '<button class="t-text" data-act="format">格式化</button>' : '';
       if (mode === 'read') {
         bar.innerHTML =
           '<button class="icon-btn" data-act="leave">' + svg('back') + '</button>' +
@@ -59,8 +67,111 @@
         bar.innerHTML =
           '<button class="icon-btn" data-act="leave">' + svg('back') + '</button>' +
           '<div class="t-title" data-act="rename">' + esc(name) + '</div>' +
-          runButton + '<button class="t-text" data-act="done" style="font-weight:600">完成</button>';
+          formatButton + runButton + '<button class="t-text" data-act="done" style="font-weight:600">完成</button>';
       }
+    }
+
+    function paintSymbols(refresh) {
+      symbols.hidden = (mode !== 'edit');
+      if (symbols.hidden || (!refresh && symbolsExt === ext)) return;
+      var scrollLeft = symbolsExt === ext ? symbolList.scrollLeft : 0;
+      symbolsExt = ext;
+      symbolList.textContent = '';
+      EditorTools.keys(ext).forEach(function (key) {
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.act = 'symbol';
+        button.dataset.key = key;
+        button.textContent = key;
+        button.setAttribute('aria-label', '插入 ' + key.trim());
+        button.title = key;
+        symbolList.appendChild(button);
+      });
+      symbolList.scrollLeft = scrollLeft;
+    }
+
+    function manageSymbols() {
+      var currentExt = ext;
+      var language = languageLabel();
+      var custom = EditorTools.customKeys(currentExt);
+      var options = [{ label: '添加符号', value: { add: true } }];
+      custom.forEach(function (key) {
+        options.push({ label: '移除 ' + key, value: { key: key } });
+      });
+      var choice = custom.length ? sheet(language + ' 自定义符号', options) : Promise.resolve(options[0].value);
+      choice.then(function (action) {
+        if (!action) return;
+        if (!action.add) return update(action.key, false);
+        return inputBox('添加 ' + language + ' 符号', '', '例如  &&  或  →', true).then(function (key) {
+          if (key !== null) update(key, true);
+        });
+      });
+
+      function update(key, add) {
+        if (mode !== 'edit' || ext !== currentExt || !document.body.contains(el)) return;
+        try { EditorTools.changeKey(currentExt, key, add); }
+        catch (error) { toast(error.message); return; }
+        paintSymbols(true);
+        if (add) symbolList.scrollLeft = symbolList.scrollWidth;
+        toast(add ? '已添加符号' : '已移除符号');
+      }
+    }
+
+    function textChanged() {
+      dirty = true;
+      scheduleHL();
+      updateStatus();
+    }
+
+    function replaceRange(value, start, end, selectionStart, selectionEnd, direction) {
+      ta.focus();
+      ta.setSelectionRange(start, end);
+      // WebView 将 insertText 放进原生撤销历史。其他浏览器可直接修改选区。
+      var inserted = false;
+      if (typeof document.execCommand === 'function') {
+        try { inserted = document.execCommand('insertText', false, value); } catch (e) {}
+      }
+      if (!inserted) ta.setRangeText(value, start, end, 'end');
+      ta.setSelectionRange(selectionStart, selectionEnd, direction);
+      textChanged();
+    }
+
+    function insertSymbol(key) {
+      var parts = EditorTools.parts(key);
+      var start = ta.selectionStart, end = ta.selectionEnd, direction = ta.selectionDirection;
+      var selected = parts[1] ? ta.value.slice(start, end) : '';
+      var inside = start + parts[0].length;
+      replaceRange(parts[0] + selected + parts[1], start, end, inside, inside + selected.length, direction);
+    }
+
+    function mapOffset(source, formatted, offset) {
+      if (!offset) return 0;
+      if (offset >= source.length) return formatted.length;
+      var count = source.slice(0, offset).replace(/\s/g, '').length;
+      var at = 0;
+      while (at < formatted.length && count) {
+        if (!/\s/.test(formatted[at])) count--;
+        at++;
+      }
+      return at;
+    }
+
+    function formatText() {
+      var source = ta.value, formatted;
+      try { formatted = EditorTools.format(source, ext); }
+      catch (error) {
+        toast(error.name === 'SyntaxError' && ext === 'json' ? 'JSON 语法有误，请检查后再格式化' : (error.message || '无法格式化当前文件'));
+        return;
+      }
+      if (formatted === source) { toast('无需调整格式'); return; }
+      var start = mapOffset(source, formatted, ta.selectionStart);
+      var end = mapOffset(source, formatted, ta.selectionEnd);
+      var scrollTop = ta.scrollTop, scrollLeft = ta.scrollLeft;
+      replaceRange(formatted, 0, source.length, start, end, ta.selectionDirection);
+      ta.scrollTop = scrollTop;
+      ta.scrollLeft = scrollLeft;
+      syncScroll();
+      toast('已格式化');
     }
 
     function renderGutter() {
@@ -142,6 +253,7 @@
     function setMode(m) {
       mode = m;
       paintBar();
+      paintSymbols();
       ta.readOnly = (m === 'read');
       ca.classList.toggle('readonly', m === 'read');
 
@@ -186,6 +298,9 @@
     });
 
     /* 事件 */
+    el.addEventListener('mousedown', function (e) {
+      if (e.target.closest('[data-act="symbol"], [data-act="format"]')) e.preventDefault();
+    });
     el.addEventListener('click', function (e) {
       var t = e.target.closest('[data-act]');
       if (!t) return;
@@ -193,6 +308,12 @@
       if (act === 'run') {
         ta.blur();
         runner.start(function () { return ta.value; }, name, ext);
+      } else if (act === 'format' && mode === 'edit' && !composing) {
+        formatText();
+      } else if (act === 'symbol' && mode === 'edit' && !composing) {
+        insertSymbol(t.dataset.key);
+      } else if (act === 'manageSymbols' && mode === 'edit') {
+        manageSymbols();
       } else if (act === 'closeRun') {
         runner.close();
       } else if (act === 'stop') {
@@ -222,7 +343,6 @@
             p.name = name;
             ext = Bridge.extOf(name);
             refreshLanguage();
-            paintBar();
             setMode(mode);
             toast('已重命名');
           });
@@ -265,12 +385,12 @@
       });
     }
 
-    ta.addEventListener('input', function () {
-      dirty = true;
+    ta.addEventListener('input', textChanged);
+    ta.addEventListener('compositionstart', function () { composing = true; });
+    ta.addEventListener('compositionend', function () {
+      composing = false;
       scheduleHL();
-      updateStatus();
     });
-    ta.addEventListener('compositionend', scheduleHL);
     ta.addEventListener('scroll', syncScroll);
     ta.addEventListener('click', updateStatus);
     ta.addEventListener('keyup', updateStatus);

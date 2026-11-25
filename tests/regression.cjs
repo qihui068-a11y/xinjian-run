@@ -271,6 +271,7 @@ function input(w, source) {
     } finally { a.close(); }
   });
   await require('./web-cases.cjs')({ test, app, settle, preFor, texts, input, languages });
+  await require('./editor-tools.cjs')({ test, app, settle });
   await test('Large source tokenizer completes without hanging or source loss', async () => {
     const a = app(); try {
       for (const [ext,,line] of languages) {

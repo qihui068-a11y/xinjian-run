@@ -82,12 +82,14 @@
       items.forEach(function (it, idx) {
         if (it === 'sep') { html += '<div class="sheet-sep"></div>'; return; }
         if (it.title) { html += '<div class="sheet-title">' + esc(it.title) + '</div>'; return; }
-        html += '<div class="sheet-item" data-i="' + idx + '"' +
-          (it.danger ? ' style="opacity:.75"' : '') + '>' + esc(it.label) + '</div>';
+        html += '<button type="button" class="sheet-item" data-i="' + idx + '"' +
+          (it.danger ? ' style="opacity:.75"' : '') + '>' + esc(it.label) + '</button>';
       });
       html += '</div>';
       mask.innerHTML = html;
       document.body.appendChild(mask);
+      var first = mask.querySelector('button');
+      if (first) first.focus();
 
       var layer = null, settled = false;
 
@@ -127,7 +129,7 @@
   }
 
 
-  function inputBox(title, value, placeholder) {
+  function inputBox(title, value, placeholder, keepWhitespace) {
     return new Promise(function (resolve) {
       var mask = document.createElement('div');
       mask.className = 'mask';
@@ -137,10 +139,16 @@
         '<div class="form" style="padding:4px 22px 14px">' +
         '<div class="field"><input type="text" id="_ipt" value="' + esc(value || '') +
         '" placeholder="' + esc(placeholder || '') + '"></div></div>' +
-        '<div class="sheet-item" data-act="ok" style="justify-content:center;font-weight:600">确定</div>' +
+        '<button type="button" class="sheet-item" data-act="ok" style="justify-content:center;font-weight:600">确定</button>' +
         '</div>';
       document.body.appendChild(mask);
       var ipt = mask.querySelector('#_ipt');
+      ipt.setAttribute('aria-label', title);
+      if (keepWhitespace) {
+        ipt.setAttribute('autocapitalize', 'off');
+        ipt.setAttribute('autocomplete', 'off');
+        ipt.spellcheck = false;
+      }
       setTimeout(function () { ipt.focus(); ipt.select(); }, 50);
 
       var layer = null, settled = false;
@@ -157,12 +165,15 @@
         mask.remove();
         resolve(null);
       });
+      function submit() {
+        close(keepWhitespace ? ipt.value : ipt.value.trim());
+      }
       mask.addEventListener('click', function (e) {
         if (e.target === mask) return close(null);
-        if (e.target.closest('[data-act=ok]')) return close(ipt.value.trim());
+        if (e.target.closest('[data-act=ok]')) submit();
       });
       ipt.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') close(ipt.value.trim());
+        if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) submit();
       });
     });
   }
