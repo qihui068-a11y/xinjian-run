@@ -1,18 +1,18 @@
 {
   "suite": "XinJian seven-language editor regression",
   "environment": "Node.js v24.22.3 + jsdom 26.1.0; no Android install or pixel-layout test",
-  "passed": 41,
+  "passed": 44,
   "failed": 0,
   "results": [
     {
       "name": "Complete app boots and offers fourteen unique formats including all seven requested languages",
       "passed": true,
-      "ms": 94
+      "ms": 92
     },
     {
       "name": "New py file defaults to correct extension and opens editable highlighting",
       "passed": true,
-      "ms": 43
+      "ms": 38
     },
     {
       "name": "New html file defaults to correct extension and opens editable highlighting",
@@ -22,22 +22,22 @@
     {
       "name": "New css file defaults to correct extension and opens editable highlighting",
       "passed": true,
-      "ms": 23
+      "ms": 22
     },
     {
       "name": "New java file defaults to correct extension and opens editable highlighting",
       "passed": true,
-      "ms": 20
+      "ms": 21
     },
     {
       "name": "New json file defaults to correct extension and opens editable highlighting",
       "passed": true,
-      "ms": 17
+      "ms": 18
     },
     {
       "name": "New js file defaults to correct extension and opens editable highlighting",
       "passed": true,
-      "ms": 18
+      "ms": 19
     },
     {
       "name": "New xml file defaults to correct extension and opens editable highlighting",
@@ -52,17 +52,17 @@
     {
       "name": "Java tokenization: annotation, classes, methods, literals, text blocks and comments",
       "passed": true,
-      "ms": 9
+      "ms": 10
     },
     {
       "name": "All languages preserve source and escape HTML; incomplete editing input is accepted",
       "passed": true,
-      "ms": 230
+      "ms": 226
     },
     {
       "name": "Typing/paste/IME refresh highlighting, preserve caret and synchronize both scroll axes",
       "passed": true,
-      "ms": 14
+      "ms": 13
     },
     {
       "name": "Saving and reopening py/java preserve exact source in native bridge mode",
@@ -72,22 +72,22 @@
     {
       "name": "Renaming switches txt -> py -> java -> txt without stale syntax or mode",
       "passed": true,
-      "ms": 16
+      "ms": 15
     },
     {
       "name": "Save false/rejection leaves input editable and retries keep source",
       "passed": true,
-      "ms": 13
+      "ms": 20
     },
     {
       "name": "Existing C/BF highlighters and Markdown reading continue to work",
       "passed": true,
-      "ms": 28
+      "ms": 14
     },
     {
       "name": "Styles have distinct light/dark syntax colors and matched non-wrapping code layers",
       "passed": true,
-      "ms": 8
+      "ms": 7
     },
     {
       "name": "JavaScript distinguishes keywords, regex, division and template interpolation",
@@ -132,32 +132,32 @@
     {
       "name": "Uppercase and alias extensions open with canonical labels and the same syntax coloring",
       "passed": true,
-      "ms": 37
+      "ms": 46
     },
     {
       "name": "All seven languages save and reopen through the native bridge without color HTML or display sentinels",
       "passed": true,
-      "ms": 42
+      "ms": 41
     },
     {
       "name": "Renaming across all seven languages immediately changes status and highlighting without source loss",
       "passed": true,
-      "ms": 33
+      "ms": 29
     },
     {
       "name": "Rapid input and composition coalesce per frame for every language and preserve the caret",
       "passed": true,
-      "ms": 35
+      "ms": 34
     },
     {
       "name": "Unfinished web syntax, nested templates and malformed markup retain source and terminate promptly",
       "passed": true,
-      "ms": 421
+      "ms": 400
     },
     {
       "name": "Each file type offers formatting and language-specific keys in edit mode",
       "passed": true,
-      "ms": 31
+      "ms": 30
     },
     {
       "name": "Paired keys wrap the selection and single keys insert at the caret",
@@ -172,12 +172,12 @@
     {
       "name": "Custom symbol controls preserve text, persist by language, and allow removal",
       "passed": true,
-      "ms": 25
+      "ms": 28
     },
     {
       "name": "Format button updates Java source and highlighting without formatting string contents",
       "passed": true,
-      "ms": 19
+      "ms": 15
     },
     {
       "name": "Formatting preserves Python blocks, JavaScript ASI, and interpolated strings",
@@ -192,7 +192,7 @@
     {
       "name": "Markup, CSS, BF and plain text keep meaningful whitespace",
       "passed": true,
-      "ms": 8
+      "ms": 7
     },
     {
       "name": "LAN chat starts on request, sends with receipt, and deduplicates received text",
@@ -205,9 +205,24 @@
       "ms": 12
     },
     {
+      "name": "App checks for a release on startup once, with no automatic download",
+      "passed": true,
+      "ms": 7
+    },
+    {
+      "name": "Update settings show current version, check status, progress, retry and system installer handoff",
+      "passed": true,
+      "ms": 11
+    },
+    {
+      "name": "Browser demo displays update settings without device-only actions",
+      "passed": true,
+      "ms": 14
+    },
+    {
       "name": "Large source tokenizer completes without hanging or source loss",
       "passed": true,
-      "ms": 88
+      "ms": 87
     }
   ]
 }

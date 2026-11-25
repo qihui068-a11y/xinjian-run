@@ -554,6 +554,9 @@ body.dark{
 .row-v{font-size:.8125rem;opacity:.4;}
 .row-arrow{opacity:.22;font-size:1.1rem;line-height:1;}
 .set-note{font-size:.75rem;opacity:.4;line-height:1.6;}
+.update-row{width:100%;text-align:left;}
+.update-status{font-size:.875rem;line-height:1.6;}
+[data-update-progress]{width:100%;accent-color:var(--fg);}
 
 /* ========== 鸽屋：会话列表 ========== */
 .pg-item{

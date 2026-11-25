@@ -96,6 +96,8 @@
       '<div class="rows">' +
       rowHtml('perm', 'lock', '权限设置', '') +
       rowHtml('pigeonSet', 'bird', '鸽屋设置', '') +
+      '<button type="button" class="row update-row" data-act="update"><span class="row-ico">' + svg('download') +
+      '</span><span class="row-t">应用更新</span><span class="row-arrow" aria-hidden="true">›</span></button>' +
       '</div>' +
       /* push-bottom：内容不满一屏时把「关于」压到最底；内容超出一屏时它自然落在最后 */
       '<div class="rows push-bottom">' +
@@ -129,6 +131,7 @@
       if (!a) return;
       var act = a.dataset.act;
       if (act === 'perm') return Nav.go('perm');
+      if (act === 'update') return Nav.go('update');
       if (act === 'pigeonSet') {
         return Nav.go('stub', { title: '鸽屋设置', text: '鸽屋设置还没做，先占位。' });
       }
@@ -143,8 +146,8 @@
       '<div class="topbar"><button class="icon-btn" data-act="back">' + svg('back') + '</button>' +
       '<div class="t-title">关于</div><div class="t-gap"></div></div>' +
       '<div class="scroll"><div class="form">' +
-      '<div class="field"><label>信笺·代码版</label>' +
-      '<div class="set-note">版本 0.6-run · ' + (Bridge.isNative ? '原生模式' : '浏览器演示模式') + '</div></div>' +
+      '<div class="field"><label>信笺·运行版</label>' +
+      '<div class="set-note">' + (Bridge.isNative ? '版本 ' + esc(AppUpdate.status().current || '未知') : '浏览器演示模式') + '</div></div>' +
       '<div class="field"><label>图标</label>' +
       '<div class="set-note">Tabler Icons / Remix Icon</div></div>' +
       '<div class="field"><label>文档</label>' +
@@ -153,6 +156,49 @@
 
     el.addEventListener('click', function (e) {
       if (e.target.closest('[data-act=back]')) return Nav.back(false);
+    });
+  };
+
+  VIEWS.update = function (el) {
+    el.innerHTML =
+      '<div class="topbar"><button type="button" class="icon-btn" data-act="back" aria-label="返回">' + svg('back') + '</button>' +
+      '<div class="t-title">应用更新</div><div class="t-gap"></div></div>' +
+      '<div class="scroll"><div class="form">' +
+      '<div class="field"><label>当前版本</label><div data-update-current></div></div>' +
+      '<div class="field"><div class="update-status" data-update-status role="status"></div>' +
+      '<progress data-update-progress max="100" aria-label="下载进度" hidden></progress></div>' +
+      '<div class="chips"><button type="button" class="chip" data-act="check">检查更新</button>' +
+      '<button type="button" class="chip on" data-act="apply" hidden></button></div>' +
+      '</div></div>';
+
+    var current = el.querySelector('[data-update-current]');
+    var message = el.querySelector('[data-update-status]');
+    var progress = el.querySelector('[data-update-progress]');
+    var check = el.querySelector('[data-act=check]');
+    var apply = el.querySelector('[data-act=apply]');
+    el.__cleanup = AppUpdate.watch(function (status) {
+      current.textContent = status.current || '—';
+      var labels = {
+        idle: '启动时自动检查更新', demo: '请在 Android 应用中检查更新', checking: '正在检查更新…',
+        current: '已是最新版本', available: '发现新版本 ' + status.latest,
+        downloading: '正在下载 ' + status.latest, ready: status.latest + ' 已下载，可以安装',
+        verifying: '正在校验安装包…', checkError: '检查更新失败', downloadError: '下载失败'
+      };
+      var description = status.message || labels[status.state] || '';
+      if (message.textContent !== description) message.textContent = description;
+      progress.hidden = status.state !== 'downloading';
+      progress.value = status.percent;
+      check.hidden = status.state === 'demo';
+      check.disabled = ['checking', 'downloading', 'verifying'].indexOf(status.state) !== -1;
+      apply.hidden = ['ready', 'available', 'downloadError'].indexOf(status.state) === -1;
+      apply.textContent = status.state === 'ready' ? '安装更新' : status.state === 'downloadError' ? '重新下载' : '下载更新';
+    });
+    el.addEventListener('click', function (e) {
+      var action = e.target.closest('[data-act]');
+      if (!action) return;
+      if (action.dataset.act === 'back') return Nav.back(false);
+      if (action === check) AppUpdate.check();
+      if (action === apply) AppUpdate.act();
     });
   };
 

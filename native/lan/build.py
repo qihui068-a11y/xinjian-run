@@ -14,14 +14,18 @@ def main():
     parser.add_argument("r8_jar", type=Path)
     parser.add_argument("apktool_jar", type=Path)
     parser.add_argument("--java-bin", type=Path, help="JDK bin directory")
-    parser.add_argument("--component", choices=("lan", "keyboard"), default="lan")
+    components = {
+        "lan": ("LanBridge", "LanTransport"),
+        "keyboard": ("KeyboardViewport",),
+        "update": ("UpdateBridge", "UpdateRelease", "UpdateApkProvider"),
+    }
+    parser.add_argument("--component", choices=components, default="lan")
     args = parser.parse_args()
     native = Path(__file__).resolve().parents[1]
     source = native / args.component
     package = Path("tt/xinjian/cn")
     dest = native.parent / "modified/smali" / package
-    classes_to_compile = {"lan": ("LanBridge", "LanTransport"), "keyboard": ("KeyboardViewport",)}
-    classes_to_compile = classes_to_compile[args.component]
+    classes_to_compile = components[args.component]
     names_pattern = "|".join(map(re.escape, classes_to_compile))
     owned = re.compile(rf"(?:{names_pattern})(?:\$[\w$-]+)?\.smali")
 

@@ -40,3 +40,4 @@
   else setTimeout(warmupMotion, 16);
 
   Nav.render();
+  AppUpdate.start();

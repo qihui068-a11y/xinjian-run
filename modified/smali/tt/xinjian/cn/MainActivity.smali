@@ -54,6 +54,8 @@
 
 .field private keyboardViewport:Ltt/xinjian/cn/KeyboardViewport;
 
+.field private update:Ltt/xinjian/cn/UpdateBridge;
+
 .field private web:Landroid/webkit/WebView;
 
 
@@ -2625,6 +2627,16 @@
 
     iput-object v1, p0, Ltt/xinjian/cn/MainActivity;->keyboardViewport:Ltt/xinjian/cn/KeyboardViewport;
 
+    new-instance v1, Ltt/xinjian/cn/UpdateBridge;
+
+    invoke-direct {v1, p0, v0}, Ltt/xinjian/cn/UpdateBridge;-><init>(Landroid/app/Activity;Landroid/webkit/WebView;)V
+
+    iput-object v1, p0, Ltt/xinjian/cn/MainActivity;->update:Ltt/xinjian/cn/UpdateBridge;
+
+    const-string v2, "XinJianUpdate"
+
+    invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
+
     .line 520
     iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->web:Landroid/webkit/WebView;
 
@@ -2683,6 +2695,13 @@
     invoke-virtual {v0}, Ltt/xinjian/cn/KeyboardViewport;->close()V
 
     :keyboard_viewport_closed
+    iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->update:Ltt/xinjian/cn/UpdateBridge;
+
+    if-eqz v0, :update_closed
+
+    invoke-virtual {v0}, Ltt/xinjian/cn/UpdateBridge;->close()V
+
+    :update_closed
     .line 765
     iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->web:Landroid/webkit/WebView;
 

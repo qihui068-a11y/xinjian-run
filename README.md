@@ -1,6 +1,12 @@
-# 信笺·运行版 0.7.1
+# 信笺·运行版 0.7.2
 
-0.7.1 沿用应用 ID `tt.xinjian.cn.codeedit.run` 和 0.7 的签名，可覆盖安装 0.7。0.5 和 0.6 运行版用户需先在书架导出文件，卸载旧版后安装新版，再导入。书架导出只包含文件，卸载会清除旧版的本地设置和聊天记录。0.4 代码版可并存安装。
+0.7.2 沿用应用 ID `tt.xinjian.cn.codeedit.run` 和 0.7 的签名，可覆盖安装 0.7 或 0.7.1。0.5 和 0.6 运行版用户需先在书架导出文件，卸载旧版后安装新版，再导入。书架导出只包含文件，卸载会清除旧版的本地设置和聊天记录。0.4 代码版可并存安装。
+
+## 应用更新
+
+从 0.7.2 起，启动时会检查 GitHub Releases。打开「小家 → 设置 → 应用更新」可手动检查、下载和安装。下载后会校验 SHA-256、应用 ID、版本和签名。安装由 Android 确认，部分设备首次安装时需要在系统设置中允许信笺安装应用。
+
+发布正式更新时，递增 Android 的 `versionCode`，将 APK 的 `versionName` 设为 `版本号-run`，继续使用原发布签名。在本仓库的 GitHub Releases 发布 `v版本号-run`，上传 `xinjian-run-版本号.apk` 并设为最新版。正式发布前应完成 APK 上传。
 
 ## 编辑器
 
@@ -32,5 +38,7 @@ modified 中已包含前端和打包后的离线引擎。使用 Apktool 2.12.1 �
 修改局域网 Java 层后，用 JDK、Android 34 的 `android.jar`、R8 8.8.34 和 Apktool 2.12.1 执行 `python native/lan/build.py <android.jar> <r8.jar> <apktool.jar>`，再按上面的步骤重新打包。
 
 键盘适配的原生源码位于 `native/keyboard`。改动后使用同一构建命令并追加 `--component keyboard` 生成 smali。
+
+应用更新的原生源码位于 `native/update`。改动后使用同一构建命令并追加 `--component update` 生成 smali。
 
 在工程根目录运行 `npm ci --prefix tests` 和 `node tests/regression.cjs`。安装 Python Playwright 和 Chromium 后执行 `python tests/run-preview.py` 检查面板、示例和错误路径（模拟在线服务）。设置 XJ_LIVE=1 后，测试会向 Wandbox 提交测试文件中专门编写的短示例。
