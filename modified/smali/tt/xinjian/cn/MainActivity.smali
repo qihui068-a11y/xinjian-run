@@ -89,6 +89,12 @@
 
     invoke-interface {v0, v1, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
+    const-string v1, "wasm"
+
+    const-string v2, "application/wasm"
+
+    invoke-interface {v0, v1, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
     .line 680
     const-string v1, "css"
 
@@ -1324,6 +1330,8 @@
 
     .line 725
     :cond_5
+    move-object v6, p1
+
     new-instance v0, Ljava/lang/StringBuilder;
 
     const-string v1, "www"
@@ -1365,6 +1373,8 @@
     .line 730
     invoke-interface {p1, v3, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
+    invoke-static {v6, p1}, Ltt/xinjian/cn/MainActivity;->pythonRunnerHeaders(Ljava/lang/String;Ljava/util/Map;)V
+
     .line 731
     invoke-virtual {v1, p1}, Landroid/webkit/WebResourceResponse;->setResponseHeaders(Ljava/util/Map;)V
     :try_end_1
@@ -1404,6 +1414,51 @@
     :cond_6
     :goto_0
     return-object v0
+.end method
+
+.method private static pythonRunnerHeaders(Ljava/lang/String;Ljava/util/Map;)V
+    .locals 3
+
+    const-string v0, "/python-worker.js"
+
+    invoke-virtual {v0, p0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v0
+
+    if-eqz v0, :index
+
+    const-string v1, "Content-Security-Policy"
+
+    const-string v2, "default-src 'none'; script-src 'wasm-unsafe-eval' https://app.xinjian.local/python-runtime/; connect-src https://app.xinjian.local/python-runtime/; worker-src 'none'"
+
+    invoke-interface {p1, v1, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+    goto :coep
+
+    :index
+    const-string v0, "/index.html"
+
+    invoke-virtual {v0, p0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v0
+
+    if-eqz v0, :done
+
+    const-string v1, "Cross-Origin-Opener-Policy"
+
+    const-string v2, "same-origin"
+
+    invoke-interface {p1, v1, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+    :coep
+    const-string v1, "Cross-Origin-Embedder-Policy"
+
+    const-string v2, "require-corp"
+
+    invoke-interface {p1, v1, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+    :done
+    return-void
 .end method
 
 .method private stopLoc()V

@@ -3,6 +3,7 @@ __pycache__/
 
 /modified/build/
 /modified/dist/
+/modified/assets/www/python-runtime/
 *.apk
 *.apks
 *.aab

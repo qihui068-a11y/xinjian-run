@@ -65,6 +65,7 @@ var CodeRunner = (function () {
       input.value = lastInput;
       var submit = body.querySelector('.run-submit');
       submit.textContent = ext === 'bfh' ? '发送并检查' : '发送并运行';
+      if (PythonRun.supported(ext)) addPythonOption(input, readSource);
       submit.onclick = function () {
         var current = generation;
         lastInput = input.value;
@@ -128,6 +129,43 @@ var CodeRunner = (function () {
           xhr.send(JSON.stringify(data));
         } catch (e) { result('无法提交', e.message); }
       };
+    }
+
+    function addPythonOption(input, readSource) {
+      var form = body.querySelector('.run-online');
+      var options = document.createElement('details');
+      options.innerHTML = '<summary>本地 Python（实验）</summary>' +
+        '<label>选择输入文件（可选）<input type="file" multiple></label>' +
+        '<button type="button" class="run-python">本地运行</button><button type="button" class="run-python-interactive">交互运行</button>';
+      form.appendChild(options);
+      var selected = options.querySelector('input');
+      var run = options.querySelector('.run-python');
+      var interactive = options.querySelector('.run-python-interactive');
+      var online = form.querySelector('.run-submit');
+      interactive.hidden = !window.crossOriginIsolated || typeof SharedArrayBuffer !== 'function';
+      function startPython(live) {
+        var current = generation;
+        var job;
+        var files;
+        try {
+          job = { source: readSource(), name: 'main.py', stdin: RunIO.stdin(input.value), channel: live ? PythonRun.channel() : null };
+          files = PythonRun.readFiles(selected.files);
+        } catch (e) { status.textContent = e.message; return; }
+        online.disabled = run.disabled = interactive.disabled = true;
+        files.then(function (files) {
+          if (generation !== current) return;
+          job.files = files;
+          lastInput = input.value;
+          body.textContent = '';
+          startWorker(PythonRun.spawn, job, 60000, 15000, PythonRun.sendInput);
+        }).catch(function () {
+          if (generation !== current) return;
+          status.textContent = '读取输入文件失败';
+          online.disabled = run.disabled = interactive.disabled = false;
+        });
+      }
+      run.onclick = function () { startPython(false); };
+      interactive.onclick = function () { startPython(true); };
     }
 
     function localResult(source, ext) {
