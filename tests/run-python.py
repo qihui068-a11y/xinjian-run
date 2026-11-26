@@ -82,7 +82,8 @@ def run(server, browser):
     submit = controls.get_by_role("button", name="发送并运行", exact=True)
     local = controls.get_by_role("button", name="本地运行", exact=True)
     expect(controls.locator(".run-python-options")).to_have_attribute("open", "")
-    expect(controls.locator(".run-hint").first).to_have_text("源码和输入会发送至 wandbox.org。")
+    expect(controls.locator(".run-submit-row .run-hint")).to_have_text(
+        "源码和输入会发送至 wandbox.org。请提前填写程序所需的输入。")
     expect(controls.locator(".run-python-options .run-hint")).to_have_text("本地运行时可逐行输入。")
     input_box, submit_box, local_box = textarea.bounding_box(), submit.bounding_box(), local.bounding_box()
     assert input_box["y"] + input_box["height"] <= submit_box["y"] < local_box["y"]
