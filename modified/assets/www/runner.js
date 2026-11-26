@@ -52,7 +52,7 @@ var CodeRunner = (function () {
     var status = panel.querySelector('.run-status');
     var body = panel.querySelector('.run-body');
     var stopButton = panel.querySelector('[data-act="stop"]');
-    var worker, url, timer, generation = 0;
+    var worker, url, timer, terminal, outputView, generation = 0;
     var request;
     var lastInput = '';
     function remoteForm(readSource, ext) {
@@ -61,44 +61,65 @@ var CodeRunner = (function () {
         '<label>标准输入（可留空）<textarea rows="2" placeholder="每行一组输入"></textarea></label>' +
         '<button type="button" class="run-submit"></button></div>';
       var input = body.querySelector('textarea');
+      var submitError;
       input.value = lastInput;
       var submit = body.querySelector('.run-submit');
       submit.textContent = ext === 'bfh' ? '发送并检查' : '发送并运行';
       submit.onclick = function () {
-        var output = document.createElement('pre');
         var current = generation;
         lastInput = input.value;
+        var data;
+        try { data = RunFormats.payload(ext, readSource(), RunIO.stdin(lastInput)); }
+        catch (e) {
+          if (submitError) body.querySelector('pre').remove();
+          submitError = RunIO.output(body);
+          submitError.emit({ kind: 'stderr', text: e.message });
+          status.textContent = '无法提交';
+          return;
+        }
         body.textContent = '';
-        body.appendChild(output);
-        function result(label, text) {
+        outputView = RunIO.output(body);
+        function result(label, message) {
           if (generation !== current) return;
-          request = null;
           stop();
           status.textContent = label;
-          output.textContent = text || '';
+          if (message) outputView.emit({ kind: 'stderr', text: message });
         }
         try {
-          var data = RunFormats.payload(ext, readSource(), lastInput);
           var xhr = request = new XMLHttpRequest();
           xhr.open('POST', 'https://wandbox.org/api/compile.json', true);
           xhr.setRequestHeader('Content-Type', 'application/json');
           xhr.timeout = 60000;
           xhr.onerror = function () { result('连接失败', '请检查网络或稍后重试。'); };
           xhr.ontimeout = function () { result('等待超时', '编译服务未在 60 秒内返回结果。'); };
+          xhr.onprogress = function (event) {
+            if (event.loaded > 1024 * 1024) result('输出超过上限', '编译服务的响应超过 1 MB，已结束等待。');
+          };
           xhr.onload = function () {
+            if (generation !== current) return;
+            request = null;
             if (xhr.status !== 200) {
               result('编译服务不可用', 'HTTP ' + xhr.status);
               return;
             }
             try {
+              if (xhr.responseText.length > 1024 * 1024) throw new Error('输出超过 1 MB');
               var r = JSON.parse(xhr.responseText);
               if (r.status == null && !r.signal) throw new Error('服务响应缺少退出状态');
-              var log = [r.compiler_message || (r.compiler_output || '') + (r.compiler_error || ''),
-                r.program_message || (r.program_output || '') + (r.program_error || '')].filter(Boolean).join('\n');
               var ok = String(r.status) === '0' && !r.signal;
-              if (r.signal) log += '\n' + r.signal;
-              if (log.length > 65536) log = log.slice(0, 65536) + '\n（输出已截断）';
-              result(ok ? (ext === 'bfh' ? '头文件编译通过' : '运行完成') : '编译或运行出错', log || (ok ? '' : '退出状态 ' + r.status));
+              var logged = false;
+              ['compiler', 'program'].forEach(function (stage) {
+                var normal = r[stage + '_output'];
+                var error = r[stage + '_error'];
+                if (!normal && !error) normal = r[stage + '_message'];
+                if (!normal && !error) return;
+                if (logged) outputView.emit({ kind: 'stdout', text: '\n' });
+                outputView.emit({ kind: 'stdout', text: normal });
+                outputView.emit({ kind: 'stderr', text: error });
+                logged = true;
+              });
+              var detail = r.signal ? (logged ? '\n' : '') + r.signal : (!ok && !logged ? '退出状态 ' + r.status : '');
+              result(ok ? (ext === 'bfh' ? '头文件编译通过' : '运行完成') : '编译或运行出错', detail);
             } catch (e) { result('服务响应异常', e.message); }
           };
           stopButton.textContent = '取消等待';
@@ -144,10 +165,14 @@ var CodeRunner = (function () {
       if (worker) worker.terminate();
       if (url) URL.revokeObjectURL(url);
       worker = url = null;
+      if (terminal) terminal.remove();
+      terminal = null;
       stopButton.hidden = true;
     }
     function close() {
       stop();
+      if (outputView) outputView.dispose();
+      outputView = null;
       body.textContent = '';
       panel.hidden = true;
     }
@@ -160,33 +185,77 @@ var CodeRunner = (function () {
         localResult(source, ext);
         return;
       }
+      startWorker(function () {
+        return engineSource().then(function (blob) {
+          var url = URL.createObjectURL(blob);
+          try { return { worker: new Worker(url), url: url }; }
+          catch (e) { URL.revokeObjectURL(url); throw e; }
+        });
+      }, { source: source, name: name }, 7000, 7000);
+    }
+
+    function startWorker(spawn, job, startupMs, activeMs, sendInput) {
       stopButton.textContent = '停止';
       status.textContent = '运行中…';
       stopButton.hidden = false;
-      var output = document.createElement('pre');
-      body.appendChild(output);
+      outputView = RunIO.output(body);
       var current = generation;
       function finish(label) { stop(); status.textContent = label; }
-      function line(s) { output.appendChild(document.createTextNode(s + '\n')); body.scrollTop = body.scrollHeight; }
-      engineSource().then(function (blob) {
-        if (current !== generation) return;
-        url = URL.createObjectURL(blob);
-        worker = new Worker(url);
+      function timeout(delay, label) {
+        clearTimeout(timer);
+        timer = setTimeout(function () { finish(label); }, delay);
+      }
+      function terminalInput(event) {
+        if (terminal || !Number.isInteger(event.id) || event.id < 1) return;
+        status.textContent = '等待输入';
+        timeout(90000, '输入超时，已停止');
+        terminal = document.createElement('form');
+        terminal.className = 'run-terminal';
+        terminal.innerHTML = '<label></label><input type="text" aria-label="终端输入" autocomplete="off" maxlength="65536"><button class="chip" type="submit">发送</button><button class="chip" type="button">结束输入</button>';
+        terminal.querySelector('label').textContent = typeof event.prompt === 'string' && event.prompt ? event.prompt.slice(0, 300) : '输入一行';
+        var input = terminal.querySelector('input');
+        function reply(eof) {
+          try {
+            var text = eof ? null : RunIO.stdin(input.value);
+            if (sendInput) sendInput(job, text);
+            else worker.postMessage({ kind: 'stdin', id: event.id, text: text });
+            terminal.remove();
+            terminal = null;
+            status.textContent = '运行中…';
+            timeout(activeMs, '运行超时，已停止');
+          } catch (e) { status.textContent = e.message; }
+        }
+        terminal.onsubmit = function (e) { e.preventDefault(); reply(false); };
+        terminal.querySelector('button[type="button"]').onclick = function () { reply(true); };
+        body.appendChild(terminal);
+        input.focus();
+      }
+      timeout(startupMs, '运行超时，已停止');
+      spawn().then(function (instance) {
+        if (current !== generation) {
+          instance.worker.terminate();
+          if (instance.url) URL.revokeObjectURL(instance.url);
+          return;
+        }
+        worker = instance.worker;
+        url = instance.url;
         worker.onmessage = function (e) {
-          if (current !== generation) return;
-          if (typeof e.data.line === 'string') line(e.data.line);
-          if (e.data.status) finish(e.data.status);
+          if (current !== generation || !e.data) return;
+          var event = e.data;
+          if (event.kind === 'input') terminalInput(event);
+          else if (event.kind === 'ready' && !terminal) timeout(activeMs, '运行超时，已停止');
+          else if (event.kind === 'exit') finish(event.ok ? '运行完成' : '运行出错');
+          else outputView.emit(event);
         };
         worker.onerror = function (e) {
           if (current !== generation) return;
-          line(e.message || '请检查 Android System WebView 是否支持 WebAssembly');
+          outputView.emit({ kind: 'stderr', text: e.message || '请检查 Android System WebView 是否支持 WebAssembly' });
           finish('运行出错');
         };
-        timer = setTimeout(function () { finish('运行超时，已停止'); }, 7000);
-        worker.postMessage({ source: source, name: name });
+        worker.postMessage(job);
       }).catch(function (e) {
         if (current !== generation) return;
-        line(e.message);
+        outputView.emit({ kind: 'stderr', text: e.message });
         finish('运行出错');
       });
     }

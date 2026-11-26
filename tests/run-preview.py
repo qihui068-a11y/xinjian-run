@@ -4,7 +4,7 @@ import json, os, re, shutil
 root=Path(__file__).resolve().parents[1]/'modified/assets/www'
 with sync_playwright() as pw:
  proxy=os.environ.get('HTTPS_PROXY') if os.environ.get('XJ_LIVE') else None
- b=pw.chromium.launch(executable_path=shutil.which('chromium'),proxy={'server':proxy} if proxy else None)
+ b=pw.chromium.launch(executable_path=os.environ.get('XJ_CHROMIUM') or shutil.which('chromium'),proxy={'server':proxy} if proxy else None)
  p=b.new_page(viewport={'width':390,'height':800})
  p.on('pageerror',lambda e: print('pageerror',e,flush=True))
  p.on('console',lambda m: print('console',m.type,m.text[:160],flush=True) if m.type=='error' else None)
@@ -38,6 +38,30 @@ with sync_playwright() as pw:
  expect(status).to_have_text('已停止')
  run('console.log("再次运行")')
  expect(out).to_have_text('再次运行')
+ run('''(async () => {
+  console.log('开始');
+  const first = await readline('第一个值');
+  const second = await readline('第二个值');
+  console.log(first + ':' + (second === null));
+ })()''')
+ terminal=p.locator('.run-terminal')
+ expect(terminal.locator('label')).to_have_text('第一个值')
+ expect(out).to_have_text('开始')
+ terminal.get_by_role('textbox').fill('输入值')
+ terminal.get_by_role('button',name='发送').click()
+ expect(terminal.locator('label')).to_have_text('第二个值')
+ terminal.get_by_role('button',name='结束输入').click()
+ expect(out).to_have_text('开始\n输入值:true')
+ expect(status).to_have_text('运行完成')
+ run('readline("等候")')
+ expect(terminal).to_be_visible()
+ p.locator('[data-act=stop]').click()
+ expect(terminal).to_have_count(0)
+ expect(status).to_have_text('已停止')
+ run('(async () => { await readline(); throw new Error("异步出错") })()')
+ terminal.get_by_role('button',name='结束输入').click()
+ expect(status).to_have_text('运行出错')
+ expect(out).to_contain_text('异步出错')
  openfile('demo.html')
  run('<!doctype html><html><head><style>h1{color:red}</style></head><body><h1>预览成功</h1><button>按钮</button><script>document.body.innerHTML="bad"</script></body></html>')
  f=p.frame_locator('.run-body iframe')

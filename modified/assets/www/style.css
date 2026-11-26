@@ -868,6 +868,12 @@ html{font-size:15px;}
 .run-panel[hidden],.run-panel button[hidden]{display:none}
 .run-bar{display:flex;align-items:center;padding:0 .8rem;gap:.8rem;font-size:.85rem}
 .run-status{flex:1}
+.run-error{font-weight:600}
+.run-terminal{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.5rem 0}
+.run-terminal label{flex:0 0 100%}
+.run-terminal input{flex:1;min-width:5rem;color:inherit;background:var(--bg);border:1px solid rgba(var(--fg-rgb),.3);border-radius:.375rem;padding:.4rem}
+.run-artifact{margin:.5rem 0;display:grid;gap:.375rem;justify-items:start}
+.run-artifact img{display:block;max-width:100%;max-height:14rem;object-fit:contain;background:#fff}
 .run-bar button{min-height:2.5rem;padding:0 .4rem}
 .run-body{flex:1;min-height:0;overflow:auto}
 .run-body pre{margin:0;padding:.2rem .9rem .8rem;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}
