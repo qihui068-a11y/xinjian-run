@@ -11,7 +11,12 @@ var PythonRun = (function () {
     return /^(py|pyw|python)$/.test(ext) && typeof Worker === 'function' && typeof WebAssembly === 'object';
   }
 
-  function spawn() {
+  function canShareInput() {
+    return window.crossOriginIsolated === true && typeof SharedArrayBuffer === 'function' &&
+      typeof Atomics.wait === 'function' && typeof Atomics.notify === 'function';
+  }
+
+  function spawn(job) {
     return Promise.all([fetch(workerPath), fetch('python-runtime/runtime.json')]).then(function (responses) {
       if (!responses[1].ok) throw new Error('此安装包未包含本地 Python，请使用在线运行');
       if (!responses[0].ok || responses[0].headers.get('Content-Security-Policy') !== policy()) {
@@ -20,12 +25,23 @@ var PythonRun = (function () {
       return responses[1].json();
     }).then(function (runtime) {
       if (runtime.version !== '0.29.3' || runtime.memoryMB !== 256) throw new Error('本地 Python 运行时版本不匹配');
-      return { worker: new Worker(workerPath) };
+      return new Promise(function (resolve, reject) {
+        var worker = new Worker(workerPath);
+        function fail() {
+          clearTimeout(timer);
+          worker.terminate();
+          reject(new Error('无法启动本地 Python Worker'));
+        }
+        var timer = setTimeout(fail, 5000);
+        worker.onerror = fail;
+        worker.onmessage = function (e) {
+          if (!e.data || e.data.kind !== 'input-capabilities') return;
+          clearTimeout(timer);
+          job.channel = job.interactive && e.data.shared && canShareInput() ? new SharedArrayBuffer(8 + 65536) : null;
+          resolve({ worker: worker });
+        };
+      });
     });
-  }
-
-  function channel() {
-    return window.crossOriginIsolated && typeof SharedArrayBuffer === 'function' ? new SharedArrayBuffer(8 + 65536) : null;
   }
 
   function sendInput(job, text) {
@@ -52,5 +68,5 @@ var PythonRun = (function () {
     }));
   }
 
-  return { supported: supported, spawn: spawn, channel: channel, sendInput: sendInput, readFiles: readFiles };
+  return { supported: supported, spawn: spawn, canShareInput: canShareInput, sendInput: sendInput, readFiles: readFiles };
 })();

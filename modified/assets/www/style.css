@@ -865,11 +865,12 @@ html{font-size:15px;}
   .chip:active{transform:none;}
 }
 .run-panel{flex:0 1 36vh;min-height:0;display:flex;flex-direction:column;border-top:1px solid rgba(var(--fg-rgb),.2)}
-.run-panel[hidden],.run-panel button[hidden]{display:none}
+.run-panel[hidden],.run-panel [hidden]{display:none}
 .run-bar{display:flex;align-items:center;padding:0 .8rem;gap:.8rem;font-size:.85rem}
 .run-status{flex:1}
 .run-error{font-weight:600}
-.run-terminal{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.5rem 0}
+.run-actions,.run-terminal{display:flex;flex:none;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.25rem .9rem}
+.run-actions button{min-height:2.25rem}
 .run-terminal label{flex:0 0 100%}
 .run-terminal input{flex:1;min-width:5rem;color:inherit;background:var(--bg);border:1px solid rgba(var(--fg-rgb),.3);border-radius:.375rem;padding:.4rem}
 .run-artifact{margin:.5rem 0;display:grid;gap:.375rem;justify-items:start}

@@ -28,7 +28,9 @@
       '<section class="run-panel" hidden><div class="run-bar">' +
       '<strong class="run-status" role="status"></strong>' +
       '<button data-act="stop" hidden>停止</button><button data-act="closeRun">关闭</button>' +
-      '</div><div class="run-body"></div></section>' +
+      '</div><div class="run-body"></div><div class="run-actions" hidden>' +
+      '<button type="button" class="run-copy">复制结果</button><button type="button" class="run-clear">清空终端</button>' +
+      '<button type="button" class="run-repeat" hidden>重新运行</button></div></section>' +
       '<div class="statusbar">' +
       '<span id="stPos">1:1</span>' +
       '<span id="stWords">0 字</span>' +

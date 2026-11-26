@@ -27,7 +27,7 @@ var RunIO = (function () {
   function output(body) {
     var pre = document.createElement('pre');
     var remaining = textLimit, records = 0, bytes = 0;
-    var urls = [];
+    var artifacts = [];
     body.appendChild(pre);
 
     function emit(event) {
@@ -44,12 +44,11 @@ var RunIO = (function () {
         body.scrollTop = body.scrollHeight;
       } else if (event.kind === 'artifact' && filename(event.name) && event.data instanceof ArrayBuffer &&
                  event.data.byteLength > 0 && event.data.byteLength <= fileLimit &&
-                 bytes + event.data.byteLength <= 2 * fileLimit && urls.length < 8) {
+                 bytes + event.data.byteLength <= 2 * fileLimit && artifacts.length < 8) {
         var image = event.mime === 'image/png';
         if (image && !isPng(event.data)) return;
         var type = image ? 'image/png' : 'application/octet-stream';
         var url = URL.createObjectURL(new Blob([event.data], { type: type }));
-        urls.push(url);
         bytes += event.data.byteLength;
         var figure = document.createElement('figure');
         figure.className = 'run-artifact';
@@ -65,10 +64,22 @@ var RunIO = (function () {
         link.textContent = '下载 ' + event.name;
         figure.appendChild(link);
         body.appendChild(figure);
+        artifacts.push({ url: url, element: figure });
       }
     }
 
-    return { emit: emit, dispose: function () { urls.forEach(function (url) { URL.revokeObjectURL(url); }); urls = []; } };
+    function clear() {
+      pre.textContent = '';
+      artifacts.forEach(function (artifact) {
+        URL.revokeObjectURL(artifact.url);
+        artifact.element.remove();
+      });
+      artifacts = [];
+      remaining = textLimit;
+      records = bytes = 0;
+    }
+
+    return { emit: emit, clear: clear, dispose: clear, text: function () { return pre.textContent; } };
   }
 
   return { stdin: stdin, filename: filename, output: output, fileLimit: fileLimit };

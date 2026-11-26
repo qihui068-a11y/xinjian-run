@@ -1,5 +1,10 @@
 'use strict';
 
+const sharedInput = self.crossOriginIsolated === true && typeof SharedArrayBuffer === 'function' &&
+  typeof Atomics.wait === 'function' && typeof Atomics.notify === 'function';
+const promiseInput = typeof WebAssembly.Suspending === 'function' && typeof WebAssembly.promising === 'function';
+self.postMessage({ kind: 'input-capabilities', shared: sharedInput });
+
 self.onmessage = async ({ data: job }) => {
   self.onmessage = null;
   const emit = (kind, fields = {}, transfers = []) => self.postMessage({ kind, ...fields }, transfers);
@@ -15,47 +20,118 @@ self.onmessage = async ({ data: job }) => {
     if (remaining <= 0 || records === 599) emit('stderr', { text: '\n（输出已截断）' });
   }
 
+  function stream(kind) {
+    const decoder = new TextDecoder();
+    return { write(bytes) {
+      const text = decoder.decode(bytes, { stream: true });
+      if (text) log(kind, text);
+      return bytes.length;
+    }};
+  }
+
   try {
     // Python's js module receives no browser globals. The worker's response CSP also restricts network and script loads.
     const indexURL = new URL('python-runtime/', self.location.href).href;
     importScripts(indexURL + 'pyodide.js');
     const py = await loadPyodide({ indexURL, jsglobals: Object.create(null),
       stdout: line => log('stdout', line + '\n'), stderr: line => log('stderr', line + '\n') });
+    py.setStdout(stream('stdout'));
+    py.setStderr(stream('stderr'));
     const stdin = job.stdin ? job.stdin.replace(/\n$/, '').split('\n') : [];
-    const channel = job.channel && self.crossOriginIsolated ? new Int32Array(job.channel, 0, 2) : null;
+    const channel = job.channel && sharedInput ? new Int32Array(job.channel, 0, 2) : null;
+    let jspi = false;
+    if (job.interactive && !channel && promiseInput) {
+      try {
+        jspi = await py.runPythonAsync('from pyodide.ffi import can_run_sync as _xj_can_run_sync\n_xj_can_run_sync()');
+      } catch (_) { /* Keep preloaded stdin when stack switching is unavailable. */ }
+    }
     let inputIndex = 0;
     let inputId = 0;
     let eof = false;
-    let pending;
+    let pending, inputPrompt = '';
+    let fallbackExplained = false;
+    const decoder = new TextDecoder();
     self.onmessage = ({ data }) => {
       if (!pending || !data || data.kind !== 'stdin' || data.id !== inputId ||
           (data.text !== null && (typeof data.text !== 'string' || data.text.length > 65536))) return;
       const accept = pending;
       pending = null;
       eof = data.text === null;
-      accept(data.text);
+      // JS undefined converts to Python None. A submitted blank line is still a string.
+      accept(eof ? undefined : data.text);
     };
+
+    function readline(prompt = '') {
+      if (inputIndex < stdin.length) return Promise.resolve(stdin[inputIndex++]);
+      if (!job.interactive || eof) return Promise.resolve();
+      if (pending) return Promise.reject(new Error('请等待上一条输入完成'));
+      return new Promise(resolve => {
+        pending = resolve;
+        emit('input', { id: ++inputId, prompt: typeof prompt === 'string' ? prompt.slice(0, 300) : '' });
+      });
+    }
     py.registerJsModule('xinjian_terminal', {
-      readline(prompt = '') {
-        if (inputIndex < stdin.length) return Promise.resolve(stdin[inputIndex++]);
-        if (!job.interactive || eof) return Promise.resolve(null);
-        if (pending) return Promise.reject(new Error('请等待上一条输入完成'));
-        return new Promise(resolve => {
-          pending = resolve;
-          emit('input', { id: ++inputId, prompt: typeof prompt === 'string' ? prompt.slice(0, 300) : '' });
-        });
-      }
+      readline,
+      _capture_prompt(text) { inputPrompt = text; }
     });
+
+    // setStdin is synchronous. Only the shared channel can wait in this callback.
     py.setStdin({ stdin() {
-      if (inputIndex < stdin.length) return stdin[inputIndex++];
-      if (!channel || eof) return null;
+      if (inputIndex < stdin.length) return stdin[inputIndex++] + '\n';
+      if (eof) return null;
+      if (!channel) {
+        if (job.interactive && !jspi && !fallbackExplained) {
+          fallbackExplained = true;
+          log('stderr', '\n预填输入已用完。当前 WebView 的 input() 需要预填输入，运行中可改用 await readline()。\n');
+        }
+        return null;
+      }
+      if (pending) throw new Error('请等待上一条输入完成');
       Atomics.store(channel, 0, 0);
-      emit('input', { id: ++inputId, transport: 'shared' });
-      if (Atomics.wait(channel, 0, 0, 90000) === 'timed-out') return null;
+      emit('input', { id: ++inputId, transport: 'shared', prompt: inputPrompt.slice(0, 300) });
+      Atomics.wait(channel, 0, 0);
       const length = Atomics.load(channel, 1);
       if (length < 0 || length > 65536) { eof = true; return null; }
-      return new TextDecoder().decode(new Uint8Array(job.channel, 8, length).slice());
+      return decoder.decode(new Uint8Array(job.channel, 8, length).slice()) + '\n';
     }});
+
+    if (channel) {
+      py.runPython(`import builtins as _xj_builtins
+from xinjian_terminal import _capture_prompt as _xj_capture_prompt
+def _xj_input_with_prompt(original, capture_prompt):
+    def input(prompt="", /):
+        text = str(prompt)
+        capture_prompt(text)
+        try:
+            return original(text)
+        finally:
+            capture_prompt("")
+    return input
+_xj_builtins.input = _xj_input_with_prompt(_xj_builtins.input, _xj_capture_prompt)
+del _xj_builtins, _xj_capture_prompt, _xj_input_with_prompt`);
+    } else if (jspi) {
+      // JSPI suspends the Python stack without blocking the Worker event loop.
+      py.runPython(`import builtins as _xj_builtins
+import sys as _xj_sys
+from pyodide.ffi import can_run_sync as _xj_can_run_sync, run_sync as _xj_run_sync
+from xinjian_terminal import readline as _xj_readline
+def _xj_input_with_jspi(original, sys, stdin, can_run_sync, run_sync, readline):
+    def input(prompt="", /):
+        if sys.stdin is not stdin or not can_run_sync():
+            return original(prompt)
+        text = str(prompt)
+        if text:
+            print(text, end="", flush=True)
+        line = run_sync(readline(text))
+        if line is None:
+            raise EOFError("EOF when reading a line")
+        return line
+    return input
+_xj_builtins.input = _xj_input_with_jspi(_xj_builtins.input, _xj_sys, _xj_sys.stdin,
+                                        _xj_can_run_sync, _xj_run_sync, _xj_readline)
+del _xj_builtins, _xj_sys, _xj_can_run_sync, _xj_run_sync, _xj_readline, _xj_input_with_jspi`);
+    }
+    emit('stdin-mode', { mode: channel ? 'shared' : jspi ? 'jspi' : 'preloaded' });
 
     py.FS.mkdir('/input');
     py.FS.mkdir('/output');

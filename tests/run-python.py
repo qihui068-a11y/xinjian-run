@@ -29,6 +29,19 @@ class AppHandler(SimpleHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
+    def do_GET(self):
+        if self.path == "/python-worker.js" and getattr(self.server, "legacy_stdin", False):
+            worker, count = re.subn(rb"^const promiseInput = .+;$", b"const promiseInput = false;",
+                                    (WWW / "python-worker.js").read_bytes(), flags=re.MULTILINE)
+            assert count == 1
+            self.send_response(200)
+            self.send_header("Content-Type", "text/javascript")
+            self.send_header("Content-Length", str(len(worker)))
+            self.end_headers()
+            self.wfile.write(worker)
+        else:
+            super().do_GET()
+
     def end_headers(self):
         path = urlsplit(self.path).path
         if path == "/index.html" and "batch" not in self.path:
@@ -44,7 +57,8 @@ class AppHandler(SimpleHTTPRequestHandler):
 
 def run(server, browser):
     root = f"http://127.0.0.1:{server.server_port}"
-    page = browser.new_page(viewport={"width": 390, "height": 800})
+    page = browser.new_page(viewport={"width": 390, "height": 800},
+                            permissions=["clipboard-read", "clipboard-write"])
     page.route("https://**/*", lambda route: route.abort())
     page.goto(root + "/index.html")
     assert page.evaluate("crossOriginIsolated")
@@ -62,42 +76,90 @@ def run(server, browser):
     terminal = page.locator(".run-terminal")
     run_button = page.locator('[data-act="run"]')
 
-    def start(source, stdin="", interactive=False, files=None):
+    def start(source, stdin="", interactive=True, files=None):
         page.locator("#ta").fill(source)
         run_button.click()
         page.locator(".run-online textarea").fill(stdin)
         page.get_by_text("本地 Python（实验）", exact=True).click()
         if files:
             page.locator('.run-online input[type="file"]').set_input_files(files)
-        page.get_by_role("button", name="交互运行" if interactive else "本地运行", exact=True).click()
+        page.get_by_role("button", name="本地运行" if interactive else "预填运行", exact=True).click()
 
-    start('print(input()); print(int(input()) + 3)', '甲\n2\n')
+    start('print(input()); print(int(input()) + 3); print(repr(input()))', '甲\n2\n\n', interactive=False)
     expect(status).to_have_text("运行完成", timeout=30000)
-    expect(out).to_have_text("甲\n5")
+    expect(out).to_have_text("甲\n5\n''")
     print("PASS local CPython preloaded stdin")
 
-    start('first=input("第一个值："); second=input("第二个值："); print(first + second)', interactive=True)
-    expect(terminal).to_be_visible(timeout=30000)
-    terminal.get_by_role("textbox").fill("你")
-    terminal.get_by_role("button", name="发送").click()
-    expect(terminal).to_be_visible()
-    terminal.get_by_role("textbox").fill("好")
-    terminal.get_by_role("button", name="发送").click()
-    expect(status).to_have_text("运行完成")
-    expect(out).to_contain_text("你好")
-    print("PASS interactive Python input() resumes twice with the same process state")
+    panel = page.locator(".run-panel")
 
-    start('input()', interactive=True)
-    expect(terminal).to_be_visible(timeout=30000)
-    terminal.get_by_role("button", name="结束输入").click()
-    expect(status).to_have_text("运行出错")
-    expect(out).to_contain_text("EOFError")
-    start('input()', interactive=True)
-    expect(terminal).to_be_visible(timeout=30000)
-    page.locator('[data-act="stop"]').click()
-    expect(status).to_have_text("已停止")
-    expect(terminal).to_have_count(0)
-    print("PASS EOF and stop while Python waits for input")
+    def answer(prompt, value, enter=False):
+        expect(terminal.locator("label")).to_have_text(prompt, timeout=30000)
+        box = terminal.get_by_role("textbox")
+        box.fill(value)
+        if enter:
+            box.press("Enter")
+        else:
+            terminal.get_by_role("button", name="发送", exact=True).click()
+
+    def check_interactive(mode):
+        if mode == "shared":
+            page.clock.install()
+        start("""name = input("请输入姓名：")
+age = int(input("请输入年龄："))
+print("姓名：", name)
+print("年龄：", age)
+
+for i in range(3):
+    value = input("请输入内容：")
+    print(value)
+""")
+        expect(terminal.locator("label")).to_have_text("请输入姓名：", timeout=30000)
+        expect(panel).to_have_attribute("data-stdin-mode", mode)
+        expect(out).to_contain_text("请输入姓名：")
+        if mode == "shared":
+            page.clock.fast_forward(95000)
+            expect(status).to_have_text("等待输入")
+            page.get_by_role("button", name="清空终端", exact=True).click()
+            expect(out).to_be_empty()
+        answer("请输入姓名：", "小明", enter=True)
+        answer("请输入年龄：", "20")
+        answer("请输入内容：", "中文")
+        answer("请输入内容：", "", enter=True)
+        answer("请输入内容：", "第三次")
+        expect(status).to_have_text("运行完成")
+        expect(out).to_contain_text("姓名： 小明")
+        expect(out).to_contain_text("年龄： 20")
+        assert re.search("请输入内容：中文\n请输入内容：\n请输入内容：第三次", out.inner_text())
+
+        page.get_by_role("button", name="复制结果", exact=True).click()
+        expect(page.get_by_text("已复制结果", exact=True)).to_be_visible()
+        assert page.evaluate("navigator.clipboard.readText()").replace("\r\n", "\n") == out.text_content()
+
+        start("print(repr(input('空行：'))); input('结束：')")
+        answer("空行：", "", enter=True)
+        expect(terminal.locator("label")).to_have_text("结束：")
+        expect(out).to_contain_text("空行：''")
+        terminal.get_by_role("button", name="结束输入", exact=True).click()
+        expect(status).to_have_text("运行出错")
+        expect(out).to_contain_text("EOFError: EOF when reading a line")
+
+        start("print(input('再次输入：'))")
+        expect(terminal.locator("label")).to_have_text("再次输入：", timeout=30000)
+        terminal.get_by_role("button", name="取消输入", exact=True).click()
+        expect(status).to_have_text("已取消输入")
+        expect(terminal).to_have_count(0)
+        page.get_by_role("button", name="重新运行", exact=True).click()
+        expect(terminal.locator("label")).to_have_text("再次输入：", timeout=30000)
+        page.locator('[data-act="stop"]').click()
+        expect(status).to_have_text("已停止")
+        expect(terminal).to_have_count(0)
+        page.get_by_role("button", name="重新运行", exact=True).click()
+        answer("再次输入：", "运行成功")
+        expect(status).to_have_text("运行完成")
+        expect(out).to_contain_text("运行成功")
+        print(f"PASS {mode} input prompts, multiple lines, loop, CJK, blank, EOF, cancel, stop, rerun and copy")
+
+    check_interactive("shared")
 
     start("""import js
 print(hasattr(js, 'XinJianBridge'), hasattr(js, 'XinJianUpdate'), hasattr(js, 'fetch'))
@@ -143,6 +205,23 @@ with open('result.txt', 'w') as result:
     print("PASS Matplotlib previews, Pillow previews and selected input/downloaded output files")
 
     page.close()
+    page = browser.new_page(viewport={"width": 390, "height": 800},
+                            permissions=["clipboard-read", "clipboard-write"])
+    page.goto(root + "/index.html?batch")
+    assert not page.evaluate("crossOriginIsolated")
+    editor()
+    status = page.locator(".run-status")
+    out = page.locator(".run-body pre")
+    run_button = page.locator('[data-act="run"]')
+    terminal = page.locator(".run-terminal")
+    panel = page.locator(".run-panel")
+    if page.evaluate("typeof WebAssembly.Suspending === 'function' && typeof WebAssembly.promising === 'function'"):
+        check_interactive("jspi")
+    else:
+        print("SKIP JSPI because this Chromium has no stack switching")
+
+    page.close()
+    server.legacy_stdin = True
     page = browser.new_page(viewport={"width": 390, "height": 800})
     page.goto(root + "/index.html?batch")
     assert not page.evaluate("crossOriginIsolated")
@@ -150,13 +229,18 @@ with open('result.txt', 'w') as result:
     status = page.locator(".run-status")
     out = page.locator(".run-body pre")
     run_button = page.locator('[data-act="run"]')
-    start("print(input())", "batch only")
-    expect(status).to_have_text(re.compile("运行完成|运行出错"), timeout=30000)
-    assert status.inner_text() == "运行完成", out.inner_text()
-    expect(out).to_have_text("batch only")
-    print("PASS preloaded Python stdin on a non-isolated page")
-
     terminal = page.locator(".run-terminal")
+    panel = page.locator(".run-panel")
+    start("print(input()); print(repr(input()))", "兼容输入\n\n")
+    expect(status).to_have_text("运行完成", timeout=30000)
+    expect(panel).to_have_attribute("data-stdin-mode", "preloaded")
+    expect(out).to_have_text("兼容输入\n''")
+    start("input('缺少输入：')")
+    expect(status).to_have_text("运行出错", timeout=30000)
+    expect(out).to_contain_text("需要预填输入")
+    expect(out).to_contain_text("EOFError")
+    print("PASS preloaded Python stdin and exhausted-input message with both interactive transports disabled")
+
     start("""from xinjian_terminal import readline
 first = await readline('异步输入一')
 second = await readline('异步输入二')
@@ -170,6 +254,11 @@ print(first + second)
     terminal.get_by_role("button", name="发送").click()
     expect(status).to_have_text("运行完成")
     expect(out).to_have_text("真交互")
+    start("from xinjian_terminal import readline; print(await readline('EOF') is None)")
+    expect(terminal.locator("label")).to_have_text("EOF", timeout=30000)
+    terminal.get_by_role("button", name="结束输入", exact=True).click()
+    expect(status).to_have_text("运行完成")
+    expect(out).to_have_text("True")
     print("PASS Python async input on a non-isolated page")
 
 
