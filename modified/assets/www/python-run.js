@@ -2,6 +2,17 @@ var PythonRun = (function () {
   'use strict';
 
   var workerPath = 'python-worker.js';
+  var nativeCompilers = {
+    c: { name: 'C', engine: 'xcc' },
+    cpp: { name: 'C++', engine: 'clang' }
+  };
+
+  function manifest(engine) { return 'python-runtime/' + engine + '/runtime.json'; }
+
+  function nativeCompilerAvailable(language) {
+    if (typeof Worker !== 'function' || typeof WebAssembly !== 'object') return Promise.resolve(false);
+    return fetch(manifest(nativeCompilers[language].engine)).then(function (response) { return response.ok; }).catch(function () { return false; });
+  }
   function policy() {
     var assets = new URL('python-runtime/', location.href).href;
     return "default-src 'none'; script-src 'wasm-unsafe-eval' " + assets + "; connect-src " + assets + "; worker-src 'none'";
@@ -23,20 +34,23 @@ var PythonRun = (function () {
   }
 
   function spawn(job, isCurrent) {
-    return Promise.all([fetch(workerPath), fetch('python-runtime/runtime.json')]).then(function (responses) {
-      if (!responses[1].ok) throw new Error('此安装包未包含本地 Python，请使用在线运行');
+    var compiler = nativeCompilers[job.language];
+    var name = compiler ? compiler.name : 'Python';
+    return Promise.all([fetch(workerPath), fetch(compiler ? manifest(compiler.engine) : 'python-runtime/runtime.json')]).then(function (responses) {
+      if (!responses[1].ok) throw new Error('此安装包未包含本地 ' + name + '，请使用在线运行');
       if (!responses[0].ok || responses[0].headers.get('Content-Security-Policy') !== policy()) {
-        throw new Error('当前环境无法隔离本地 Python，请使用在线运行');
+        throw new Error('当前环境无法隔离本地 ' + name + '，请使用在线运行');
       }
       return responses[1].json();
     }).then(function (runtime) {
-      if (runtime.version !== '0.29.3' || runtime.memoryMB !== 256) throw new Error('本地 Python 运行时版本不匹配');
+      var valid = compiler ? runtime.engine === compiler.engine && runtime.version === 1 : runtime.version === '0.29.3' && runtime.memoryMB === 256;
+      if (!valid) throw new Error('本地 ' + name + ' 运行时版本不匹配');
       return new Promise(function (resolve, reject) {
         var worker = new Worker(workerPath);
         function fail() {
           clearTimeout(timer);
           worker.terminate();
-          reject(new Error('无法启动本地 Python Worker'));
+          reject(new Error('无法启动本地 ' + name + ' Worker'));
         }
         var timer = setTimeout(fail, 5000);
         worker.onerror = fail;
@@ -90,5 +104,5 @@ var PythonRun = (function () {
     }));
   }
 
-  return { supported: supported, spawn: spawn, canShareInput: canShareInput, nativeTerminal: nativeTerminal, sendInput: sendInput, readFiles: readFiles };
+  return { supported: supported, nativeCompilerAvailable: nativeCompilerAvailable, spawn: spawn, canShareInput: canShareInput, nativeTerminal: nativeTerminal, sendInput: sendInput, readFiles: readFiles };
 })();

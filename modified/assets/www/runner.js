@@ -53,7 +53,7 @@ var CodeRunner = (function () {
     var body = panel.querySelector('.run-body');
     var stopButton = panel.querySelector('[data-act="stop"]');
     var worker, url, timer, terminal, outputView, generation = 0;
-    var request, repeat, disposeWorker;
+    var request, interactive, repeat, disposeWorker;
     var lastInput = '';
     var actions = panel.querySelector('.run-actions');
     var copy = actions.querySelector('.run-copy');
@@ -102,14 +102,18 @@ var CodeRunner = (function () {
         ? '<p>提交后，当前源码和「标准输入」会发送到 wandbox.org 编译。这条路<b>只能预填</b>：程序里的 input() 从「标准输入」框按行取，框空着就会 EOFError；想边运行边输入，用下面的「本地运行」。</p>'
         : '<p>提交后，当前源码和标准输入将发送到 wandbox.org 编译。</p>';
       body.innerHTML = '<div class="run-online">' + intro +
+      body.innerHTML = '<div class="run-online">' +
         '<label>标准输入（可留空）<textarea rows="2" placeholder="每行一组输入"></textarea></label>' +
-        '<button type="button" class="run-submit"></button></div>';
+        '<div class="run-submit-row"><button type="button" class="run-submit run-option-button"></button>' +
+        '<span class="run-hint">源码和输入会发送至 wandbox.org。</span></div></div>';
       var input = body.querySelector('textarea');
       var submitError;
       input.value = lastInput;
       var submit = body.querySelector('.run-submit');
       submit.textContent = ext === 'bfh' ? '发送并检查' : '发送并运行';
       if (PythonRun.supported(ext)) addPythonOption(input, readSource);
+      else if (ext === 'c' || /^(cpp|cxx|cc|c\+\+)$/.test(ext)) addCOption(input, readSource, ext === 'c' ? 'c' : 'cpp');
+      if (InteractiveRun.supported(ext)) addInteractiveOption(input, readSource, ext);
       submit.onclick = function () {
         var current = generation;
         lastInput = input.value;
@@ -165,7 +169,7 @@ var CodeRunner = (function () {
               var detail = r.signal ? (logged ? '\n' : '') + r.signal : (!ok && !logged ? '退出状态 ' + r.status : '');
               result(ok ? (ext === 'bfh' ? '头文件编译通过' : '运行完成') : '编译或运行出错', detail);
               if (!ok && PythonRun.supported(ext) && /EOFError/.test(xhr.responseText)) {
-                outputView.emit({ kind: 'stderr', text: '\n提示：程序要读输入，但「标准输入」是空的。两条路——① 在「标准输入」框里每行写一组输入再点发送；② 用下面的「本地运行」，程序跑到 input() 时现场逐行输入。' });
+                outputView.emit({ kind: 'stderr', text: '\n请补充标准输入，或选「本地运行」逐行输入。' });
               }
             } catch (e) { result('服务响应异常', e.message); }
           };
@@ -188,17 +192,13 @@ var CodeRunner = (function () {
       var run = options.querySelector('.run-python');
       var batch = options.querySelector('.run-python-batch');
       var online = form.querySelector('.run-submit');
-      // 本地运行是能逐行输入的那条路，放在在线提交前面并默认展开，省得每次去翻。
-      if (online) form.insertBefore(options, online);
-      else form.appendChild(options);
+      form.appendChild(options);
       options.open = true;
       var interactiveInput = PythonRun.nativeTerminal() || PythonRun.canShareInput() || typeof WebAssembly.Suspending === 'function';
-      var hint = document.createElement('p');
-      hint.className = 'run-hint';
+      var hint = options.querySelector('.run-hint');
       hint.textContent = interactiveInput
-        ? '点「本地运行」后，程序执行到 input() 会在下面弹出输入框：填一行发送一行，按「结束输入」相当于 Ctrl+D。'
-        : '此 WebView 的 input() 使用预填输入。交互程序可用 from xinjian_terminal import readline 和 await readline()。';
-      options.appendChild(hint);
+        ? '本地运行时可逐行输入。'
+        : 'input() 需要预填，交互可用 xinjian_terminal 的 await readline()。';
       function startPython(live) {
         var current = generation;
         var stdin, files;
@@ -209,6 +209,7 @@ var CodeRunner = (function () {
         // 预填运行不接实时输入：标准输入空着又调 input()，跑起来只会 EOFError，先说一声（不拦，出错分支照样能测）
         if (!live && !stdin && /input\s*\(|readline\s*\(/.test(readSource())) {
           hint.textContent = '标准输入是空的，代码里又要读输入 → 这次会 EOFError。要现场输入请点「本地运行」。';
+          hint.textContent = '标准输入为空。现场输入请选择「本地运行」。';
         }
         online.disabled = run.disabled = batch.disabled = true;
         files.then(function (inputs) {
@@ -228,6 +229,120 @@ var CodeRunner = (function () {
       }
       run.onclick = function () { startPython(true); };
       batch.onclick = function () { startPython(false); };
+    }
+
+    function addCOption(input, readSource, language) {
+      var current = generation;
+      var form = body.querySelector('.run-online');
+      PythonRun.nativeCompilerAvailable(language).then(function (available) {
+        if (!available || generation !== current || !form.isConnected) return;
+        var options = document.createElement('div');
+        options.className = 'run-c-options';
+        options.innerHTML = '<button type="button" class="run-c run-option-button"></button>' +
+          '<p class="run-hint">支持常见单文件控制台程序。</p>';
+        options.querySelector('button').textContent = language === 'cpp' ? '本地运行 C++' : '本地运行 C';
+        form.appendChild(options);
+        options.querySelector('button').onclick = function () {
+          var stdin;
+          try { stdin = RunIO.stdin(input.value); }
+          catch (error) { status.textContent = error.message; return; }
+          lastInput = stdin;
+          repeat = function () {
+            stop();
+            var job = { language: language, source: readSource(), stdin: stdin, interactive: true };
+            startWorker(PythonRun.spawn, job, language === 'cpp' ? 45000 : 20000, 7000, PythonRun.sendInput);
+          };
+          repeat();
+        };
+      });
+    }
+
+    function terminalForm(prompt, send, eof, cancel) {
+      var form = terminal = document.createElement('form');
+      form.className = 'run-terminal';
+      form.innerHTML = '<label for="run-stdin"></label><input id="run-stdin" type="text" aria-label="终端输入" ' +
+        'autocomplete="off" maxlength="65536"><button class="chip" type="submit">发送</button>' +
+        (eof ? '<button class="chip run-eof" type="button">结束输入</button>' : '') +
+        (cancel ? '<button class="chip run-cancel-input" type="button">取消输入</button>' : '');
+      form.querySelector('label').textContent = prompt;
+      var input = form.querySelector('input');
+      function reply(atEnd) {
+        if (terminal !== form) return;
+        try {
+          if (atEnd) eof();
+          else {
+            send(RunIO.stdin(input.value));
+            input.value = '';
+          }
+        } catch (error) { status.textContent = error.message; }
+      }
+      input.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && (event.isComposing || event.keyCode === 229)) event.preventDefault();
+      });
+      form.onsubmit = function (event) { event.preventDefault(); reply(false); };
+      if (eof) form.querySelector('.run-eof').onclick = function () { reply(true); };
+      if (cancel) form.querySelector('.run-cancel-input').onclick = cancel;
+      panel.insertBefore(form, actions);
+      if (eof) input.focus();
+    }
+
+    function addInteractiveOption(input, readSource, ext) {
+      var options = document.createElement('details');
+      options.className = 'run-interactive-options';
+      options.innerHTML = '<summary>在线交互</summary>' +
+        '<label>Piston 服务地址<input class="run-service-address" type="url" placeholder="wss://…" autocomplete="off"></label>' +
+        '<button type="button" class="run-interactive-start run-option-button">连接并运行</button>' +
+        '<p class="run-hint">源码和输入会发送到你设置的服务。</p>';
+      body.querySelector('.run-online').appendChild(options);
+      var address = options.querySelector('input');
+      try { address.value = localStorage.getItem('xj-interactive-service') || ''; } catch (_) {}
+      options.querySelector('button').onclick = function () {
+        var endpoint, stdin;
+        try {
+          endpoint = InteractiveRun.endpoint(address.value);
+          stdin = RunIO.stdin(input.value);
+        } catch (error) { status.textContent = error.message; return; }
+        try { localStorage.setItem('xj-interactive-service', endpoint); } catch (_) {}
+        lastInput = stdin;
+        repeat = function () { startInteractive({ source: readSource(), ext: ext, endpoint: endpoint, stdin: stdin }); };
+        repeat();
+      };
+    }
+
+    function startInteractive(job) {
+      stop();
+      showOutput();
+      delete panel.dataset.stdinMode;
+      var current = generation;
+      status.textContent = '正在连接…';
+      stopButton.textContent = '取消等待';
+      stopButton.hidden = false;
+      function finish(label, text) {
+        if (text) outputView.emit({ kind: 'stderr', text: text });
+        stop();
+        status.textContent = label;
+      }
+      function timeout(delay) {
+        clearTimeout(timer);
+        timer = setTimeout(function () { finish('运行服务超时'); }, delay);
+      }
+      timeout(30000);
+      try {
+        interactive = InteractiveRun.connect(job, function (kind, value) {
+          if (generation !== current) return;
+          if (kind === 'compile') status.textContent = '正在编译…';
+          else if (kind === 'ready') {
+            status.textContent = '运行中，可输入';
+            timeout(65000);
+            terminalForm('输入一行并发送', function (text) {
+              interactive.send(text);
+              status.textContent = '运行中，可输入';
+            });
+          } else if (kind === 'exit') finish(value.ok ? '运行完成' : '运行出错', value.detail);
+          else if (kind === 'error') finish('运行出错', value.text);
+          else outputView.emit({ kind: kind, text: value.text });
+        });
+      } catch (error) { finish('运行出错', error.message); }
     }
 
     function localResult(source, ext) {
@@ -261,6 +376,8 @@ var CodeRunner = (function () {
       generation++;
       if (request) request.abort();
       request = null;
+      if (interactive) interactive.close();
+      interactive = null;
       clearTimeout(timer);
       if (disposeWorker) disposeWorker();
       disposeWorker = null;
@@ -322,33 +439,16 @@ var CodeRunner = (function () {
         status.textContent = '等待输入';
         if (deadline !== undefined) remaining = Math.max(0, deadline - performance.now());
         clearTimeout(timer);
-        var form = terminal = document.createElement('form');
-        form.className = 'run-terminal';
-        form.innerHTML = '<label for="run-stdin"></label><input id="run-stdin" type="text" aria-label="终端输入" ' +
-          'autocomplete="off" maxlength="65536"><button class="chip" type="submit">发送</button>' +
-          '<button class="chip run-eof" type="button">结束输入</button><button class="chip run-cancel-input" type="button">取消输入</button>';
-        form.querySelector('label').textContent = typeof event.prompt === 'string' && event.prompt ? event.prompt.slice(0, 300) : '输入一行';
-        var input = form.querySelector('input');
-        function reply(eof) {
-          if (terminal !== form || generation !== current) return;
-          try {
-            var text = eof ? null : RunIO.stdin(input.value);
-            if (sendInput && (event.transport === 'shared' || event.transport === 'native')) sendInput(job, event, text);
-            else worker.postMessage({ kind: 'stdin', id: event.id, text: text });
-            terminal.remove();
-            terminal = null;
-            status.textContent = '运行中…';
-            activeTimeout();
-          } catch (e) { status.textContent = e.message; }
+        function send(text) {
+          if (sendInput && (event.transport === 'shared' || event.transport === 'native')) sendInput(job, event, text);
+          else worker.postMessage({ kind: 'stdin', id: event.id, text: text });
+          terminal.remove();
+          terminal = null;
+          status.textContent = '运行中…';
+          activeTimeout();
         }
-        input.addEventListener('keydown', function (e) {
-          if (e.key === 'Enter' && (e.isComposing || e.keyCode === 229)) e.preventDefault();
-        });
-        form.onsubmit = function (e) { e.preventDefault(); reply(false); };
-        form.querySelector('.run-eof').onclick = function () { reply(true); };
-        form.querySelector('.run-cancel-input').onclick = function () { finish('已取消输入'); };
-        panel.insertBefore(form, actions);
-        input.focus();
+        var prompt = typeof event.prompt === 'string' && event.prompt ? event.prompt.slice(0, 300) : '输入一行';
+        terminalForm(prompt, send, function () { send(null); }, function () { finish('已取消输入'); });
       }
       timeout(startupMs, '运行超时，已停止');
       spawn(job, function () { return current === generation; }).then(function (instance) {
@@ -382,7 +482,7 @@ var CodeRunner = (function () {
         finish('运行出错');
       });
     }
-    return { start: start, close: close, cancel: function () { var remote = !!request; stop(); status.textContent = remote ? '已取消等待' : '已停止'; } };
+    return { start: start, close: close, cancel: function () { var remote = !!(request || interactive); stop(); status.textContent = remote ? '已取消等待' : '已停止'; } };
   }
   return { attach: attach };
 })();
