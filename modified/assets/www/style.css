@@ -277,17 +277,23 @@ html.vt-run *::after{transition:none!important;}
 .submit:active{opacity:.8;}
 
 /* ========== 编辑器 ========== */
-.view.editor-view{bottom:var(--editor-ime-offset,0px);}
+.view.editor-view{
+  top:var(--editor-ime-top,0px);
+  bottom:var(--editor-ime-offset,0px);
+  bottom:max(0px,calc(100% - var(--editor-ime-bottom,100%)));
+}
 .editor-bar .t-text{flex:none;padding:0 .5rem;white-space:nowrap;}
 .editor-symbols{
   display:flex;flex:none;gap:.3rem;align-items:flex-start;
   padding:.3rem .5rem calc(.3rem + var(--safe-b));
+  touch-action:pan-x;
   border-top:1px solid rgba(var(--fg-rgb),.12);
 }
 .editor-symbols[hidden]{display:none;}
 .editor-ime-visible .editor-symbols{padding-bottom:.3rem;}
 .editor-symbol-list{
   display:flex;flex:1;min-width:0;gap:.3rem;overflow-x:auto;overflow-y:hidden;
+  overscroll-behavior:contain;touch-action:pan-x;
   -webkit-overflow-scrolling:touch;
 }
 .editor-symbols button{

@@ -58,7 +58,7 @@ module.exports = async function ({ test, app, settle }) {
     } finally { a.close(); }
   });
 
-  await test('Symbol bar follows the IME with native overlap, visual viewport, and Android resize', async () => {
+  await test('Symbol bar stays at the keyboard boundary through WebView resize and panning', async () => {
     let viewport;
     let layoutHeight = 800;
     const a = app(false, undefined, w => {
@@ -72,30 +72,34 @@ module.exports = async function ({ test, app, settle }) {
       const ta = await open(w, 'sample.py', 'print');
       const root = w.document.documentElement;
       const offset = () => root.style.getPropertyValue('--editor-ime-offset');
+      const top = () => root.style.getPropertyValue('--editor-ime-top');
+      const bottom = () => root.style.getPropertyValue('--editor-ime-bottom');
       const isOpen = () => root.classList.contains('editor-ime-visible');
       assert(ta.closest('.editor-view'));
       assert.equal(offset(), '0px');
 
       // Legacy WebViews can keep both CSS viewports full height.
-      w.__xjKeyboardViewport(600, true);
+      w.__xjKeyboardViewport(1000, true);
       assert.equal(offset(), '300px');
+      assert.equal(top(), '0px');
+      assert.equal(bottom(), '500px');
       assert.equal(isOpen(), true);
 
-      // Modern WebViews can also report the same overlap. It must count once.
       viewport.height = 500;
       viewport.dispatchEvent(new w.Event('resize'));
-      assert.equal(offset(), '300px');
-      w.__xjKeyboardViewport(0, false);
       assert.equal(offset(), '300px');
       viewport.offsetTop = 20;
       viewport.dispatchEvent(new w.Event('scroll'));
       assert.equal(offset(), '280px');
+      assert.equal(top(), '20px');
+      assert.equal(bottom(), '520px');
 
-      // A resized native WebView already ends at the keyboard's upper edge.
+      // Android may resize the layout without sending another native IME callback.
       layoutHeight = 500;
       viewport.offsetTop = 0;
-      w.__xjKeyboardViewport(0, true);
+      w.dispatchEvent(new w.Event('resize'));
       assert.equal(offset(), '0px');
+      assert.equal(top(), '0px');
       assert.equal(isOpen(), true);
       ta.setSelectionRange(5, 5);
       w.document.querySelector('[data-key="()"]').click();
@@ -103,10 +107,15 @@ module.exports = async function ({ test, app, settle }) {
       assert.equal(ta.selectionStart, 6);
       assert.equal(w.document.activeElement, ta);
 
-      layoutHeight = viewport.height = 800;
+      // Use the visual viewport as Android clears its IME insets.
+      layoutHeight = 800;
       w.__xjKeyboardViewport(0, false);
+      assert.equal(offset(), '300px');
+      viewport.height = 800;
+      viewport.dispatchEvent(new w.Event('resize'));
       assert.equal(offset(), '0px');
       assert.equal(isOpen(), false);
+      assert.equal(bottom(), '');
     } finally { a.close(); }
   });
 

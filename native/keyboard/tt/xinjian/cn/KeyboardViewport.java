@@ -8,14 +8,14 @@ import android.view.ViewTreeObserver;
 import android.view.WindowInsets;
 import android.webkit.WebView;
 
-/** Reports the part of the actual WebView covered by a bottom-docked keyboard. */
+/** Reports the height from the WebView's top to the top of a bottom-docked keyboard. */
 public final class KeyboardViewport implements View.OnApplyWindowInsetsListener,
         ViewTreeObserver.OnGlobalLayoutListener, Runnable {
     private final Activity activity;
     private final WebView web;
     private final Rect visibleFrame = new Rect();
     private final int[] position = new int[2];
-    private int lastOverlap = -1;
+    private int lastVisibleHeight = -1;
     private boolean lastVisible;
 
     public KeyboardViewport(Activity activity, WebView web) {
@@ -60,12 +60,13 @@ public final class KeyboardViewport implements View.OnApplyWindowInsetsListener,
             visible = fullBottom - visibleFrame.bottom >= minimum;
             keyboardTop = visibleFrame.bottom;
         }
-        int overlap = visible ? Math.min(height, Math.max(0, webBottom - keyboardTop)) : 0;
-        if (overlap == lastOverlap && visible == lastVisible) return;
-        lastOverlap = overlap;
+        // This boundary remains valid when the CSS layout resizes before the callback.
+        int visibleHeight = visible ? Math.max(0, keyboardTop - position[1]) : 0;
+        if (visibleHeight == lastVisibleHeight && visible == lastVisible) return;
+        lastVisibleHeight = visibleHeight;
         lastVisible = visible;
         web.evaluateJavascript("window.__xjKeyboardViewport&&window.__xjKeyboardViewport(" +
-                overlap + "," + visible + ")", null);
+                visibleHeight + "," + visible + ")", null);
     }
 
     public void close() {

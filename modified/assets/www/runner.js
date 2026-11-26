@@ -98,7 +98,10 @@ var CodeRunner = (function () {
     rerun.onclick = function () { if (repeat) repeat(); };
     function remoteForm(readSource, ext) {
       status.textContent = RunFormats.compilers[ext].name;
-      body.innerHTML = '<div class="run-online"><p>提交后，当前源码和标准输入将发送到 wandbox.org 编译。</p>' +
+      var intro = PythonRun.supported(ext)
+        ? '<p>提交后，当前源码和「标准输入」会发送到 wandbox.org 编译。这条路<b>只能预填</b>：程序里的 input() 从「标准输入」框按行取，框空着就会 EOFError；想边运行边输入，用下面的「本地运行」。</p>'
+        : '<p>提交后，当前源码和标准输入将发送到 wandbox.org 编译。</p>';
+      body.innerHTML = '<div class="run-online">' + intro +
         '<label>标准输入（可留空）<textarea rows="2" placeholder="每行一组输入"></textarea></label>' +
         '<button type="button" class="run-submit"></button></div>';
       var input = body.querySelector('textarea');
@@ -161,6 +164,9 @@ var CodeRunner = (function () {
               });
               var detail = r.signal ? (logged ? '\n' : '') + r.signal : (!ok && !logged ? '退出状态 ' + r.status : '');
               result(ok ? (ext === 'bfh' ? '头文件编译通过' : '运行完成') : '编译或运行出错', detail);
+              if (!ok && PythonRun.supported(ext) && /EOFError/.test(xhr.responseText)) {
+                outputView.emit({ kind: 'stderr', text: '\n提示：程序要读输入，但「标准输入」是空的。两条路——① 在「标准输入」框里每行写一组输入再点发送；② 用下面的「本地运行」，程序跑到 input() 时现场逐行输入。' });
+              }
             } catch (e) { result('服务响应异常', e.message); }
           };
           stopButton.textContent = '取消等待';
@@ -174,19 +180,25 @@ var CodeRunner = (function () {
     function addPythonOption(input, readSource) {
       var form = body.querySelector('.run-online');
       var options = document.createElement('details');
-      options.innerHTML = '<summary>本地 Python（实验）</summary>' +
+      options.className = 'run-python-options';
+      options.innerHTML = '<summary>本地 Python · 运行中可输入</summary>' +
         '<label>选择输入文件（可选）<input type="file" multiple></label>' +
         '<button type="button" class="run-python">本地运行</button><button type="button" class="run-python-batch">预填运行</button>';
-      form.appendChild(options);
       var selected = options.querySelector('input');
       var run = options.querySelector('.run-python');
       var batch = options.querySelector('.run-python-batch');
       var online = form.querySelector('.run-submit');
-      if (!PythonRun.nativeTerminal() && !PythonRun.canShareInput() && typeof WebAssembly.Suspending !== 'function') {
-        var hint = document.createElement('p');
-        hint.textContent = '此 WebView 的 input() 使用预填输入。交互程序可用 from xinjian_terminal import readline 和 await readline()。';
-        options.appendChild(hint);
-      }
+      // 本地运行是能逐行输入的那条路，放在在线提交前面并默认展开，省得每次去翻。
+      if (online) form.insertBefore(options, online);
+      else form.appendChild(options);
+      options.open = true;
+      var interactiveInput = PythonRun.nativeTerminal() || PythonRun.canShareInput() || typeof WebAssembly.Suspending === 'function';
+      var hint = document.createElement('p');
+      hint.className = 'run-hint';
+      hint.textContent = interactiveInput
+        ? '点「本地运行」后，程序执行到 input() 会在下面弹出输入框：填一行发送一行，按「结束输入」相当于 Ctrl+D。'
+        : '此 WebView 的 input() 使用预填输入。交互程序可用 from xinjian_terminal import readline 和 await readline()。';
+      options.appendChild(hint);
       function startPython(live) {
         var current = generation;
         var stdin, files;
@@ -194,6 +206,10 @@ var CodeRunner = (function () {
           stdin = RunIO.stdin(input.value);
           files = PythonRun.readFiles(selected.files);
         } catch (e) { status.textContent = e.message; return; }
+        // 预填运行不接实时输入：标准输入空着又调 input()，跑起来只会 EOFError，先说一声（不拦，出错分支照样能测）
+        if (!live && !stdin && /input\s*\(|readline\s*\(/.test(readSource())) {
+          hint.textContent = '标准输入是空的，代码里又要读输入 → 这次会 EOFError。要现场输入请点「本地运行」。';
+        }
         online.disabled = run.disabled = batch.disabled = true;
         files.then(function (inputs) {
           if (generation !== current) return;
