@@ -4,9 +4,21 @@
 
 
   VIEWS.home = function (el) {
+    el.classList.add('home-view');
     var w = WEATHER_STUB;
-    /* 天气条右边划出一块给主题按钮：左边 .w-info 仍然整块可点（点开天气提示），
-       右边 .theme-slot 是一条竖线隔开的按钮位，不会再触发天气的 toast。 */
+
+    function label(icon, title, classes) {
+      return '<span class="entry-main' + classes + '">' + svg(icon) + '<span>' + title + '</span></span>';
+    }
+
+    function entry(action, icon, title, alternate) {
+      var contents = label(icon, title, alternate ? ' entry-light' : '');
+      if (alternate) contents += label(alternate.icon, alternate.title, ' entry-dark');
+      return '<button type="button" class="entry" data-go="' + action + '"' +
+        (alternate ? ' data-dark-go="' + alternate.action + '"' : '') + '>' + contents +
+        '<span class="entry-arrow" aria-hidden="true">' + svg('chevron') + '</span></button>';
+    }
+
     el.innerHTML =
       '<div class="weather-bar">' +
       '<span class="w-info" data-act="weather">' +
@@ -18,29 +30,29 @@
       '<span class="theme-slot">' + ThemeReveal.buttonHtml() + '</span>' +
       '</div>' +
       '<div class="scroll entries">' +
-      '<button class="entry" data-go="shelf">' + svg('book') + '<span>书架</span></button>' +
-      '<button class="entry" data-go="town">' + svg('town') + '<span>小镇</span></button>' +
-      '<button class="entry" data-go="yard">' + svg('server') + '<span>后院</span></button>' +
-      '<button class="entry" data-go="inn">' + svg('shop') + '<span>小宿店</span></button>' +
+      entry('shelf', 'book', '书架') +
+      entry('town', 'town', '小镇') +
+      entry('home', 'home', '主页', { action: 'yard', icon: 'server', title: '后院' }) +
+      entry('create', 'plus', '新建', { action: 'inn', icon: 'shop', title: '小宿店' }) +
       '</div>' +
       tabbar('home');
 
     var themeBtn = ThemeReveal.attach(el.querySelector('[data-theme-btn]'));
-    el.__cleanup = function () {
-      if (themeBtn) themeBtn.destroy();
-      themeBtn = null;
-    };
+    el.__cleanup = function () { if (themeBtn) themeBtn.destroy(); };
 
     el.addEventListener('click', function (e) {
       var t = e.target.closest('[data-tab]');
-      if (t) {
-        var k = t.dataset.tab;
-        return Nav.tab(k);
-      }
+      if (t) return Nav.tab(t.dataset.tab);
       var g = e.target.closest('[data-go]');
       if (g) {
-        var name = g.dataset.go;
+        var dark = document.documentElement.classList.contains('dark');
+        var name = (dark && g.dataset.darkGo) || g.dataset.go;
         if (name === 'shelf') return Nav.go('shelf');
+        if (name === 'create') return Nav.tab('create');
+        if (name === 'home') {
+          el.querySelector('.entries').scrollTop = 0;
+          return;
+        }
         return Nav.go('stub', { title: { town: '小镇', yard: '后院', inn: '小宿店' }[name] });
       }
       if (e.target.closest('[data-act=weather]')) {

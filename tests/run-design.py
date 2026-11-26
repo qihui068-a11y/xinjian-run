@@ -60,13 +60,35 @@ def compare(browser, scheme):
     tabs = page.get_by_role('navigation', name='主导航')
     expected_text = 'rgb(247, 242, 232)' if scheme == 'dark' else 'rgb(30, 30, 30)'
     expect(page.locator('body')).to_have_css('color', expected_text)
-    expect(tabs).to_have_css('height', '48px')
+    dark = scheme == 'dark'
+    expect(page.locator('.home-view')).to_have_css('background-color', 'rgb(0, 0, 0)' if dark else 'rgb(255, 255, 255)')
+    expect(tabs).to_have_css('height', '49px' if dark else '52px')
     expect(tabs).to_have_css('backdrop-filter', 'blur(20px) saturate(1.8)')
-    expect(page.locator('.entries')).to_have_css('gap', '8px')
+    entries = page.locator('.entries').get_by_role('button')
+    expect(entries).to_have_text(['书架', '小镇', '后院', '小宿店'] if dark else ['书架', '小镇', '主页', '新建'],
+                                 use_inner_text=True)
+    expect(entries.first).to_have_css('background-color', 'rgb(18, 18, 18)' if dark else 'rgb(255, 255, 255)')
+    expect(entries.first).to_have_css('min-height', '53px' if dark else '58px')
+    expect(page.locator('.entries')).to_have_css('gap', '9px' if dark else '10px')
+    bounds = [entry.bounding_box() for entry in entries.all()]
+    assert all(box['x'] == bounds[0]['x'] and box['width'] == bounds[0]['width'] for box in bounds)
+    assert all(a['y'] + a['height'] < b['y'] for a, b in zip(bounds, bounds[1:]))
     expect(page.locator('[data-theme-btn]')).to_have_count(0)
     snapshot(page, 'home-' + scheme)
 
-    tabs.get_by_role('button', name='新建').click()
+    entries.first.click()
+    expect(page.locator('#shelfBar .t-title')).to_have_text('书架')
+    page.get_by_role('button', name='返回', exact=True).click()
+    for label in ('小镇', '后院', '小宿店') if dark else ('小镇',):
+        page.locator('.entries').get_by_role('button', name=label, exact=True).click()
+        expect(page.locator('.topbar .t-title')).to_have_text(label)
+        page.get_by_role('button', name='返回', exact=True).click()
+    if dark:
+        tabs.get_by_role('button', name='新建').click()
+    else:
+        page.locator('.entries').get_by_role('button', name='主页', exact=True).click()
+        expect(page.locator('.home-view')).to_be_visible()
+        page.locator('.entries').get_by_role('button', name='新建', exact=True).click()
     summary = page.get_by_role('button', name='文件格式')
     expect(summary).to_contain_text('TXT')
     expect(page.locator('.topbar')).to_have_css('height', '44px')
@@ -152,8 +174,13 @@ def appearance_and_motion(browser):
     frames = page.evaluate('tabFrames')
     assert len(frames) == 2 and all(x['options']['duration'] == 120 for x in frames)
     assert all('transform' not in f for x in frames for f in x['frames'])
+    page.get_by_role('button', name='主页', exact=True).click()
+    expect(page.locator('.home-view')).to_be_visible()
+    page.wait_for_function("document.querySelectorAll('#app .view').length === 1")
     page.emulate_media(color_scheme='dark')
     expect(page.locator('html')).to_have_class('dark')
+    expect(page.locator('.entries').get_by_role('button')).to_have_text(['书架', '小镇', '后院', '小宿店'],
+                                                                      use_inner_text=True)
     page.close()
 
     # A read-only native preference is enough for Android appearance without browser theme detection.
