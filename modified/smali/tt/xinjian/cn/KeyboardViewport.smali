@@ -11,9 +11,9 @@
 # instance fields
 .field private final activity:Landroid/app/Activity;
 
-.field private lastOverlap:I
-
 .field private lastVisible:Z
+
+.field private lastVisibleHeight:I
 
 .field private final position:[I
 
@@ -46,7 +46,7 @@
     .line 18
     const/4 v0, -0x1
 
-    iput v0, p0, Ltt/xinjian/cn/KeyboardViewport;->lastOverlap:I
+    iput v0, p0, Ltt/xinjian/cn/KeyboardViewport;->lastVisibleHeight:I
 
     .line 22
     iput-object p1, p0, Ltt/xinjian/cn/KeyboardViewport;->activity:Landroid/app/Activity;
@@ -84,19 +84,19 @@
 .method public close()V
     .locals 2
 
-    .line 72
+    .line 73
     iget-object v0, p0, Ltt/xinjian/cn/KeyboardViewport;->web:Landroid/webkit/WebView;
 
     invoke-virtual {v0, p0}, Landroid/webkit/WebView;->removeCallbacks(Ljava/lang/Runnable;)Z
 
-    .line 73
+    .line 74
     iget-object v0, p0, Ltt/xinjian/cn/KeyboardViewport;->web:Landroid/webkit/WebView;
 
     invoke-virtual {v0}, Landroid/webkit/WebView;->getViewTreeObserver()Landroid/view/ViewTreeObserver;
 
     move-result-object v0
 
-    .line 74
+    .line 75
     invoke-virtual {v0}, Landroid/view/ViewTreeObserver;->isAlive()Z
 
     move-result v1
@@ -105,7 +105,7 @@
 
     invoke-virtual {v0, p0}, Landroid/view/ViewTreeObserver;->removeOnGlobalLayoutListener(Landroid/view/ViewTreeObserver$OnGlobalLayoutListener;)V
 
-    .line 75
+    .line 76
     :cond_0
     sget v0, Landroid/os/Build$VERSION;->SDK_INT:I
 
@@ -119,7 +119,7 @@
 
     invoke-virtual {v0, v1}, Landroid/webkit/WebView;->setOnApplyWindowInsetsListener(Landroid/view/View$OnApplyWindowInsetsListener;)V
 
-    .line 76
+    .line 77
     :cond_1
     return-void
 .end method
@@ -156,7 +156,7 @@
 .end method
 
 .method public run()V
-    .locals 7
+    .locals 6
 
     .line 42
     iget-object v0, p0, Ltt/xinjian/cn/KeyboardViewport;->web:Landroid/webkit/WebView;
@@ -194,204 +194,208 @@
     nop
 
     .line 48
-    sget v3, Landroid/os/Build$VERSION;->SDK_INT:I
+    sget v0, Landroid/os/Build$VERSION;->SDK_INT:I
 
-    const/16 v4, 0x1e
+    const/16 v3, 0x1e
 
-    const/4 v5, 0x0
+    const/4 v4, 0x0
 
-    if-lt v3, v4, :cond_3
+    if-lt v0, v3, :cond_3
 
     .line 49
-    iget-object v3, p0, Ltt/xinjian/cn/KeyboardViewport;->web:Landroid/webkit/WebView;
+    iget-object v0, p0, Ltt/xinjian/cn/KeyboardViewport;->web:Landroid/webkit/WebView;
 
-    invoke-virtual {v3}, Landroid/webkit/WebView;->getRootWindowInsets()Landroid/view/WindowInsets;
+    invoke-virtual {v0}, Landroid/webkit/WebView;->getRootWindowInsets()Landroid/view/WindowInsets;
 
-    move-result-object v3
+    move-result-object v0
 
     .line 50
     invoke-static {}, Landroid/view/WindowInsets$Type;->ime()I
 
-    move-result v4
+    move-result v3
 
     .line 51
-    if-eqz v3, :cond_2
+    if-eqz v0, :cond_2
 
-    invoke-virtual {v3, v4}, Landroid/view/WindowInsets;->isVisible(I)Z
+    invoke-virtual {v0, v3}, Landroid/view/WindowInsets;->isVisible(I)Z
 
-    move-result v6
+    move-result v5
 
-    if-eqz v6, :cond_2
+    if-eqz v5, :cond_2
 
     .line 52
-    invoke-virtual {v3, v4}, Landroid/view/WindowInsets;->getInsets(I)Landroid/graphics/Insets;
+    invoke-virtual {v0, v3}, Landroid/view/WindowInsets;->getInsets(I)Landroid/graphics/Insets;
 
-    move-result-object v3
+    move-result-object v0
 
-    iget v3, v3, Landroid/graphics/Insets;->bottom:I
+    iget v0, v0, Landroid/graphics/Insets;->bottom:I
 
     .line 53
-    if-lez v3, :cond_1
+    if-lez v0, :cond_1
+
+    const/4 v1, 0x1
 
     goto :goto_0
 
     :cond_1
-    const/4 v2, 0x0
+    const/4 v1, 0x0
 
     .line 54
     :goto_0
-    iget-object v4, p0, Ltt/xinjian/cn/KeyboardViewport;->activity:Landroid/app/Activity;
+    iget-object v3, p0, Ltt/xinjian/cn/KeyboardViewport;->activity:Landroid/app/Activity;
 
-    invoke-virtual {v4}, Landroid/app/Activity;->getWindowManager()Landroid/view/WindowManager;
+    invoke-virtual {v3}, Landroid/app/Activity;->getWindowManager()Landroid/view/WindowManager;
 
-    move-result-object v4
+    move-result-object v3
 
-    invoke-interface {v4}, Landroid/view/WindowManager;->getCurrentWindowMetrics()Landroid/view/WindowMetrics;
+    invoke-interface {v3}, Landroid/view/WindowManager;->getCurrentWindowMetrics()Landroid/view/WindowMetrics;
 
-    move-result-object v4
+    move-result-object v3
 
-    invoke-virtual {v4}, Landroid/view/WindowMetrics;->getBounds()Landroid/graphics/Rect;
+    invoke-virtual {v3}, Landroid/view/WindowMetrics;->getBounds()Landroid/graphics/Rect;
 
-    move-result-object v4
+    move-result-object v3
 
-    iget v4, v4, Landroid/graphics/Rect;->bottom:I
+    iget v3, v3, Landroid/graphics/Rect;->bottom:I
 
-    sub-int/2addr v4, v3
+    sub-int v0, v3, v0
 
     goto :goto_1
 
     .line 56
     :cond_2
-    move v4, v1
+    move v0, v1
 
-    const/4 v2, 0x0
+    const/4 v1, 0x0
 
     :goto_1
     goto :goto_3
 
     .line 57
     :cond_3
-    iget-object v3, p0, Ltt/xinjian/cn/KeyboardViewport;->web:Landroid/webkit/WebView;
+    iget-object v0, p0, Ltt/xinjian/cn/KeyboardViewport;->web:Landroid/webkit/WebView;
 
-    iget-object v4, p0, Ltt/xinjian/cn/KeyboardViewport;->visibleFrame:Landroid/graphics/Rect;
+    iget-object v3, p0, Ltt/xinjian/cn/KeyboardViewport;->visibleFrame:Landroid/graphics/Rect;
 
-    invoke-virtual {v3, v4}, Landroid/webkit/WebView;->getWindowVisibleDisplayFrame(Landroid/graphics/Rect;)V
+    invoke-virtual {v0, v3}, Landroid/webkit/WebView;->getWindowVisibleDisplayFrame(Landroid/graphics/Rect;)V
 
     .line 58
-    iget-object v3, p0, Ltt/xinjian/cn/KeyboardViewport;->web:Landroid/webkit/WebView;
+    iget-object v0, p0, Ltt/xinjian/cn/KeyboardViewport;->web:Landroid/webkit/WebView;
 
-    invoke-virtual {v3}, Landroid/webkit/WebView;->getResources()Landroid/content/res/Resources;
+    invoke-virtual {v0}, Landroid/webkit/WebView;->getResources()Landroid/content/res/Resources;
 
-    move-result-object v3
+    move-result-object v0
 
-    invoke-virtual {v3}, Landroid/content/res/Resources;->getDisplayMetrics()Landroid/util/DisplayMetrics;
+    invoke-virtual {v0}, Landroid/content/res/Resources;->getDisplayMetrics()Landroid/util/DisplayMetrics;
 
-    move-result-object v3
+    move-result-object v0
 
-    iget v3, v3, Landroid/util/DisplayMetrics;->heightPixels:I
+    iget v0, v0, Landroid/util/DisplayMetrics;->heightPixels:I
 
-    invoke-static {v1, v3}, Ljava/lang/Math;->max(II)I
+    invoke-static {v1, v0}, Ljava/lang/Math;->max(II)I
 
-    move-result v3
+    move-result v0
 
     .line 59
-    iget-object v4, p0, Ltt/xinjian/cn/KeyboardViewport;->web:Landroid/webkit/WebView;
+    iget-object v1, p0, Ltt/xinjian/cn/KeyboardViewport;->web:Landroid/webkit/WebView;
 
-    invoke-virtual {v4}, Landroid/webkit/WebView;->getResources()Landroid/content/res/Resources;
+    invoke-virtual {v1}, Landroid/webkit/WebView;->getResources()Landroid/content/res/Resources;
 
-    move-result-object v4
+    move-result-object v1
 
-    invoke-virtual {v4}, Landroid/content/res/Resources;->getDisplayMetrics()Landroid/util/DisplayMetrics;
+    invoke-virtual {v1}, Landroid/content/res/Resources;->getDisplayMetrics()Landroid/util/DisplayMetrics;
 
-    move-result-object v4
+    move-result-object v1
 
-    iget v4, v4, Landroid/util/DisplayMetrics;->density:F
+    iget v1, v1, Landroid/util/DisplayMetrics;->density:F
 
-    const/high16 v6, 0x42a00000    # 80.0f
+    const/high16 v3, 0x42a00000    # 80.0f
 
-    mul-float v4, v4, v6
+    mul-float v1, v1, v3
 
-    invoke-static {v4}, Ljava/lang/Math;->round(F)I
+    invoke-static {v1}, Ljava/lang/Math;->round(F)I
 
-    move-result v4
+    move-result v1
 
     .line 60
-    iget-object v6, p0, Ltt/xinjian/cn/KeyboardViewport;->visibleFrame:Landroid/graphics/Rect;
+    iget-object v3, p0, Ltt/xinjian/cn/KeyboardViewport;->visibleFrame:Landroid/graphics/Rect;
 
-    iget v6, v6, Landroid/graphics/Rect;->bottom:I
+    iget v3, v3, Landroid/graphics/Rect;->bottom:I
 
-    sub-int/2addr v3, v6
+    sub-int/2addr v0, v3
 
-    if-lt v3, v4, :cond_4
+    if-lt v0, v1, :cond_4
+
+    const/4 v1, 0x1
 
     goto :goto_2
 
     :cond_4
-    const/4 v2, 0x0
+    const/4 v1, 0x0
 
     .line 61
     :goto_2
-    iget-object v3, p0, Ltt/xinjian/cn/KeyboardViewport;->visibleFrame:Landroid/graphics/Rect;
+    iget-object v0, p0, Ltt/xinjian/cn/KeyboardViewport;->visibleFrame:Landroid/graphics/Rect;
 
-    iget v4, v3, Landroid/graphics/Rect;->bottom:I
-
-    .line 63
-    :goto_3
-    if-eqz v2, :cond_5
-
-    sub-int/2addr v1, v4
-
-    invoke-static {v5, v1}, Ljava/lang/Math;->max(II)I
-
-    move-result v1
-
-    invoke-static {v0, v1}, Ljava/lang/Math;->min(II)I
-
-    move-result v5
+    iget v0, v0, Landroid/graphics/Rect;->bottom:I
 
     .line 64
-    :cond_5
-    iget v0, p0, Ltt/xinjian/cn/KeyboardViewport;->lastOverlap:I
+    :goto_3
+    if-eqz v1, :cond_5
 
-    if-ne v5, v0, :cond_6
+    iget-object v3, p0, Ltt/xinjian/cn/KeyboardViewport;->position:[I
+
+    aget v2, v3, v2
+
+    sub-int/2addr v0, v2
+
+    invoke-static {v4, v0}, Ljava/lang/Math;->max(II)I
+
+    move-result v4
+
+    .line 65
+    :cond_5
+    iget v0, p0, Ltt/xinjian/cn/KeyboardViewport;->lastVisibleHeight:I
+
+    if-ne v4, v0, :cond_6
 
     iget-boolean v0, p0, Ltt/xinjian/cn/KeyboardViewport;->lastVisible:Z
 
-    if-ne v2, v0, :cond_6
+    if-ne v1, v0, :cond_6
 
     return-void
 
-    .line 65
-    :cond_6
-    iput v5, p0, Ltt/xinjian/cn/KeyboardViewport;->lastOverlap:I
-
     .line 66
-    iput-boolean v2, p0, Ltt/xinjian/cn/KeyboardViewport;->lastVisible:Z
+    :cond_6
+    iput v4, p0, Ltt/xinjian/cn/KeyboardViewport;->lastVisibleHeight:I
 
     .line 67
+    iput-boolean v1, p0, Ltt/xinjian/cn/KeyboardViewport;->lastVisible:Z
+
+    .line 68
     iget-object v0, p0, Ltt/xinjian/cn/KeyboardViewport;->web:Landroid/webkit/WebView;
 
-    new-instance v1, Ljava/lang/StringBuilder;
+    new-instance v2, Ljava/lang/StringBuilder;
 
-    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
+    invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
 
     const-string v3, "window.__xjKeyboardViewport&&window.__xjKeyboardViewport("
 
-    invoke-virtual {v1, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    move-result-object v1
+    move-result-object v2
 
-    invoke-virtual {v1, v5}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+    invoke-virtual {v2, v4}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
 
-    move-result-object v1
+    move-result-object v2
 
     const-string v3, ","
 
-    invoke-virtual {v1, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    move-result-object v1
+    move-result-object v2
 
-    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
+    invoke-virtual {v2, v1}, Ljava/lang/StringBuilder;->append(Z)Ljava/lang/StringBuilder;
 
     move-result-object v1
 
@@ -409,6 +413,6 @@
 
     invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->evaluateJavascript(Ljava/lang/String;Landroid/webkit/ValueCallback;)V
 
-    .line 69
+    .line 70
     return-void
 .end method

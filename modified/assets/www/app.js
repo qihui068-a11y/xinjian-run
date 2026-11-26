@@ -319,22 +319,32 @@
     return { top: t, bottom: b };
   }
 
-  var editorNativeOverlap = 0, editorKeyboardVisible = false;
+  var editorNativeVisibleHeight = 0, editorKeyboardVisible = false;
   function applyEditorViewport() {
     var root = document.documentElement;
     var layoutHeight = root.clientHeight || window.innerHeight;
     var viewport = window.visualViewport;
-    var visualOverlap = viewport ? layoutHeight - viewport.height - viewport.offsetTop : 0;
-    var scale = viewport ? viewport.scale || 1 : 1;
-    var nativeOverlap = editorNativeOverlap / ((window.devicePixelRatio || 1) * scale);
-    // 较新的 WebView 可能已在可见视口中报告了同一块遮挡。
-    var overlap = Math.ceil(Math.min(layoutHeight, Math.max(0, visualOverlap, nativeOverlap)));
+    var visualTop = viewport ? Math.max(0, viewport.offsetTop) : 0;
+    var visibleHeight = viewport ? viewport.height : layoutHeight;
+    if (editorKeyboardVisible) {
+      var scale = viewport ? viewport.scale || 1 : 1;
+      var nativeHeight = editorNativeVisibleHeight / ((window.devicePixelRatio || 1) * scale);
+      visibleHeight = Math.min(visibleHeight, nativeHeight);
+    }
+    // 以键盘上沿定位。布局已经随键盘缩小时，底部补偿自然为零。
+    var bottom = visualTop + visibleHeight;
+    var overlap = Math.ceil(Math.max(0, layoutHeight - bottom));
+    var imeVisible = editorKeyboardVisible || overlap > 0;
+    if (imeVisible) root.style.setProperty('--editor-ime-bottom', Math.floor(bottom) + 'px');
+    else root.style.removeProperty('--editor-ime-bottom');
+    // WebView 为了露出光标可能平移可见视口，顶栏也要对齐它的上沿。
+    root.style.setProperty('--editor-ime-top', (imeVisible ? Math.floor(visualTop) : 0) + 'px');
     root.style.setProperty('--editor-ime-offset', overlap + 'px');
-    root.classList.toggle('editor-ime-visible', editorKeyboardVisible || overlap > 0);
+    root.classList.toggle('editor-ime-visible', imeVisible);
   }
 
-  window.__xjKeyboardViewport = function (overlap, visible) {
-    editorNativeOverlap = Math.max(0, Number(overlap) || 0);
+  window.__xjKeyboardViewport = function (visibleHeight, visible) {
+    editorNativeVisibleHeight = Math.max(0, Number(visibleHeight) || 0);
     editorKeyboardVisible = visible === true;
     if (!editorKeyboardVisible) applyInsets();
     applyEditorViewport();

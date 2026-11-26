@@ -1,0 +1,11 @@
+{
+    "java.project.sourcePaths": [
+        "native/keyboard",
+        "native/lan",
+        "native/update"
+    ],
+    "java.project.referencedLibraries": [
+        ".local/android-sdk/platforms/android-34/android.jar"
+    ],
+    "java.project.outputPath": ".local/java-classes"
+}

@@ -54,6 +54,8 @@
 
 .field private keyboardViewport:Ltt/xinjian/cn/KeyboardViewport;
 
+.field private pythonTerminal:Ltt/xinjian/cn/PythonTerminal;
+
 .field private update:Ltt/xinjian/cn/UpdateBridge;
 
 .field private web:Landroid/webkit/WebView;
@@ -86,6 +88,12 @@
     const-string v1, "js"
 
     const-string v2, "application/javascript"
+
+    invoke-interface {v0, v1, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+    const-string v1, "wasm"
+
+    const-string v2, "application/wasm"
 
     invoke-interface {v0, v1, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
@@ -1147,6 +1155,19 @@
 
     if-eqz p1, :cond_6
 
+    iget-object v1, p0, Ltt/xinjian/cn/MainActivity;->pythonTerminal:Ltt/xinjian/cn/PythonTerminal;
+
+    if-eqz v1, :serve_asset
+
+    invoke-virtual {v1, p1}, Ltt/xinjian/cn/PythonTerminal;->serve(Landroid/net/Uri;)Landroid/webkit/WebResourceResponse;
+
+    move-result-object v1
+
+    if-eqz v1, :serve_asset
+
+    return-object v1
+
+    :serve_asset
     .line 704
     const-string v1, "app.xinjian.local"
 
@@ -1324,6 +1345,8 @@
 
     .line 725
     :cond_5
+    move-object v6, p1
+
     new-instance v0, Ljava/lang/StringBuilder;
 
     const-string v1, "www"
@@ -1365,6 +1388,8 @@
     .line 730
     invoke-interface {p1, v3, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
+    invoke-static {v6, p1}, Ltt/xinjian/cn/MainActivity;->pythonRunnerHeaders(Ljava/lang/String;Ljava/util/Map;)V
+
     .line 731
     invoke-virtual {v1, p1}, Landroid/webkit/WebResourceResponse;->setResponseHeaders(Ljava/util/Map;)V
     :try_end_1
@@ -1404,6 +1429,51 @@
     :cond_6
     :goto_0
     return-object v0
+.end method
+
+.method private static pythonRunnerHeaders(Ljava/lang/String;Ljava/util/Map;)V
+    .locals 3
+
+    const-string v0, "/python-worker.js"
+
+    invoke-virtual {v0, p0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v0
+
+    if-eqz v0, :index
+
+    const-string v1, "Content-Security-Policy"
+
+    const-string v2, "default-src 'none'; script-src 'wasm-unsafe-eval' https://app.xinjian.local/python-runtime/; connect-src https://app.xinjian.local/python-runtime/; worker-src 'none'"
+
+    invoke-interface {p1, v1, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+    goto :coep
+
+    :index
+    const-string v0, "/index.html"
+
+    invoke-virtual {v0, p0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+
+    move-result v0
+
+    if-eqz v0, :done
+
+    const-string v1, "Cross-Origin-Opener-Policy"
+
+    const-string v2, "same-origin"
+
+    invoke-interface {p1, v1, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+    :coep
+    const-string v1, "Cross-Origin-Embedder-Policy"
+
+    const-string v2, "require-corp"
+
+    invoke-interface {p1, v1, v2}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+    :done
+    return-void
 .end method
 
 .method private stopLoc()V
@@ -2611,6 +2681,16 @@
 
     invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
 
+    new-instance v1, Ltt/xinjian/cn/PythonTerminal;
+
+    invoke-direct {v1}, Ltt/xinjian/cn/PythonTerminal;-><init>()V
+
+    iput-object v1, p0, Ltt/xinjian/cn/MainActivity;->pythonTerminal:Ltt/xinjian/cn/PythonTerminal;
+
+    const-string v2, "XinJianPythonTerminal"
+
+    invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
+
     new-instance v1, Ltt/xinjian/cn/LanBridge;
 
     invoke-direct {v1, p0, v0}, Ltt/xinjian/cn/LanBridge;-><init>(Landroid/content/Context;Landroid/webkit/WebView;)V
@@ -2681,6 +2761,13 @@
 .method protected onDestroy()V
     .locals 2
 
+    iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->pythonTerminal:Ltt/xinjian/cn/PythonTerminal;
+
+    if-eqz v0, :python_terminal_closed
+
+    invoke-virtual {v0}, Ltt/xinjian/cn/PythonTerminal;->reset()V
+
+    :python_terminal_closed
     iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->lan:Ltt/xinjian/cn/LanBridge;
 
     if-eqz v0, :lan_destroyed
