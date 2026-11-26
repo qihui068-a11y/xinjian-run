@@ -17,6 +17,7 @@ def main():
     components = {
         "lan": ("LanBridge", "LanTransport"),
         "keyboard": ("KeyboardViewport",),
+        "python": ("PythonTerminal",),
         "update": ("UpdateBridge", "UpdateRelease", "UpdateApkProvider"),
     }
     parser.add_argument("--component", choices=components, default="lan")

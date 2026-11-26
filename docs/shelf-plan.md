@@ -6,7 +6,7 @@
 
 1. 运行界面接收 `ready`、`stdout`、`stderr`、`input`、`artifact` 和 `exit` 事件。输出作为文本或文件处理，图片预览仅接受有大小和尺寸限制的 PNG。停止或退出页面时终止 Worker，下一次运行创建独立环境。
 2. QuickJS 继续在专用 Worker 内运行，使用 `await readline('请输入')` 逐行输入，结束输入返回 `null`。在线编译保留执行前的多行标准输入和发送确认。Wandbox 的结果在请求结束后返回，未来的在线交互需要支持会话 stdin 的服务端协议。
-3. 可选的本地 Python 构建使用固定版本的 Pyodide。脚本在独立 Worker 内运行，Worker 的 CSP 只允许读取随安装包提供的运行资源。Python 的 JS 全局对象为空，运行面板只消费规定的事件。本地运行探测两种交互方式。所有相关上下文均支持跨源隔离时，Worker 的同步标准输入通过 `SharedArrayBuffer` 和 `Atomics.wait` 等待。支持 WebAssembly JSPI 时，Pyodide 可暂停 Python 调用栈并由 Worker 接收输入消息。两种能力都缺失时，`input()` 使用预填，交互程序仍可用 `from xinjian_terminal import readline` 和 `await readline('提示')`。空白行可直接发送，「结束输入」发送 EOF，「取消输入」终止本次运行。等待输入的时间不计入运行时限。参考 [Pyodide 标准流接口](https://pyodide.org/en/0.29.3/usage/streams.html) 和 [Worker 部署说明](https://pyodide.org/en/0.29.3/usage/webworker.html)。
+3. 可选的本地 Python 构建使用固定版本的 Pyodide。脚本在独立 Worker 内运行，Worker 的 CSP 只允许读取随安装包提供的运行资源。Python 的 JS 全局对象为空，运行面板只消费规定的事件。本地运行探测两种交互方式。所有相关上下文均支持跨源隔离时，Worker 的同步标准输入通过 `SharedArrayBuffer` 和 `Atomics.wait` 等待。支持 WebAssembly JSPI 时，Pyodide 可暂停 Python 调用栈并由 Worker 接收输入消息。缺少上述能力的 Android WebView 可以通过应用拦截的本地终端请求等待输入。该通道只传递本次运行的标准输入，运行代码里的 JS 全局对象仍为空。上述能力都不可用时，`input()` 使用预填，交互程序仍可用 `from xinjian_terminal import readline` 和 `await readline('提示')`。空白行可直接发送，「结束输入」发送 EOF，「取消输入」终止本次运行。等待输入的时间不计入运行时限。参考 [Pyodide 标准流接口](https://pyodide.org/en/0.29.3/usage/streams.html) 和 [Worker 部署说明](https://pyodide.org/en/0.29.3/usage/webworker.html)。
 4. 首轮验证 `input()`、异常和 EOF、连续交互、无限循环、停止、堆限制、Matplotlib、Pillow。后续补 Turtle 的前进、转向和抬落笔，用 Canvas 渲染受限的绘图指令，再按常用教学例子扩展。完善 WebView 的导出流程和版本兼容情况。
 
 ## P1 编辑器
@@ -22,3 +22,5 @@
 运行 `python runner/prepare-python.py` 下载并校验固定的运行时和 Matplotlib、Pillow 依赖。文件生成于 `modified/assets/www/python-runtime/`，需要本地 Python 的 APK 在执行 Apktool 前跑此步骤，运行时读取包内资源。256 MiB 上限应用于 Python WASM 线性内存，安装包会包含 Pyodide 许可证和各依赖的原有许可证。
 
 运行 `node tests/regression.cjs` 检查通用功能。安装 Python Playwright 和 Chromium 后运行 `python tests/run-preview.py` 及 `python tests/run-python.py`。Windows 可将 `XJ_CHROMIUM` 设为本机 Chromium 系浏览器可执行文件的绝对路径。测试版 APK 优先在独立 Android 模拟器上确认本地 Python 是否可用和是否支持交互。
+
+使用旧版 WebView 的测试设备可以运行 `node tests/run-python-android.cjs <端口>` 测试原生输入通道。仅在测试构建开启 WebView DevTools，通过 ADB 把本机端口转发到 `webview_devtools_remote_<应用进程号>`。建议使用独立模拟器，测试会创建临时编辑文件。

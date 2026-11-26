@@ -54,6 +54,8 @@
 
 .field private keyboardViewport:Ltt/xinjian/cn/KeyboardViewport;
 
+.field private pythonTerminal:Ltt/xinjian/cn/PythonTerminal;
+
 .field private update:Ltt/xinjian/cn/UpdateBridge;
 
 .field private web:Landroid/webkit/WebView;
@@ -1153,6 +1155,19 @@
 
     if-eqz p1, :cond_6
 
+    iget-object v1, p0, Ltt/xinjian/cn/MainActivity;->pythonTerminal:Ltt/xinjian/cn/PythonTerminal;
+
+    if-eqz v1, :serve_asset
+
+    invoke-virtual {v1, p1}, Ltt/xinjian/cn/PythonTerminal;->serve(Landroid/net/Uri;)Landroid/webkit/WebResourceResponse;
+
+    move-result-object v1
+
+    if-eqz v1, :serve_asset
+
+    return-object v1
+
+    :serve_asset
     .line 704
     const-string v1, "app.xinjian.local"
 
@@ -2666,6 +2681,16 @@
 
     invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
 
+    new-instance v1, Ltt/xinjian/cn/PythonTerminal;
+
+    invoke-direct {v1}, Ltt/xinjian/cn/PythonTerminal;-><init>()V
+
+    iput-object v1, p0, Ltt/xinjian/cn/MainActivity;->pythonTerminal:Ltt/xinjian/cn/PythonTerminal;
+
+    const-string v2, "XinJianPythonTerminal"
+
+    invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
+
     new-instance v1, Ltt/xinjian/cn/LanBridge;
 
     invoke-direct {v1, p0, v0}, Ltt/xinjian/cn/LanBridge;-><init>(Landroid/content/Context;Landroid/webkit/WebView;)V
@@ -2736,6 +2761,13 @@
 .method protected onDestroy()V
     .locals 2
 
+    iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->pythonTerminal:Ltt/xinjian/cn/PythonTerminal;
+
+    if-eqz v0, :python_terminal_closed
+
+    invoke-virtual {v0}, Ltt/xinjian/cn/PythonTerminal;->reset()V
+
+    :python_terminal_closed
     iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->lan:Ltt/xinjian/cn/LanBridge;
 
     if-eqz v0, :lan_destroyed

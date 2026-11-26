@@ -16,7 +16,13 @@ var PythonRun = (function () {
       typeof Atomics.wait === 'function' && typeof Atomics.notify === 'function';
   }
 
-  function spawn(job) {
+  function nativeTerminal() {
+    var bridge = window.XinJianPythonTerminal;
+    return bridge && typeof bridge.open === 'function' && typeof bridge.send === 'function' &&
+      typeof bridge.close === 'function' ? bridge : null;
+  }
+
+  function spawn(job, isCurrent) {
     return Promise.all([fetch(workerPath), fetch('python-runtime/runtime.json')]).then(function (responses) {
       if (!responses[1].ok) throw new Error('此安装包未包含本地 Python，请使用在线运行');
       if (!responses[0].ok || responses[0].headers.get('Content-Security-Policy') !== policy()) {
@@ -38,13 +44,29 @@ var PythonRun = (function () {
           if (!e.data || e.data.kind !== 'input-capabilities') return;
           clearTimeout(timer);
           job.channel = job.interactive && e.data.shared && canShareInput() ? new SharedArrayBuffer(8 + 65536) : null;
-          resolve({ worker: worker });
+          var native = job.interactive && !job.channel && isCurrent() && nativeTerminal();
+          if (native) {
+            try { job.nativeToken = native.open(); }
+            catch (_) { /* Use Pyodide's other input modes if the app service is unavailable. */ }
+          }
+          var session = job.nativeToken;
+          resolve({
+            worker: worker,
+            dispose: session ? function () { native.close(session); } : null
+          });
         };
       });
     });
   }
 
-  function sendInput(job, text) {
+  function sendInput(job, event, text) {
+    if (event.transport === 'native') {
+      var native = nativeTerminal();
+      if (!native || !native.send(job.nativeToken, event.number, text === null ? '' : text, text === null)) {
+        throw new Error('无法发送输入，请停止后重试');
+      }
+      return;
+    }
     var header = new Int32Array(job.channel, 0, 2);
     var bytes = text === null ? null : new TextEncoder().encode(text);
     if (bytes) new Uint8Array(job.channel, 8).set(bytes);
@@ -68,5 +90,5 @@ var PythonRun = (function () {
     }));
   }
 
-  return { supported: supported, spawn: spawn, canShareInput: canShareInput, sendInput: sendInput, readFiles: readFiles };
+  return { supported: supported, spawn: spawn, canShareInput: canShareInput, nativeTerminal: nativeTerminal, sendInput: sendInput, readFiles: readFiles };
 })();

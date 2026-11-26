@@ -51,4 +51,6 @@ modified 中已包含前端和打包后的离线引擎。使用 Apktool 2.12.1 �
 
 应用更新的原生源码位于 `native/update`。改动后使用同一构建命令并追加 `--component update` 生成 smali。
 
+本地 Python 的 Android 输入通道位于 `native/python`。改动后使用 `--component python` 生成 smali。
+
 在工程根目录运行 `npm ci --prefix tests` 和 `node tests/regression.cjs`。安装 Python Playwright 和 Chromium 后执行 `python tests/run-preview.py` 检查面板、示例和错误路径（模拟在线服务）。设置 XJ_LIVE=1 后，测试会向 Wandbox 提交测试文件中专门编写的短示例。

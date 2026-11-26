@@ -88,7 +88,11 @@ def run(server, browser):
     start('print(input()); print(int(input()) + 3); print(repr(input()))', '甲\n2\n\n', interactive=False)
     expect(status).to_have_text("运行完成", timeout=30000)
     expect(out).to_have_text("甲\n5\n''")
-    print("PASS local CPython preloaded stdin")
+    start("a=input()", interactive=False)
+    expect(status).to_have_text("运行出错", timeout=30000)
+    expect(out).to_contain_text("选择「本地运行」在运行中输入")
+    expect(out).to_contain_text("EOFError")
+    print("PASS local CPython preloaded stdin and guidance when the input runs out")
 
     panel = page.locator(".run-panel")
 

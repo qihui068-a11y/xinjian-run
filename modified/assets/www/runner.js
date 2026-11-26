@@ -53,7 +53,7 @@ var CodeRunner = (function () {
     var body = panel.querySelector('.run-body');
     var stopButton = panel.querySelector('[data-act="stop"]');
     var worker, url, timer, terminal, outputView, generation = 0;
-    var request, repeat;
+    var request, repeat, disposeWorker;
     var lastInput = '';
     var actions = panel.querySelector('.run-actions');
     var copy = actions.querySelector('.run-copy');
@@ -182,7 +182,7 @@ var CodeRunner = (function () {
       var run = options.querySelector('.run-python');
       var batch = options.querySelector('.run-python-batch');
       var online = form.querySelector('.run-submit');
-      if (!PythonRun.canShareInput() && typeof WebAssembly.Suspending !== 'function') {
+      if (!PythonRun.nativeTerminal() && !PythonRun.canShareInput() && typeof WebAssembly.Suspending !== 'function') {
         var hint = document.createElement('p');
         hint.textContent = '此 WebView 的 input() 使用预填输入。交互程序可用 from xinjian_terminal import readline 和 await readline()。';
         options.appendChild(hint);
@@ -246,6 +246,8 @@ var CodeRunner = (function () {
       if (request) request.abort();
       request = null;
       clearTimeout(timer);
+      if (disposeWorker) disposeWorker();
+      disposeWorker = null;
       if (worker) worker.terminate();
       if (url) URL.revokeObjectURL(url);
       worker = url = null;
@@ -315,7 +317,7 @@ var CodeRunner = (function () {
           if (terminal !== form || generation !== current) return;
           try {
             var text = eof ? null : RunIO.stdin(input.value);
-            if (sendInput && event.transport === 'shared') sendInput(job, text);
+            if (sendInput && (event.transport === 'shared' || event.transport === 'native')) sendInput(job, event, text);
             else worker.postMessage({ kind: 'stdin', id: event.id, text: text });
             terminal.remove();
             terminal = null;
@@ -333,13 +335,15 @@ var CodeRunner = (function () {
         input.focus();
       }
       timeout(startupMs, '运行超时，已停止');
-      spawn(job).then(function (instance) {
+      spawn(job, function () { return current === generation; }).then(function (instance) {
         if (current !== generation) {
+          if (instance.dispose) instance.dispose();
           instance.worker.terminate();
           if (instance.url) URL.revokeObjectURL(instance.url);
           return;
         }
         worker = instance.worker;
+        disposeWorker = instance.dispose;
         url = instance.url;
         worker.onmessage = function (e) {
           if (current !== generation || !e.data) return;
