@@ -11,3 +11,7 @@ __pycache__/
 *.p12
 *.pfx
 *.dpapi
+# 发布产物与参考工程不进库
+/release/
+/legacy-0.4/android/build/
+*.zip

@@ -148,6 +148,10 @@
       '<div class="scroll"><div class="form">' +
       '<div class="field"><label>信笺·运行版</label>' +
       '<div class="set-note">' + (Bridge.isNative ? '版本 ' + esc(AppUpdate.status().current || '未知') : '浏览器演示模式') + '</div></div>' +
+      '<div class="field"><label>鸽屋的使用边界</label>' +
+      '<div class="set-note">只能在可信局域网里用（家里的 WiFi、或只有你自己连的手机热点）。<br>' +
+      '当前版本不做身份校验，传输也是明文：同一个网络里的人可以冒充别人、可以抓包看内容。<br>' +
+      '咖啡厅、学校、共享办公这类公共 WiFi 请不要开鸽屋。</div></div>' +
       '<div class="field"><label>图标</label>' +
       '<div class="set-note">Tabler Icons / Remix Icon</div></div>' +
       '<div class="field"><label>文档</label>' +

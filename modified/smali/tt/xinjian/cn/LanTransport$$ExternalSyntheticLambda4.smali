@@ -30,7 +30,7 @@
     .line 0
     iget-object v0, p0, Ltt/xinjian/cn/LanTransport$$ExternalSyntheticLambda4;->f$0:Ltt/xinjian/cn/LanTransport;
 
-    invoke-static {v0}, Ltt/xinjian/cn/LanTransport;->$r8$lambda$Fbb168GgYZAKtLwf5SgwoB1WAtc(Ltt/xinjian/cn/LanTransport;)V
+    invoke-static {v0}, Ltt/xinjian/cn/LanTransport;->$r8$lambda$oztljU3XsbQoUWqNLc3PvgZ91Lg(Ltt/xinjian/cn/LanTransport;)V
 
     return-void
 .end method

@@ -9,9 +9,11 @@
 # instance fields
 .field public final synthetic f$0:Ltt/xinjian/cn/LanTransport;
 
+.field public final synthetic f$1:Ljava/net/Socket;
+
 
 # direct methods
-.method public synthetic constructor <init>(Ltt/xinjian/cn/LanTransport;)V
+.method public synthetic constructor <init>(Ltt/xinjian/cn/LanTransport;Ljava/net/Socket;)V
     .locals 0
 
     .line 0
@@ -19,18 +21,22 @@
 
     iput-object p1, p0, Ltt/xinjian/cn/LanTransport$$ExternalSyntheticLambda3;->f$0:Ltt/xinjian/cn/LanTransport;
 
+    iput-object p2, p0, Ltt/xinjian/cn/LanTransport$$ExternalSyntheticLambda3;->f$1:Ljava/net/Socket;
+
     return-void
 .end method
 
 
 # virtual methods
 .method public final run()V
-    .locals 1
+    .locals 2
 
     .line 0
     iget-object v0, p0, Ltt/xinjian/cn/LanTransport$$ExternalSyntheticLambda3;->f$0:Ltt/xinjian/cn/LanTransport;
 
-    invoke-static {v0}, Ltt/xinjian/cn/LanTransport;->$r8$lambda$oztljU3XsbQoUWqNLc3PvgZ91Lg(Ltt/xinjian/cn/LanTransport;)V
+    iget-object v1, p0, Ltt/xinjian/cn/LanTransport$$ExternalSyntheticLambda3;->f$1:Ljava/net/Socket;
+
+    invoke-virtual {v0, v1}, Ltt/xinjian/cn/LanTransport;->lambda$accept$1$tt-xinjian-cn-LanTransport(Ljava/net/Socket;)V
 
     return-void
 .end method

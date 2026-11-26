@@ -54,7 +54,7 @@
 
     iget-object v4, p0, Ltt/xinjian/cn/LanTransport$$ExternalSyntheticLambda1;->f$4:Ljava/lang/String;
 
-    invoke-virtual {v0, v1, v2, v3, v4}, Ltt/xinjian/cn/LanTransport;->lambda$send$2$tt-xinjian-cn-LanTransport(Ltt/xinjian/cn/LanTransport$Peer;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+    invoke-virtual {v0, v1, v2, v3, v4}, Ltt/xinjian/cn/LanTransport;->lambda$send$3$tt-xinjian-cn-LanTransport(Ltt/xinjian/cn/LanTransport$Peer;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
 
     return-void
 .end method

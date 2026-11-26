@@ -33,6 +33,8 @@ function app(native = false, lanBridge, setup) {
     pretendToBeVisual: true, virtualConsole: vc
   });
   const w = dom.window;
+  /* 默认已看过局域网风险提示，测试里不重复弹窗；专门测弹窗的用例会自己清掉这个标记 */
+  try { w.localStorage.setItem('xj:lan:warned', '1'); } catch (error) {}
   if (lanBridge) w.XinJianLan = lanBridge;
   if (setup) setup(w);
   let nextFrame = 1;
