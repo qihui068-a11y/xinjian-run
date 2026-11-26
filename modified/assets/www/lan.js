@@ -155,6 +155,10 @@ var Lan = (function () {
     if (!text.trim()) return;
     var mid = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2);
     Pigeon.add(session.id, text, 'out', { mid: mid, delivery: 'pending' });
+    transmitText(session, mid, text);
+  }
+
+  function transmitText(session, mid, text) {
     pending[mid] = session.id;
     var queued = false;
     try { queued = on && bridge.send(session.peer, mid, text); }
@@ -339,7 +343,15 @@ var Lan = (function () {
   }
 
   function retry(session, message) {
-    if (!message || !message.name) return false;
+    if (!message || message.dir !== 'out' || !midPattern.test(message.mid || '') ||
+        !Pigeon.canSend(session.id).ok || Pigeon.blocked(session.peer) || pending[message.mid] || inflight[message.mid]) return false;
+    if (!message.kind || message.kind === 'text') {
+      if (!message.text || message.delivery === 'delivered') return false;
+      Pigeon.delivery(session.id, message.mid);
+      transmitText(session, message.mid, message.text);
+      return true;
+    }
+    if (message.kind !== 'image' || !message.name) return false;
     var source = readMedia(message.name);
     if (!source) { toast('原图已经不在了'); return false; }
     message.delivery = 'pending';

@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#FFFFFF">
 <title>信笺·运行版</title>
+<link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="ui.css">
 </head>
 <body>
 <div id="app"></div>
@@ -23,6 +25,9 @@
      app.js(核心工具) → data.js(数据层) → views/*(各视图) → boot.js(启动)
      app.js 必须最先（后面都用 esc/svg/toast/sheet），boot.js 必须最后（要 Nav.render()） -->
 <script src="app.js"></script>
+<!-- 标志性动效：仅「验证通过」一处 Lottie，运行时不联网 -->
+<script src="lottie.min.js"></script>
+<script src="motion.js"></script>
 <script src="update.js"></script>
 <script src="data.js"></script>
 <script src="lan.js"></script>

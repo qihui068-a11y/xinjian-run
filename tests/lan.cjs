@@ -48,11 +48,20 @@ module.exports = async function ({ test, app, settle }) {
       assert.equal(sent[0].id, PEER);
       assert.equal(sent[0].text, 'Hello');
       const outgoing = sent[0].mid;
-      assert.match(find('.msg-st').textContent, /发送中/);
+      const message = () => w.Pigeon.get('lan-' + PEER).msgs[0];
+      assert.equal(message().delivery, 'pending');
+      assert.equal(find('.msg-st'), null);
       emit({ t: 'delivery', id: 'xj-555555555555', mid: outgoing, ok: true });
-      assert.match(find('.msg-st').textContent, /发送中/);
+      assert.equal(message().delivery, 'pending', 'another device cannot acknowledge the message');
+      emit({ t: 'delivery', id: PEER, mid: outgoing, ok: false });
+      assert.equal(message().delivery, 'failed');
+      find('[data-retry]').click();
+      assert.equal(sent.length, 2);
+      assert.equal(sent[1].mid, outgoing, 'retry must reuse the original message id');
+      assert.equal(w.Pigeon.get('lan-' + PEER).msgs.length, 1);
       emit({ t: 'delivery', id: PEER, mid: outgoing, ok: true });
-      assert.equal(find('.msg-st').textContent, '已送达');
+      assert.equal(message().delivery, 'delivered');
+      assert.equal(find('.msg-st'), null);
       const incoming = { t: 'msg', id: PEER, mid: 'remote-1', text: '<b>Hi</b>' };
       emit(incoming);
       emit(incoming);
@@ -310,11 +319,11 @@ module.exports = async function ({ test, app, settle }) {
       assert.equal(msg.delivery, 'pending');
       w.Nav.reset('chat', { sid: s.id });
       await settle(w);
-      assert.match(find('.msg-st').textContent, /发送中/);
+      assert.equal(find('.msg-st'), null);
       emit({ t: 'delivery', id: PEER, mid: sent[0].mid, ok: true });
       await settle(w);
       assert.equal(w.Pigeon.get(s.id).msgs[0].delivery, 'delivered');
-      assert.match(find('.msg-st').textContent, /已送达/);
+      assert.equal(find('.msg-st'), null);
     } finally { a.close(); }
   });
 
@@ -350,7 +359,7 @@ module.exports = async function ({ test, app, settle }) {
       w.Pigeon.add(s.id, '', 'out', { kind: 'image', name: 'b.jpg', mid: 'fail-1', delivery: 'failed', w: 800, h: 600 });
       w.Nav.reset('chat', { sid: s.id });
       await settle(w);
-      assert.match(find('.msg-st').textContent, /未送达/);
+      assert.match(find('.msg-st button').getAttribute('aria-label'), /未送达/);
       const retry = find('[data-retry]');
       assert.ok(retry, 'failed image should offer a retry button');
       retry.click();

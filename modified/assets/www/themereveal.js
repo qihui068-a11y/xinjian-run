@@ -21,12 +21,12 @@
 'use strict';
 
 var ThemeReveal = (function () {
-  var DURATION = 300;
+  var DURATION = 320;   /* 规范：圆形揭示 320ms */
   var MIN_DURATION = 200;
   var MAX_DURATION = 700;
   var FADE_DURATION = 120;
   var FADE_FROM = 0.6;
-  var EASE = 'cubic-bezier(.2,.8,.2,1)';
+  var EASE = 'cubic-bezier(.45,.05,.35,1)';   /* --e-inout */
 
   /* 两枚图标与 React 版一致（太阳 / 月亮），24 网格、1.8 描边 */
   var ICON = {
@@ -88,6 +88,7 @@ var ThemeReveal = (function () {
 
   /* 按钮静态 HTML：视图里先拼出来，attach() 时再补状态 */
   function buttonHtml() {
+    if (typeof manualAppearance !== 'undefined' && !manualAppearance) return '';
     return '<button class="theme-btn" type="button" data-theme-btn' +
       ' aria-pressed="false" aria-label="切换主题" title="切换主题">' +
       iconFor(current()) + '</button>';

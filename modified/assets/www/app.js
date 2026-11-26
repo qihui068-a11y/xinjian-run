@@ -20,7 +20,12 @@
 
 
   var SVG = {
-    back: '<path d="M15 6l-6 6 6 6"/>',
+    back: '<path d="M14 5l-7 7 7 7M7 12h13"/>',
+    chevron: '<path d="M9 6l6 6-6 6"/>',
+    send: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+    homeFill: '<path d="M4 10l8-6 8 6v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/>',
+    meFill: '<circle cx="12" cy="7.5" r="3.5"/><path d="M5 20v-2a7 7 0 0 1 14 0v2z"/>',
+    createFill: '<circle cx="12" cy="12" r="9"/><path class="tab-fill-mark" d="M12 8v8m-4-4h8"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     pencil: '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L4.6 17.4z"/><path d="M14.5 5.5l3 3"/>',
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
@@ -55,7 +60,8 @@
   };
 
   function svg(n) {
-    return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (SVG[n] || '') + '</svg>';
+    return '<svg class="ui-icon' + (/Fill$/.test(n) ? ' tab-fill' : '') +
+      '" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + (SVG[n] || '') + '</svg>';
   }
 
 
@@ -75,24 +81,44 @@
   }
 
 
+  /* 弹层离场结束后摘节点。关闭动效时直接摘除。 */
+  function dismiss(mask) {
+    var anim = (typeof Anim !== 'undefined') && Anim.enabled();
+    if (!anim) { mask.remove(); return; }
+    mask.classList.add('m-leave');
+    mask.setAttribute('aria-hidden', 'true');
+    var sheet = mask.querySelector('.sheet');
+    if (sheet) sheet.addEventListener('animationend', function () { mask.remove(); }, { once: true });
+    setTimeout(function () { mask.remove(); }, 450);
+  }
+
   /* items: [{label, value, danger}] | 'sep' | {title:'…'} */
-  function sheet(title, items) {
+  function sheet(title, items, alert) {
     return new Promise(function (resolve) {
       var mask = document.createElement('div');
-      mask.className = 'mask';
-      var html = '<div class="sheet">';
+      var previousFocus = document.activeElement;
+      mask.className = alert ? 'mask alert-mask' : 'mask';
+      var html = '<div class="sheet' + (alert ? ' sheet-alert' : '') +
+        '" role="' + (alert ? 'alertdialog' : 'dialog') + '" aria-modal="true" aria-label="' + esc(title || '选项') + '">';
       if (title) html += '<div class="sheet-title">' + esc(title) + '</div>';
       items.forEach(function (it, idx) {
         if (it === 'sep') { html += '<div class="sheet-sep"></div>'; return; }
         if (it.title) { html += '<div class="sheet-title">' + esc(it.title) + '</div>'; return; }
-        html += '<button type="button" class="sheet-item" data-i="' + idx + '"' +
-          (it.danger ? ' style="opacity:.75"' : '') + '>' + esc(it.label) + '</button>';
+        html += '<button type="button" class="sheet-item' + (it.side ? ' sheet-choice' : '') +
+          '" data-i="' + idx + '"' + (it.current ? ' aria-current="true"' : '') +
+          (it.key ? ' data-fmt="' + esc(it.key) + '"' : '') + '>' + esc(it.label) +
+          (it.side ? '<span>' + esc(it.side) + '</span>' : '') + '</button>';
       });
       html += '</div>';
       mask.innerHTML = html;
       document.body.appendChild(mask);
-      var first = mask.querySelector('button');
-      if (first) first.focus();
+      var first = mask.querySelector('[aria-current="true"]') || mask.querySelector('button');
+      if (first) first.focus({ preventScroll: true });
+      function restoreFocus() {
+        if (previousFocus && previousFocus.isConnected && !previousFocus.matches('input, textarea')) {
+          previousFocus.focus({ preventScroll: true });
+        }
+      }
 
       var layer = null, settled = false;
 
@@ -100,18 +126,23 @@
       function close(v) {
         if (settled) return;
         settled = true;
-        mask.remove();
+        dismiss(mask);
         if (layer) Back.done(layer);
+        restoreFocus();
         resolve(v);
       }
       /* 系统返回键关闭：历史已经退过了，这里只收拾界面 */
       layer = Back.open(function () {
         if (settled) return;
         settled = true;
-        mask.remove();
+        dismiss(mask);
+        restoreFocus();
         resolve(null);
       });
 
+      mask.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { e.preventDefault(); close(null); }
+      });
       mask.addEventListener('click', function (e) {
         if (e.target === mask) return close(null);
         var it = e.target.closest('.sheet-item');
@@ -128,7 +159,7 @@
       { label: okLabel || '确定', value: true, danger: true },
       'sep',
       { label: '取消', value: false }
-    ]).then(function (v) { return v === true; });
+    ], true).then(function (v) { return v === true; });
   }
 
 
@@ -137,7 +168,7 @@
       var mask = document.createElement('div');
       mask.className = 'mask';
       mask.innerHTML =
-        '<div class="sheet">' +
+        '<div class="sheet" role="dialog" aria-modal="true" aria-label="' + esc(title) + '">' +
         '<div class="sheet-title">' + esc(title) + '</div>' +
         '<div class="form" style="padding:4px 22px 14px">' +
         '<div class="field"><input type="text" id="_ipt" value="' + esc(value || '') +
@@ -158,14 +189,14 @@
       function close(v) {
         if (settled) return;
         settled = true;
-        mask.remove();
+        dismiss(mask);
         if (layer) Back.done(layer);
         resolve(v);
       }
       layer = Back.open(function () {
         if (settled) return;
         settled = true;
-        mask.remove();
+        dismiss(mask);
         resolve(null);
       });
       function submit() {
@@ -211,7 +242,7 @@
       function close(v) {
         if (settled) return;
         settled = true;
-        mask.remove();
+        dismiss(mask);
         if (layer) Back.done(layer);
         resolve(v);
       }
@@ -219,7 +250,7 @@
       layer = Back.open(function () {
         if (settled) return;
         settled = true;
-        mask.remove();
+        dismiss(mask);
         resolve(null);
       });
       mask.addEventListener('click', function (e) {
@@ -248,7 +279,9 @@
     var v = themeNativePending;
     if (v === null || v === themeApplied) return;
     themeApplied = v;
-    try { localStorage.setItem('xj:dark', v ? '1' : '0'); } catch (e) {}
+    if (manualAppearance) {
+      try { localStorage.setItem('xj:dark', v ? '1' : '0'); } catch (e) {}
+    }
     try { if (window.Bridge && Bridge.theme) Bridge.theme(!!v); } catch (e) {}
   }
 
@@ -285,11 +318,64 @@
     queueThemeFlush();
   }
 
-  var darkPref = false;
+  function nativeAppearance() {
+    try {
+      var bridge = window.XinJianBridge;
+      if (bridge && typeof bridge.appearance === 'function') {
+        var fields = bridge.appearance().split('|');
+        return { api: Number(fields[0]), dark: fields[1] === '1', scale: Number(fields[2]) };
+      }
+    } catch (e) {}
+    return null;
+  }
 
-  try { darkPref = localStorage.getItem('xj:dark') === '1'; } catch (e) {}
+  var firstAppearance = nativeAppearance();
+  var manualAppearance = firstAppearance
+    ? firstAppearance.api < 29
+    : /Android [1-9](?:[.; )]|$)/.test(navigator.userAgent);
+  var colorPreference = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+  var appearanceTarget;
+  var appearanceTransition;
 
-  applyTheme(darkPref);
+  function refreshAppearance(animate) {
+    var prefs = nativeAppearance();
+    var root = document.documentElement;
+    if (prefs && prefs.scale >= .5 && prefs.scale <= 3) root.style.setProperty('--ui-scale', prefs.scale);
+    if (manualAppearance) {
+      if (appearanceTarget === undefined) {
+        var stored = false;
+        try { stored = localStorage.getItem('xj:dark') === '1'; } catch (e) {}
+        appearanceTarget = stored;
+        applyTheme(stored);
+      }
+      return;
+    }
+    var dark = prefs ? prefs.dark : !!(colorPreference && colorPreference.matches);
+    if (dark === appearanceTarget) return;
+    appearanceTarget = dark;
+    if (appearanceTransition) appearanceTransition.skipTransition();
+    if (!animate || !Anim.enabled() || !document.startViewTransition || !root.animate) {
+      applyTheme(dark);
+      return;
+    }
+    var radius = Math.hypot(innerWidth, innerHeight) / 2;
+    var transition = document.startViewTransition(function () { applyTheme(dark); });
+    appearanceTransition = transition;
+    transition.ready.then(function () {
+      root.animate({ clipPath: ['circle(0px at 50% 50%)', 'circle(' + radius + 'px at 50% 50%)'] },
+        { duration: 320, easing: 'ease-out', pseudoElement: '::view-transition-new(root)' });
+    }).catch(function () {});
+    transition.finished.then(function () {
+      if (appearanceTransition === transition) appearanceTransition = null;
+    });
+  }
+
+  refreshAppearance(false);
+  window.__xjAppearanceChanged = function () { refreshAppearance(true); };
+  if (colorPreference) {
+    if (colorPreference.addEventListener) colorPreference.addEventListener('change', window.__xjAppearanceChanged);
+    else if (colorPreference.addListener) colorPreference.addListener(window.__xjAppearanceChanged);
+  }
 
 
   /* ================= 系统栏占位 =================
@@ -310,11 +396,14 @@
       }
     } catch (e) {}
     var root = document.documentElement;
-    if (t > 0) root.style.setProperty('--safe-t', t + 'px');
+    var ratio = window.devicePixelRatio || 1;
+    // 原生上报物理像素，WebView 布局使用 CSS 像素。
+    if (insets && Number.isFinite(insets.top)) {
+      root.style.setProperty('--safe-t', Math.max(0, Math.ceil(t / ratio)) + 'px');
+    }
     // 旧 Android 的可见区域可能把键盘也算作底部系统栏。
-    if (insets && !editorKeyboardVisible && b / (window.devicePixelRatio || 1) < 80) {
-      if (b > 0) root.style.setProperty('--safe-b', b + 'px');
-      else root.style.removeProperty('--safe-b');
+    if (insets && Number.isFinite(insets.bottom) && !editorKeyboardVisible && b / ratio < 80) {
+      root.style.setProperty('--safe-b', Math.max(0, Math.ceil(b / ratio)) + 'px');
     }
     return { top: t, bottom: b };
   }
@@ -405,6 +494,7 @@
     go: function (name, params) {
       var entry = { name: name, params: params || {}, layer: null };
       this.stack.push(entry);
+      if (!this.motion) this.motion = 'push';
       this.render();
       // 压一层历史，返回键就能逐级退回
       var onBack = function () {
@@ -423,9 +513,22 @@
     back: function (silent) {
       if (this.stack.length <= 1) return false;
       var entry = this.stack.pop();
+      this.motion = 'pop';
       this.render();
       if (!silent && entry.layer) Back.done(entry.layer);
       return true;
+    },
+    /* 一级页之间切换：不压栈，栈深永远是 2（home + 当前 tab） */
+    tab: function (name) {
+      var top = this.stack[this.stack.length - 1];
+      if (top && top.name === name) return;
+      this.motion = 'tab';
+      if (name === 'home') { this.reset('home'); return; }
+      if (this.stack.length > 1) {
+        var e = this.stack.pop();
+        if (e.layer) Back.done(e.layer);
+      }
+      this.go(name);
     },
     reset: function (name, params) {
       while (this.stack.length > 1) {
@@ -436,13 +539,32 @@
       this.render();
     },
     render: function () {
+      if (this.finishTransition) this.finishTransition();
       var cur = this.stack[this.stack.length - 1];
-      if ($app.firstChild && $app.firstChild.__cleanup) $app.firstChild.__cleanup();
-      $app.innerHTML = '';
+      var old = $app.firstElementChild;
+      if (old && old.__cleanup) old.__cleanup();
+      var motion = this.motion;
+      this.motion = '';
       var el = document.createElement('div');
       el.className = 'view' + (cur.name === 'home' ? '' : ' full');
-      $app.appendChild(el);
       VIEWS[cur.name](el, cur.params);
+      if (el.querySelector('.tabbar')) el.classList.add('has-tabs');
+      var topbar = el.querySelector('.topbar');
+      var scrolling = el.querySelector('.scroll, .editor-wrap textarea, .chat-list');
+      if (topbar) {
+        Array.prototype.forEach.call(topbar.querySelectorAll('[data-act="back"],[data-act="leave"]'), function (button) {
+          button.setAttribute('aria-label', '返回');
+        });
+        if (scrolling) {
+          scrolling.addEventListener('scroll', function () {
+            topbar.classList.toggle('is-scrolled', scrolling.scrollTop > 8);
+          }, { passive: true });
+        }
+      }
+      $app.insertBefore(el, old);
+      if (!old) return;
+      if (motion && Anim.swap) this.finishTransition = Anim.swap(old, el, motion);
+      else old.remove();
     }
   };
 
@@ -452,13 +574,13 @@
 
 
   function tabbar(active) {
-    return '<div class="tabbar">' +
-      '<button class="tab ' + (active === 'home' ? 'active' : '') + '" data-tab="home">' +
-      svg('home') + '<span>主页</span></button>' +
-      '<button class="tab" data-tab="create">' + svg('plus') + '<span>新建</span></button>' +
-      '<button class="tab ' + (active === 'me' ? 'active' : '') + '" data-tab="me">' +
-      svg('me') + '<span>小家</span></button>' +
-      '</div>';
+    var links = [['home', '主页', 'home', 'homeFill'], ['create', '新建', 'plus', 'createFill'], ['me', '小家', 'me', 'meFill']];
+    return '<nav class="tabbar glass" aria-label="主导航">' + links.map(function (item) {
+      var selected = active === item[0];
+      return '<button class="tab' + (selected ? ' active' : '') + '" data-tab="' + item[0] + '"' +
+        (selected ? ' aria-current="page"' : '') + '>' + svg(item[selected ? 3 : 2]) +
+        '<span>' + item[1] + '</span></button>';
+    }).join('') + '</nav>';
   }
 
 

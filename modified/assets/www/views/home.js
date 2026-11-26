@@ -17,7 +17,7 @@
       '</span>' +
       '<span class="theme-slot">' + ThemeReveal.buttonHtml() + '</span>' +
       '</div>' +
-      '<div class="entries">' +
+      '<div class="scroll entries">' +
       '<button class="entry" data-go="shelf">' + svg('book') + '<span>书架</span></button>' +
       '<button class="entry" data-go="town">' + svg('town') + '<span>小镇</span></button>' +
       '<button class="entry" data-go="yard">' + svg('server') + '<span>后院</span></button>' +
@@ -35,8 +35,7 @@
       var t = e.target.closest('[data-tab]');
       if (t) {
         var k = t.dataset.tab;
-        if (k === 'home') return;
-        return Nav.go(k);
+        return Nav.tab(k);
       }
       var g = e.target.closest('[data-go]');
       if (g) {

@@ -8,7 +8,7 @@ const { JSDOM, VirtualConsole } = require('jsdom');
 const root = path.resolve(__dirname, '..');
 const www = path.join(root, 'modified/assets/www');
 const html = fs.readFileSync(path.join(www, 'index.html'), 'utf8');
-const css = fs.readFileSync(path.join(www, 'style.css'), 'utf8');
+const css = ['tokens.css', 'style.css', 'ui.css'].map(name => fs.readFileSync(path.join(www, name), 'utf8')).join('\n');
 const results = [];
 const languages = [
   ['py', 'Python', 'def greet(name):\n    # 注释\n    return print("你好", name)\n'],
@@ -35,6 +35,8 @@ function app(native = false, lanBridge, setup) {
   const w = dom.window;
   /* 默认已看过局域网风险提示，测试里不重复弹窗；专门测弹窗的用例会自己清掉这个标记 */
   try { w.localStorage.setItem('xj:lan:warned', '1'); } catch (error) {}
+  /* 默认关动效：离场动画会晚 200ms 摘节点，断言会飘；动效用例自己打开 */
+  try { w.localStorage.setItem('xj:anim', 'off'); } catch (error) {}
   if (lanBridge) w.XinJianLan = lanBridge;
   if (setup) setup(w);
   let nextFrame = 1;
@@ -59,6 +61,8 @@ function app(native = false, lanBridge, setup) {
   }
   const style = w.document.createElement('style'); style.textContent = css; w.document.head.append(style);
   for (const [, src] of html.matchAll(/<script src="([^"]+)"/g)) {
+    /* 第三方 Lottie 运行时不在 jsdom 里跑：动效用例只验「有没有调用」，库本身在真浏览器里测 */
+    if (src === 'lottie.min.js') { w.lottie = undefined; continue; }
     vm.runInContext(fs.readFileSync(path.join(www, src), 'utf8'), dom.getInternalVMContext(), { filename: src });
   }
   return { w, files, errors, close() {
@@ -97,6 +101,7 @@ function input(w, source) {
       assert.match(a.w.document.title, /信笺/);
       assert.match(a.w.document.body.textContent, /书架/);
       a.w.Nav.reset('create'); await settle(a.w);
+      a.w.document.querySelector('#fmtSum').click();
       const chips = [...a.w.document.querySelectorAll('[data-fmt]')];
       assert.deepEqual(chips.map(n => n.dataset.fmt), ['txt','md','py','html','css','java','json','js','xml','c','cpp','cs','bf','bfh']);
       assert.equal(new Set(chips.map(n => n.dataset.fmt)).size, 14);
@@ -111,7 +116,9 @@ function input(w, source) {
       const a = app(); try {
         const w = a.w;
         w.Nav.reset('create'); await settle(w);
+        w.document.querySelector('#fmtSum').click();
         w.document.querySelector('[data-fmt="' + ext + '"]').click();
+        await settle(w);
         w.document.querySelector('#nameIpt').value = ext === 'java' ? 'Main' : 'hello';
         w.document.querySelector('[data-act="ok"]').click(); await settle(w);
         const name = (ext === 'java' ? 'Main' : 'hello') + '.' + ext;
@@ -277,6 +284,7 @@ function input(w, source) {
   await require('./web-cases.cjs')({ test, app, settle, preFor, texts, input, languages });
   await require('./editor-tools.cjs')({ test, app, settle });
   await require('./lan.cjs')({ test, app, settle });
+await require('./motion.cjs')({ test, app, settle });
   await require('./update.cjs')({ test, app });
   await require('./runner-io.cjs')({ test, app });
   await test('Large source tokenizer completes without hanging or source loss', async () => {

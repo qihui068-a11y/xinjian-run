@@ -25,8 +25,14 @@
   /* 只要用户关了、或系统要求减少动效，就一律不动 */
   function enabled() { return !userOff() && !systemReduced(); }
 
+  /* html.anim-off 是 CSS 侧的开关：关掉时全站 transition/animation 直接归零 */
+  function syncClass() {
+    try { global.document.documentElement.classList.toggle('anim-off', !enabled()); } catch (e) {}
+  }
+
   function setEnabled(on) {
     try { global.localStorage.setItem(KEY, on ? 'on' : 'off'); } catch (e) {}
+    syncClass();
   }
 
   /* ---------- 1) Staggered Block Selection ----------
@@ -36,7 +42,7 @@
     opts = opts || {};
     var list = Array.prototype.slice.call(nodes || []);
     if (!list.length) return;
-    var step = opts.step || 24;
+    var step = opts.step || 18;   /* 规范：错峰 18ms */
     var cls = opts.cls || 'stg-run';
     var fromBottom = opts.fromBottom !== false;
 
@@ -65,9 +71,48 @@
     }, 220 + maxDelay);
   }
 
+  syncClass();
+
+  function swap(oldEl, newEl, mode) {
+    if (!enabled() || typeof newEl.animate !== 'function') {
+      oldEl.remove();
+      return null;
+    }
+    if (oldEl.contains(document.activeElement)) document.activeElement.blur();
+    oldEl.inert = true;
+    oldEl.setAttribute('aria-hidden', 'true');
+    oldEl.style.pointerEvents = 'none';
+    newEl.style.zIndex = '25';
+    var incoming, outgoing, timer;
+    function finish() {
+      clearTimeout(timer);
+      if (incoming) incoming.cancel();
+      if (outgoing) outgoing.cancel();
+      oldEl.remove();
+      newEl.style.zIndex = '';
+    }
+    try {
+      var tab = mode === 'tab';
+      var shift = mode === 'pop' ? -16 : 16;
+      var frames = tab ? [{ opacity: 0 }, { opacity: 1 }]
+        : [{ opacity: .6, transform: 'translateX(' + shift + 'px)' }, { opacity: 1, transform: 'none' }];
+      var duration = tab ? 120 : 350;
+      var easing = tab ? 'linear' : 'cubic-bezier(.22,.78,.24,1)';
+      incoming = newEl.animate(frames, { duration: duration, easing: easing });
+      outgoing = oldEl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: duration, easing: easing });
+      incoming.onfinish = finish;
+      timer = setTimeout(finish, duration + 60);
+      return finish;
+    } catch (error) {
+      finish();
+      return null;
+    }
+  }
+
   global.Anim = {
     enabled: enabled,
     setEnabled: setEnabled,
-    stagger: stagger
+    stagger: stagger,
+    swap: swap
   };
 })(window);

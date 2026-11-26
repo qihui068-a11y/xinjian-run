@@ -13,7 +13,7 @@
     var sel = {};
 
     el.innerHTML =
-      '<div class="topbar" id="shelfBar"></div>' +
+      '<div class="topbar has-actions" id="shelfBar"></div>' +
       '<div class="scroll" id="shelfScroll"><div class="grid" id="grid"></div></div>' +
       '<input type="file" id="importer" multiple ' +
       'style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0">';

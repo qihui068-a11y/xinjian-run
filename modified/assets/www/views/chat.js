@@ -154,13 +154,13 @@
         '<span class="ct-entry-ico">' + svg('userPlus') + '</span>' +
         '<span class="ct-entry-main">验证消息</span>' +
         (waiting ? '<span class="ct-badge">' + (waiting > 99 ? '99+' : waiting) + '</span>' : '') +
-        '<span class="ct-arrow">' + svg('back') + '</span></button>';
+        '<span class="ct-arrow">' + svg('chevron') + '</span></button>';
       var fs = Pigeon.friends();
       if (fs.length) h += '<div class="ct-section">联系人</div>';
       if (!fs.length) {
         h += '<div class="ct-empty">还没有联系人<br><small>在鸽屋打开局域网，聊过一句就算认识</small></div>';
       } else {
-        h += fs.map(function (f) {
+        h += '<div class="ct-group">' + fs.map(function (f) {
           var name = f.alias || f.name || f.id;
           return '<div class="ct-row" data-peer="' + esc(f.id) + '">' +
             '<div class="ct-actions">' +
@@ -174,7 +174,7 @@
             '<span class="ct-sub">' + esc(subOf(f)) + '</span></span>' +
             '<span class="ct-dot' + (Lan.peer(f.id) && !f.blocked ? ' on' : '') + '"></span>' +
             '</button></div>';
-        }).join('');
+        }).join('') + '</div>';
       }
       listEl.innerHTML = h;
     }
@@ -236,12 +236,23 @@
           return render();
         }
         var label = f.alias || f.name || f.id;
+        var rowEl = act.closest('.ct-row');
         confirmBox('删除「' + label + '」和聊天记录？', '删除').then(function (ok) {
           if (!ok) return;
-          if (Lan.running()) Lan.dropContact(f.id);
-          else Pigeon.deleteFriend(f.id);
-          toast('已删除');
-          render();
+          var animOn = typeof Anim !== 'undefined' && Anim.enabled();
+          function finish() {
+            if (Lan.running()) Lan.dropContact(f.id);
+            else Pigeon.deleteFriend(f.id);
+            toast('已删除');
+            render();
+          }
+          /* 规范第 12 条：先失焦 200ms，再塌陷 260ms，最后才从列表移除 */
+          if (animOn && rowEl) {
+            rowEl.classList.add('leaving');
+            setTimeout(finish, 460);
+          } else {
+            finish();
+          }
         });
         return;
       }
@@ -298,6 +309,8 @@
       if (btn.dataset.req === 'accept') {
           Pigeon.acceptRequest(peer);
         if (Lan.running()) Lan.accept(peer);
+        /* 全站唯一一处 Lottie：验证通过的高光；关动效时自动不播 */
+        if (typeof Motion !== 'undefined') Motion.verify();
         toast('已添加');
         render();
       } else {
@@ -323,6 +336,7 @@
     var s = Pigeon.get(p && p.sid);
     if (!s) { Nav.back(false); return; }
     var lanChat = !!s.peer;
+    el.classList.add('chat-view');
 
     var acts = '';
     for (var k = 0; !lanChat && k < CHAT_ACTS.length; k++) {
@@ -359,7 +373,10 @@
     /* 输入框空着 → 显示 +；有字 → 显示 发送 */
     function paintSend() {
       var has = ipt.value.trim() !== '';
-      sendBtn.textContent = has || lanChat ? '发送' : '+';
+      sendBtn.innerHTML = has || lanChat
+        ? svg('send') + '<span class="send-label">发送</span>' : '+';
+      sendBtn.setAttribute('aria-label', has || lanChat ? '发送消息' : '附件');
+      sendBtn.classList.toggle('ready', has && !ipt.disabled);
       sendBtn.classList.toggle('plus', !has && !lanChat);
       sendBtn.disabled = lanChat && !has;
     }
@@ -409,15 +426,14 @@
         return '<div class="bubble media"><div class="msg-loc">' + svg('pin') +
           '<span>' + esc(locText(m)) + '</span></div>';
       }
-      return '<div class="bubble">' + esc(m.text) +
-        (m.dir === 'out' ? '<div class="msg-st">' + deliveryText(m) + '</div>' : '') + '</div>';
+      return '<div class="bubble">' + esc(m.text);
     }
 
-    function deliveryText(message) {
-      if (!lanChat) return '本机 · 未送达';
-      if (message.delivery === 'delivered') return '已送达';
-      if (message.delivery === 'pending') return '发送中…';
-      return Lan.pending(message.mid) ? '发送中…' : '未送达';
+    function failedDelivery(message) {
+      if (!lanChat || message.dir !== 'out' || !message.mid) return '';
+      if (message.delivery !== 'failed' && (message.delivery || Lan.pending(message.mid))) return '';
+      return '<div class="msg-st"><button type="button" data-retry="' + esc(message.mid) +
+        '" aria-label="未送达，重发"><span aria-hidden="true">!</span>重发</button></div>';
     }
 
     /* 对方终止通讯后只弹一次三选一：删除 / 备份后删除 / 保留 */
@@ -452,23 +468,18 @@
     function render() {
       var cur = Pigeon.get(s.id);
       if (!cur) return;
-      var h = '', i;
-      for (i = 0; i < cur.msgs.length; i++) {
+      var h = '', previous, groupStart;
+      for (var i = 0; i < cur.msgs.length; i++) {
         var m = cur.msgs[i];
-        var out = m.dir === 'out';
-        var body = bodyOf(m);
-        /* 非文字消息：气泡要无条件闭合；「未送达」只在自己的消息上标 */
-        if (m.kind && m.kind !== 'text') {
-          if (out) {
-            body += '<div class="msg-st">' + deliveryText(m) + '</div>';
-            /* 失败才给重发：自动重试两次都过不去，才轮到用户点 */
-            if (m.kind === 'image' && m.delivery === 'failed' && m.mid) {
-              body += '<button type="button" class="img-retry" data-retry="' + esc(m.mid) + '">重发</button>';
-            }
-          }
-          body += '</div>';
+        var grouped = previous && previous.dir === m.dir && Number.isFinite(m.t) &&
+          Number.isFinite(groupStart) && m.t >= groupStart && m.t - groupStart < 300000;
+        if (!grouped) {
+          groupStart = m.t;
+          if (Number.isFinite(m.t)) h += '<div class="msg-time">' + esc(fmtTime(m.t)) + '</div>';
         }
-        h += '<div class="msg ' + (out ? 'out' : 'in') + '">' + body + '</div>';
+        h += '<div class="msg ' + (m.dir === 'out' ? 'out' : 'in') +
+          (grouped ? ' is-continuation' : '') + '">' + bodyOf(m) + failedDelivery(m) + '</div></div>';
+        previous = m;
       }
       listEl.innerHTML = h || '<div class="chat-tip">这里还没有消息</div>';
       listEl.scrollTop = listEl.scrollHeight;
@@ -728,10 +739,10 @@
     function paint() {
       var f = Pigeon.friend(peer) || {};
       listEl.innerHTML =
-        rowHtml('note', 'pencil', '备注', f.alias || '未设置') +
-        rowHtml('mute', 'lock', '消息免打扰', f.muted ? '已开启' : '未开启') +
-        rowHtml('bt', 'share', '切换蓝牙通讯', '未实现') +
-        rowHtml('p2p', 'server', 'p2p 通讯', '未实现') +
+        rowHtml('note', null, '备注', f.alias || '未设置') +
+        rowHtml('mute', null, '消息免打扰', f.muted ? '已开启' : '未开启') +
+        rowHtml('bt', null, '切换蓝牙通讯', '未实现') +
+        rowHtml('p2p', null, 'p2p 通讯', '未实现') +
         rowHtml('del', 'trash', '终结通讯', '');
     }
     paint();

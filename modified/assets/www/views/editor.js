@@ -17,7 +17,7 @@
 
     el.innerHTML =
       '<div class="topbar editor-bar" id="edBar"></div>' +
-      '<div class="editor-wrap">' +
+      '<div class="editor-workspace"><div class="editor-wrap">' +
       '<div class="gutter"><div class="gutter-inner" id="gin"></div></div>' +
       '<div class="code-area' + (plain ? ' plain' : '') + '" id="ca">' +
       '<pre id="pre" aria-hidden="true"></pre><textarea id="ta" aria-label="文本编辑区" ' +
@@ -25,12 +25,14 @@
       'wrap="' + (plain ? 'soft' : 'off') + '"></textarea>' +
       '</div></div>' +
       '<div class="md-view hidden" id="mdView"></div>' +
-      '<section class="run-panel" hidden><div class="run-bar">' +
+      '<section class="run-panel" hidden>' +
+      '<div class="run-resize" tabindex="0" role="separator" aria-orientation="horizontal" aria-label="调整运行面板高度" aria-valuemin="20" aria-valuemax="82" aria-valuenow="45"></div>' +
+      '<div class="run-bar">' +
       '<strong class="run-status" role="status"></strong>' +
       '<button data-act="stop" hidden>停止</button><button data-act="closeRun">关闭</button>' +
       '</div><div class="run-body"></div><div class="run-actions" hidden>' +
       '<button type="button" class="run-copy">复制结果</button><button type="button" class="run-clear">清空终端</button>' +
-      '<button type="button" class="run-repeat" hidden>重新运行</button></div></section>' +
+      '<button type="button" class="run-repeat" hidden>重新运行</button></div></section></div>' +
       '<div class="statusbar">' +
       '<span id="stPos">1:1</span>' +
       '<span id="stWords">0 字</span>' +
@@ -55,7 +57,85 @@
     var isMd = (ext === 'md');
 
     var panel = el.querySelector('.run-panel');
-    var runner = CodeRunner.attach(panel);
+    var runner = CodeRunner.attach(panel, function (visible) {
+      el.classList.toggle('editor-run-open', visible);
+      paintSymbols();
+    });
+    var grip = panel.querySelector('.run-resize');
+    var workspace = panel.parentElement;
+    var drag;
+    var scale = 1;
+    var pinch;
+
+    function resizePanel(percent) {
+      var size = Math.max(20, Math.min(82, Math.round(percent)));
+      panel.style.setProperty('--run-size', size + '%');
+      grip.setAttribute('aria-valuenow', size);
+    }
+
+    grip.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0 || drag || !workspace.clientHeight) return;
+      e.preventDefault();
+      drag = { id: e.pointerId, top: e.clientY, height: panel.offsetHeight };
+      grip.setPointerCapture(e.pointerId);
+    });
+    grip.addEventListener('pointermove', function (e) {
+      if (!drag || drag.id !== e.pointerId || !workspace.clientHeight) return;
+      resizePanel(100 * (drag.height + drag.top - e.clientY) / workspace.clientHeight);
+    });
+    grip.addEventListener('lostpointercapture', function (e) {
+      if (drag && drag.id === e.pointerId) drag = null;
+    });
+    grip.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      e.preventDefault();
+      resizePanel(100 * panel.offsetHeight / workspace.clientHeight + (e.key === 'ArrowUp' ? 5 : -5));
+    });
+
+    function zoomCode(next, clientX, clientY) {
+      next = Math.max(.65, Math.min(2.4, next));
+      if (next === scale) return;
+      var rect = ta.getBoundingClientRect();
+      var x = Math.max(0, clientX - rect.left), y = Math.max(0, clientY - rect.top);
+      var left = (ta.scrollLeft + x) * next / scale - x;
+      var top = (ta.scrollTop + y) * next / scale - y;
+      scale = next;
+      wrap.style.setProperty('--editor-font-size', (14 * scale) + 'px');
+      ta.scrollLeft = left;
+      ta.scrollTop = top;
+      syncScroll();
+    }
+
+    function touchDistance(touches) {
+      return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+    }
+
+    wrap.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 2 || !wrap.contains(e.touches[0].target) || !wrap.contains(e.touches[1].target)) return;
+      var distance = touchDistance(e.touches);
+      if (!distance) return;
+      pinch = { distance: distance, scale: scale };
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+    wrap.addEventListener('touchmove', function (e) {
+      if (!pinch) return;
+      if (e.cancelable) e.preventDefault();
+      if (e.touches.length !== 2) return;
+      var a = e.touches[0], b = e.touches[1];
+      zoomCode(pinch.scale * touchDistance(e.touches) / pinch.distance,
+        (a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2);
+    }, { passive: false });
+    wrap.addEventListener('touchend', function (e) {
+      if (!pinch) return;
+      if (e.cancelable) e.preventDefault();
+      if (!e.touches.length) pinch = null;
+    }, { passive: false });
+    wrap.addEventListener('touchcancel', function () { pinch = null; });
+    wrap.addEventListener('wheel', function (e) {
+      if (!e.ctrlKey || !e.deltaY) return;
+      e.preventDefault();
+      zoomCode(scale * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX, e.clientY);
+    }, { passive: false });
     function paintBar() {
       var label = RunFormats.label(ext);
       var runButton = label ? '<button class="t-text" data-act="run">' + label + '</button>' : '';
@@ -75,7 +155,7 @@
     }
 
     function paintSymbols(refresh) {
-      symbols.hidden = (mode !== 'edit');
+      symbols.hidden = mode !== 'edit' || !panel.hidden;
       if (symbols.hidden || (!refresh && symbolsExt === ext)) return;
       var scrollLeft = symbolsExt === ext ? symbolList.scrollLeft : 0;
       symbolsExt = ext;
@@ -225,12 +305,22 @@
       gin.style.transform = 'translateY(' + (-st) + 'px)';
     }
 
+    var statusTimer = null, gutterTimer = null;
+
     function updateStatus() {
       var upto = ta.value.slice(0, ta.selectionStart);
       var lines = upto.split('\n');
       el.querySelector('#stPos').textContent = lines.length + ':' + (lines[lines.length - 1].length + 1);
       el.querySelector('#stWords').textContent = ta.value.replace(/\s/g, '').length + ' 字';
       renderGutter();
+
+      /* 状态栏刚更新过：轻轻提亮一下再落回常态（规范第 2 条「状态」的轻量用法） */
+      var bar = el.querySelector('.statusbar');
+      if (bar && typeof Anim !== 'undefined' && Anim.enabled()) {
+        bar.classList.add('tick');
+        clearTimeout(statusTimer);
+        statusTimer = setTimeout(function () { bar.classList.remove('tick'); }, 220);
+      }
     }
 
     function save(silent) {
@@ -394,7 +484,15 @@
       composing = false;
       scheduleHL();
     });
-    ta.addEventListener('scroll', syncScroll);
+    /* 滚动时行号栏淡下去一点，停下 400ms 再回来：编辑器里唯一的动效 */
+    ta.addEventListener('scroll', function (e) {
+      syncScroll(e);
+      var gutter = el.querySelector('.gutter');
+      if (!gutter || typeof Anim === 'undefined' || !Anim.enabled()) return;
+      gutter.classList.add('dim');
+      clearTimeout(gutterTimer);
+      gutterTimer = setTimeout(function () { gutter.classList.remove('dim'); }, 400);
+    });
     ta.addEventListener('click', updateStatus);
     ta.addEventListener('keyup', updateStatus);
 

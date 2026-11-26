@@ -39,6 +39,86 @@ def check_symbol_dock(browser):
         page.close()
 
 
+
+def check_editor_viewport(browser):
+    page = browser.new_page(viewport={'width': 390, 'height': 800},
+                            device_scale_factor=2, has_touch=True, is_mobile=True)
+    try:
+        page.route('https://xj.test/**', lambda route: route.fulfill(path=root/route.request.url.split('https://xj.test/')[1]))
+        page.goto('https://xj.test/index.html')
+        page.evaluate("""async () => {
+          await Bridge.create('resize.java', Array.from({length: 120}, (_, i) => 'int value' + i + ' = ' + i + ';').join('\\n'));
+          Nav.go('editor', {name:'resize.java', mode:'edit'});
+        }""")
+        area = page.locator('#ta')
+        page.wait_for_function("document.querySelector('#ta').value.includes('value119')")
+        initial_text = area.input_value()
+        symbols = page.locator('.editor-symbols')
+        editor = page.locator('.editor-wrap')
+        panel = page.locator('.run-panel')
+        grip = page.get_by_role('separator', name='调整运行面板高度')
+        expect(symbols).to_be_visible()
+
+        def font_sizes():
+            return page.evaluate("""() => ['#ta', '#pre', '#gin'].map(selector =>
+                parseFloat(getComputedStyle(document.querySelector(selector)).fontSize))""")
+
+        def pinch(distance, next_distance):
+            session = page.context.new_cdp_session(page)
+            def positions(gap):
+                return [{'x': 185 - gap / 2, 'y': 190, 'id': 0},
+                        {'x': 185 + gap / 2, 'y': 190, 'id': 1}]
+            try:
+                session.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': positions(distance)})
+                session.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': positions(next_distance)})
+                session.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+            finally:
+                session.detach()
+
+        initial_size = font_sizes()[0]
+        pinch(60, 108)
+        enlarged = font_sizes()
+        assert enlarged[0] == enlarged[1] and enlarged[0] > initial_size * 1.5, enlarged
+        assert abs(enlarged[2] / enlarged[0] - 12 / 14) < .01, enlarged
+        assert area.input_value() == initial_text
+        pinch(108, 60)
+        assert abs(font_sizes()[0] - initial_size) < .5, font_sizes()
+
+        launch = page.locator('[data-act=run]')
+        launch.click()
+        expect(panel).to_be_visible()
+        expect(symbols).to_be_hidden()
+        expect(panel.locator('textarea')).to_be_visible()
+        before_editor, before_panel = editor.bounding_box()['height'], panel.bounding_box()['height']
+        handle = grip.bounding_box()
+        x, y = handle['x'] + handle['width'] / 2, handle['y'] + handle['height'] / 2
+        session = page.context.new_cdp_session(page)
+        try:
+            session.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': x, 'y': y}]})
+            session.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': [{'x': x, 'y': y - 85}]})
+            session.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+        finally:
+            session.detach()
+        assert panel.bounding_box()['height'] > before_panel + 60
+        assert editor.bounding_box()['height'] < before_editor - 60
+        grip.focus()
+        previous = panel.bounding_box()['height']
+        page.keyboard.press('ArrowDown')
+        assert panel.bounding_box()['height'] < previous
+
+        panel.locator('textarea').fill('测试输入')
+        expect(symbols).to_be_hidden()
+        page.locator('[data-act=closeRun]').click()
+        expect(symbols).to_be_visible()
+        launch.click()
+        assert page.evaluate('window.__xjBack()') == 'handled'
+        expect(panel).to_be_hidden()
+        expect(symbols).to_be_visible()
+        assert area.input_value() == initial_text
+        print('PASS editor pinch zoom, panel resizing and symbol visibility')
+    finally:
+        page.close()
+
 with sync_playwright() as pw:
  proxy=os.environ.get('HTTPS_PROXY') if os.environ.get('XJ_LIVE') else None
  b=pw.chromium.launch(executable_path=os.environ.get('XJ_CHROMIUM') or shutil.which('chromium'),proxy={'server':proxy} if proxy else None)
@@ -175,3 +255,4 @@ with sync_playwright() as pw:
  expect(status).to_have_text('连接失败')
  print('PASS formats, runtime outputs and failure paths')
  check_symbol_dock(b)
+ check_editor_viewport(b)

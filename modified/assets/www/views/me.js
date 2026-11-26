@@ -24,7 +24,7 @@
       '<div class="rows">' +
       rowHtml('pigeon', 'bird', '鸽屋', n ? (n + ' 个') : '') +
       rowHtml('backup', 'download', '备份', '') +
-      rowHtml('settings', 'gear', '设置', '') +
+      rowHtml('settings', 'gear', '设置', '') + '</div><div class="rows">' +
       rowHtml('about', 'info', '关于', '') +
       rowHtml('sponsor', 'cup', '赞助', '') +
       '</div>' +
@@ -40,9 +40,7 @@
     el.addEventListener('click', function (e) {
       var t = e.target.closest('[data-tab]');
       if (t) {
-        if (t.dataset.tab === 'home') return Nav.reset('home');
-        if (t.dataset.tab === 'create') return Nav.go('create');
-        return;
+        return Nav.tab(t.dataset.tab);
       }
       var a = e.target.closest('[data-act]');
       if (!a) return;
@@ -92,12 +90,11 @@
       '<div class="t-title">设置</div><div class="t-gap"></div></div>' +
       '<div class="scroll set-body">' +
       '<div class="form"><div class="field"><label>动效</label>' +
-      '<div class="chips" id="animChips"></div></div></div>' +
+      '<div class="chips anim-settings" id="animChips"></div></div></div>' +
       '<div class="rows">' +
       rowHtml('perm', 'lock', '权限设置', '') +
-      rowHtml('pigeonSet', 'bird', '鸽屋设置', '') +
-      '<button type="button" class="row update-row" data-act="update"><span class="row-ico">' + svg('download') +
-      '</span><span class="row-t">应用更新</span><span class="row-arrow" aria-hidden="true">›</span></button>' +
+      rowHtml('pigeonSet', null, '鸽屋设置', '') +
+      rowHtml('update', null, '应用更新', '') +
       '</div>' +
       /* push-bottom：内容不满一屏时把「关于」压到最底；内容超出一屏时它自然落在最后 */
       '<div class="rows push-bottom">' +
