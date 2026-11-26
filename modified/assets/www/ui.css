@@ -83,6 +83,8 @@ html.dark .home-view {
 .weather-bar .w-main { font-size: var(--fs-title3); line-height: var(--lh-title3); }
 .weather-bar .w-city, .weather-bar .w-desc { color: var(--fg-2); opacity: 1; }
 .weather-bar .theme-slot { border: 0; padding: 0; margin: 0; }
+.home-view .theme-btn { border-radius: 50%; color: var(--fg-2); background: var(--home-entry-fill); }
+.home-view .theme-btn:active { background: rgba(var(--fg-rgb),.08); }
 .home-view .entries {
   display: grid;
   grid-template-columns: minmax(0,1fr);
@@ -116,8 +118,6 @@ html.dark .home-view {
 .entry-main svg { width: 28px; height: 28px; flex: none; }
 .entry-arrow { display: flex; color: var(--home-arrow); flex: none; }
 .entry-arrow svg { width: 18px; height: 18px; }
-.entry-dark, html.dark .entry-light { display: none; }
-html.dark .entry-dark { display: flex; }
 
 .grid { gap: var(--sp-2); padding-left: var(--page-x); padding-right: var(--page-x); }
 .book { background: var(--group); border: 0; border-radius: var(--r-card); }

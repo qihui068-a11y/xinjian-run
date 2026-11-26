@@ -28,7 +28,7 @@
     .locals 1
 
     .line 14
-    const-string v0, "v?([0-9]{1,5}\\.[0-9]{1,5}(?:\\.[0-9]{1,5})?)-run"
+    const-string v0, "v?([0-9]{1,5}\\.[0-9]{1,5}(?:\\.[0-9]{1,5})?)(?:-run)?"
 
     invoke-static {v0}, Ljava/util/regex/Pattern;->compile(Ljava/lang/String;)Ljava/util/regex/Pattern;
 

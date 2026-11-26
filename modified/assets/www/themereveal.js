@@ -46,9 +46,8 @@ var ThemeReveal = (function () {
     return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
   }
 
-  /* 换色的唯一入口：本地存储 + 原生窗口底色都在 applyTheme 里 */
   function commit(theme) {
-    if (typeof applyTheme === 'function') applyTheme(theme === 'dark');
+    if (typeof selectAppearance === 'function') selectAppearance(theme === 'dark');
     else document.documentElement.classList.toggle('dark', theme === 'dark');
   }
 
@@ -87,8 +86,8 @@ var ThemeReveal = (function () {
   }
 
   /* 按钮静态 HTML：视图里先拼出来，attach() 时再补状态 */
-  function buttonHtml() {
-    if (typeof manualAppearance !== 'undefined' && !manualAppearance) return '';
+  function buttonHtml(always) {
+    if (!always && typeof manualAppearance !== 'undefined' && !manualAppearance) return '';
     return '<button class="theme-btn" type="button" data-theme-btn' +
       ' aria-pressed="false" aria-label="切换主题" title="切换主题">' +
       iconFor(current()) + '</button>';
@@ -112,8 +111,8 @@ var ThemeReveal = (function () {
       btn.dataset.themeState = t;
       btn.setAttribute('aria-pressed', t === 'dark' ? 'true' : 'false');
       btn.innerHTML = iconFor(t);
-      btn.setAttribute('aria-label', t === 'dark' ? '切换到洁白' : '切换到深灰');
-      btn.title = t === 'dark' ? '切换到洁白' : '切换到深灰';
+      btn.setAttribute('aria-label', t === 'dark' ? '切换到浅色模式' : '切换到深色模式');
+      btn.title = btn.getAttribute('aria-label');
     }
 
     /* 揭示期间把所有元素自己的颜色/位移过渡全停掉。
@@ -159,6 +158,12 @@ var ThemeReveal = (function () {
       } catch (e) { /* 老 WebView 没有 WAAPI 就算了，颜色已经换好了 */ }
     }
 
+    function complete(theme) {
+      pending = null;
+      commit(theme);
+      paint();
+    }
+
     function onClick(ev) {
       var next = (pending || current()) === 'light' ? 'dark' : 'light';
       /* 先记意图：过渡途中再点，是从目标翻回去，不是从旧 DOM 翻 */
@@ -183,7 +188,7 @@ var ThemeReveal = (function () {
       var mine = seq;
 
       if (reduced() || typeof document.startViewTransition !== 'function') {
-        commit(next);
+        complete(next);
         fadeIn();
         return;
       }
@@ -192,11 +197,13 @@ var ThemeReveal = (function () {
       freeze(true);
       hold();
       try {
-        vt = document.startViewTransition(function () { commit(next); });
+        vt = document.startViewTransition(function () {
+          if (seq === mine) complete(next);
+        });
       } catch (e) {
         freeze(false);
         release();
-        commit(next);
+        complete(next);
         fadeIn();
         return;
       }
@@ -222,15 +229,16 @@ var ThemeReveal = (function () {
 
       if (vt.finished && typeof vt.finished.then === 'function') {
         vt.finished.then(function () {}, function () {}).then(function () {
+          if (seq !== mine) return;
           freeze(false);
           release();
           if (transition === vt) transition = null;
-          if (pending && seq !== mine) paint();
         });
       }
     }
 
     btn.addEventListener('click', onClick);
+    document.addEventListener('xj:appearance', paint);
     paint();
 
     return {
@@ -238,7 +246,10 @@ var ThemeReveal = (function () {
       sync: paint,
       destroy: function () {
         btn.removeEventListener('click', onClick);
+        document.removeEventListener('xj:appearance', paint);
+        var wanted = pending;
         skip();
+        if (wanted) complete(wanted);
       }
     };
   }

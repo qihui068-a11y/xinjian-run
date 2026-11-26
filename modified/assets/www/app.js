@@ -276,12 +276,13 @@
      原生那边更重：setBackgroundDrawable + 状态栏/导航栏换色 → 整窗重排。 */
   function flushThemeNow() {
     if (themeNativeHold > 0) return;
+    if (appearanceNeedsSaving) {
+      appearanceNeedsSaving = false;
+      try { localStorage.setItem('xj:appearance', appearanceOverride ? 'dark' : 'light'); } catch (e) {}
+    }
     var v = themeNativePending;
     if (v === null || v === themeApplied) return;
     themeApplied = v;
-    if (manualAppearance) {
-      try { localStorage.setItem('xj:dark', v ? '1' : '0'); } catch (e) {}
-    }
     try { if (window.Bridge && Bridge.theme) Bridge.theme(!!v); } catch (e) {}
   }
 
@@ -310,8 +311,10 @@
        所以键盘收起、视口变高的那一两帧，底部会露出一条白。
        这里再把底色直接写成内联样式，不依赖 CSS 变量是否解析成功。 */
     var root = document.documentElement;
+    var changed = root.classList.contains('dark') !== isDark;
     root.classList.toggle('dark', isDark);
     root.style.backgroundColor = isDark ? '#1E1E1E' : '#FFFFFF';
+    if (changed) document.dispatchEvent(new Event('xj:appearance'));
     /* 这里只改 DOM（快照要拍的就是它）；落盘和通知推到 flushThemeNow。 */
     themeNativePending = isDark;
     if (themeNativeHold > 0) return;
@@ -336,21 +339,33 @@
   var colorPreference = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
   var appearanceTarget;
   var appearanceTransition;
+  var appearanceNeedsSaving = false;
+  var appearanceOverride = null;
+  try {
+    var savedAppearance = localStorage.getItem('xj:appearance');
+    if (savedAppearance === 'dark' || savedAppearance === 'light') appearanceOverride = savedAppearance === 'dark';
+  } catch (e) {}
+
+  function selectAppearance(isDark) {
+    appearanceOverride = appearanceTarget = !!isDark;
+    appearanceNeedsSaving = true;
+    if (appearanceTransition) appearanceTransition.skipTransition();
+    applyTheme(appearanceOverride);
+  }
 
   function refreshAppearance(animate) {
     var prefs = nativeAppearance();
     var root = document.documentElement;
     if (prefs && prefs.scale >= .5 && prefs.scale <= 3) root.style.setProperty('--ui-scale', prefs.scale);
-    if (manualAppearance) {
-      if (appearanceTarget === undefined) {
-        var stored = false;
-        try { stored = localStorage.getItem('xj:dark') === '1'; } catch (e) {}
-        appearanceTarget = stored;
-        applyTheme(stored);
+    var dark = appearanceOverride;
+    if (dark === null) {
+      if (manualAppearance) {
+        dark = false;
+        try { dark = localStorage.getItem('xj:dark') === '1'; } catch (e) {}
+      } else {
+        dark = prefs ? prefs.dark : !!(colorPreference && colorPreference.matches);
       }
-      return;
     }
-    var dark = prefs ? prefs.dark : !!(colorPreference && colorPreference.matches);
     if (dark === appearanceTarget) return;
     appearanceTarget = dark;
     if (appearanceTransition) appearanceTransition.skipTransition();
@@ -359,7 +374,9 @@
       return;
     }
     var radius = Math.hypot(innerWidth, innerHeight) / 2;
-    var transition = document.startViewTransition(function () { applyTheme(dark); });
+    var transition = document.startViewTransition(function () {
+      if (appearanceTarget === dark) applyTheme(dark);
+    });
     appearanceTransition = transition;
     transition.ready.then(function () {
       root.animate({ clipPath: ['circle(0px at 50% 50%)', 'circle(' + radius + 'px at 50% 50%)'] },

@@ -143,7 +143,7 @@
       '<div class="topbar"><button class="icon-btn" data-act="back">' + svg('back') + '</button>' +
       '<div class="t-title">关于</div><div class="t-gap"></div></div>' +
       '<div class="scroll"><div class="form">' +
-      '<div class="field"><label>信笺·运行版</label>' +
+      '<div class="field"><label>信笺</label>' +
       '<div class="set-note">' + (Bridge.isNative ? '版本 ' + esc(AppUpdate.status().current || '未知') : '浏览器演示模式') + '</div></div>' +
       '<div class="field"><label>鸽屋的使用边界</label>' +
       '<div class="set-note">只能在可信局域网里用（家里的 WiFi、或只有你自己连的手机热点）。<br>' +

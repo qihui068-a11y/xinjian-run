@@ -65,30 +65,29 @@ def compare(browser, scheme):
     expect(tabs).to_have_css('height', '49px' if dark else '52px')
     expect(tabs).to_have_css('backdrop-filter', 'blur(20px) saturate(1.8)')
     entries = page.locator('.entries').get_by_role('button')
-    expect(entries).to_have_text(['书架', '小镇', '后院', '小宿店'] if dark else ['书架', '小镇', '主页', '新建'],
-                                 use_inner_text=True)
+    expect(entries).to_have_text(['书架', '小镇', '后院', '小宿店'], use_inner_text=True)
     expect(entries.first).to_have_css('background-color', 'rgb(18, 18, 18)' if dark else 'rgb(255, 255, 255)')
     expect(entries.first).to_have_css('min-height', '53px' if dark else '58px')
     expect(page.locator('.entries')).to_have_css('gap', '9px' if dark else '10px')
     bounds = [entry.bounding_box() for entry in entries.all()]
     assert all(box['x'] == bounds[0]['x'] and box['width'] == bounds[0]['width'] for box in bounds)
     assert all(a['y'] + a['height'] < b['y'] for a, b in zip(bounds, bounds[1:]))
-    expect(page.locator('[data-theme-btn]')).to_have_count(0)
+    assert page.title() == '信笺'
+    toggle = page.get_by_role('button', name='切换到浅色模式' if dark else '切换到深色模式')
+    expect(toggle).to_be_visible()
+    expect(toggle).to_have_attribute('aria-pressed', 'true' if dark else 'false')
+    button = toggle.bounding_box()
+    assert button['x'] > page.viewport_size['width'] / 2 and button['y'] < bounds[0]['y']
     snapshot(page, 'home-' + scheme)
 
     entries.first.click()
     expect(page.locator('#shelfBar .t-title')).to_have_text('书架')
     page.get_by_role('button', name='返回', exact=True).click()
-    for label in ('小镇', '后院', '小宿店') if dark else ('小镇',):
+    for label in ('小镇', '后院', '小宿店'):
         page.locator('.entries').get_by_role('button', name=label, exact=True).click()
         expect(page.locator('.topbar .t-title')).to_have_text(label)
         page.get_by_role('button', name='返回', exact=True).click()
-    if dark:
-        tabs.get_by_role('button', name='新建').click()
-    else:
-        page.locator('.entries').get_by_role('button', name='主页', exact=True).click()
-        expect(page.locator('.home-view')).to_be_visible()
-        page.locator('.entries').get_by_role('button', name='新建', exact=True).click()
+    tabs.get_by_role('button', name='新建').click()
     summary = page.get_by_role('button', name='文件格式')
     expect(summary).to_contain_text('TXT')
     expect(page.locator('.topbar')).to_have_css('height', '44px')
@@ -179,8 +178,20 @@ def appearance_and_motion(browser):
     page.wait_for_function("document.querySelectorAll('#app .view').length === 1")
     page.emulate_media(color_scheme='dark')
     expect(page.locator('html')).to_have_class('dark')
-    expect(page.locator('.entries').get_by_role('button')).to_have_text(['书架', '小镇', '后院', '小宿店'],
-                                                                      use_inner_text=True)
+    entries = page.locator('.entries').get_by_role('button')
+    expect(entries).to_have_text(['书架', '小镇', '后院', '小宿店'], use_inner_text=True)
+    toggle = page.get_by_role('button', name='切换到浅色模式')
+    expect(toggle).to_have_attribute('aria-pressed', 'true')
+    toggle.click()
+    expect(page.locator('.home-view')).to_have_css('background-color', 'rgb(255, 255, 255)')
+    page.wait_for_function("localStorage.getItem('xj:appearance') === 'light'")
+    page.reload()
+    expect(page.get_by_role('button', name='切换到深色模式')).to_have_attribute('aria-pressed', 'false')
+    page.get_by_role('button', name='切换到深色模式').click()
+    expect(page.locator('.home-view')).to_have_css('background-color', 'rgb(0, 0, 0)')
+    page.emulate_media(color_scheme='light')
+    expect(page.locator('.home-view')).to_have_css('background-color', 'rgb(0, 0, 0)')
+    expect(entries).to_have_text(['书架', '小镇', '后院', '小宿店'], use_inner_text=True)
     page.close()
 
     # A read-only native preference is enough for Android appearance without browser theme detection.
@@ -223,6 +234,6 @@ with sync_playwright() as playwright:
         compare(browser, appearance)
         print('PASS mobile GUI', appearance, flush=True)
     appearance_and_motion(browser)
-    print('PASS system appearance, independent editor metrics, legacy switch and 120 ms crossfade')
+    print('PASS system appearance, independent editor metrics, persisted homepage switch and 120 ms crossfade')
     if BASELINE:
         print('PASS light and dark screenshots match all baseline pixels')

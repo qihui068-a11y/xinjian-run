@@ -7,15 +7,9 @@
     el.classList.add('home-view');
     var w = WEATHER_STUB;
 
-    function label(icon, title, classes) {
-      return '<span class="entry-main' + classes + '">' + svg(icon) + '<span>' + title + '</span></span>';
-    }
-
-    function entry(action, icon, title, alternate) {
-      var contents = label(icon, title, alternate ? ' entry-light' : '');
-      if (alternate) contents += label(alternate.icon, alternate.title, ' entry-dark');
-      return '<button type="button" class="entry" data-go="' + action + '"' +
-        (alternate ? ' data-dark-go="' + alternate.action + '"' : '') + '>' + contents +
+    function entry(action, icon, title) {
+      return '<button type="button" class="entry" data-go="' + action + '">' +
+        '<span class="entry-main">' + svg(icon) + '<span>' + title + '</span></span>' +
         '<span class="entry-arrow" aria-hidden="true">' + svg('chevron') + '</span></button>';
     }
 
@@ -27,13 +21,13 @@
       '<span class="w-desc">' + esc(w.desc) + '</span>' +
       '<span class="w-aqi">' + esc(w.aqi) + '</span>' +
       '</span>' +
-      '<span class="theme-slot">' + ThemeReveal.buttonHtml() + '</span>' +
+      '<span class="theme-slot">' + ThemeReveal.buttonHtml(true) + '</span>' +
       '</div>' +
       '<div class="scroll entries">' +
       entry('shelf', 'book', '书架') +
       entry('town', 'town', '小镇') +
-      entry('home', 'home', '主页', { action: 'yard', icon: 'server', title: '后院' }) +
-      entry('create', 'plus', '新建', { action: 'inn', icon: 'shop', title: '小宿店' }) +
+      entry('yard', 'server', '后院') +
+      entry('inn', 'shop', '小宿店') +
       '</div>' +
       tabbar('home');
 
@@ -45,14 +39,8 @@
       if (t) return Nav.tab(t.dataset.tab);
       var g = e.target.closest('[data-go]');
       if (g) {
-        var dark = document.documentElement.classList.contains('dark');
-        var name = (dark && g.dataset.darkGo) || g.dataset.go;
+        var name = g.dataset.go;
         if (name === 'shelf') return Nav.go('shelf');
-        if (name === 'create') return Nav.tab('create');
-        if (name === 'home') {
-          el.querySelector('.entries').scrollTop = 0;
-          return;
-        }
         return Nav.go('stub', { title: { town: '小镇', yard: '后院', inn: '小宿店' }[name] });
       }
       if (e.target.closest('[data-act=weather]')) {
