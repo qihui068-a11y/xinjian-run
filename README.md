@@ -43,7 +43,7 @@
 
 modified 中已包含前端和打包后的离线引擎。使用 Apktool 2.12.1 执行 `apktool b modified -o unsigned.apk`，再用 Android SDK 的 zipalign 对齐并用 apksigner 签名。私钥独立管理。
 
-要复现 0.73 的 APK，先依次执行 `python runner/prepare-python.py`、`python runner/prepare-c.py` 和 `python runner/prepare-cpp.py`，再打包。
+要复现 0.7.3 的 APK，先依次执行 `python runner/prepare-python.py`、`python runner/prepare-c.py` 和 `python runner/prepare-cpp.py`，再打包。
 
 若修改 QuickJS 适配代码，在 runner 目录运行 `npm ci` 和 `node build.cjs`。运行与预览入口位于 modified/assets/www/runner.js、run-formats.js 和 views/editor.js。许可证见 modified/assets/www/QuickJS-LICENSE.txt。
 
