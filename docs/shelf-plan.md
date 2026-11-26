@@ -6,7 +6,7 @@
 
 1. 运行界面接收 `ready`、`stdout`、`stderr`、`input`、`artifact` 和 `exit` 事件。输出作为文本或文件处理，图片预览仅接受有大小和尺寸限制的 PNG。停止或退出页面时终止 Worker，下一次运行创建独立环境。
 2. QuickJS 继续在专用 Worker 内运行，使用 `await readline('请输入')` 逐行输入，结束输入返回 `null`。在线编译保留执行前的多行标准输入和发送确认。Wandbox 的结果在请求结束后返回，未来的在线交互需要支持会话 stdin 的服务端协议。
-3. 可选的本地 Python 构建使用固定版本的 Pyodide。脚本在独立 Worker 内运行，Worker 的 CSP 只允许读取随安装包提供的运行资源。Python 的 JS 全局对象为空，运行面板只消费规定的事件。真实交互使用跨源隔离下的 `SharedArrayBuffer`，其他环境按实测结果提供批量输入或 Wandbox。参考 [Pyodide 标准流接口](https://pyodide.org/en/0.29.3/usage/streams.html) 和 [Worker 部署说明](https://pyodide.org/en/0.29.3/usage/webworker.html)。
+3. 可选的本地 Python 构建使用固定版本的 Pyodide。脚本在独立 Worker 内运行，Worker 的 CSP 只允许读取随安装包提供的运行资源。Python 的 JS 全局对象为空，运行面板只消费规定的事件。交互模式中的 `input()` 依靠跨源隔离下的 `SharedArrayBuffer`。没有跨源隔离时，`input()` 接收预填输入，交互程序可用 `from xinjian_terminal import readline` 和 `await readline('提示')`，结束输入时返回 `None`。参考 [Pyodide 标准流接口](https://pyodide.org/en/0.29.3/usage/streams.html) 和 [Worker 部署说明](https://pyodide.org/en/0.29.3/usage/webworker.html)。
 4. 首轮验证 `input()`、异常和 EOF、连续交互、无限循环、停止、堆限制、Matplotlib、Pillow。后续补 Turtle 的前进、转向和抬落笔，用 Canvas 渲染受限的绘图指令，再按常用教学例子扩展。完善 WebView 的导出流程和版本兼容情况。
 
 ## P1 编辑器

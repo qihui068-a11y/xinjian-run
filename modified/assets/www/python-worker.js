@@ -26,11 +26,31 @@ self.onmessage = async ({ data: job }) => {
     let inputIndex = 0;
     let inputId = 0;
     let eof = false;
+    let pending;
+    self.onmessage = ({ data }) => {
+      if (!pending || !data || data.kind !== 'stdin' || data.id !== inputId ||
+          (data.text !== null && (typeof data.text !== 'string' || data.text.length > 65536))) return;
+      const accept = pending;
+      pending = null;
+      eof = data.text === null;
+      accept(data.text);
+    };
+    py.registerJsModule('xinjian_terminal', {
+      readline(prompt = '') {
+        if (inputIndex < stdin.length) return Promise.resolve(stdin[inputIndex++]);
+        if (!job.interactive || eof) return Promise.resolve(null);
+        if (pending) return Promise.reject(new Error('请等待上一条输入完成'));
+        return new Promise(resolve => {
+          pending = resolve;
+          emit('input', { id: ++inputId, prompt: typeof prompt === 'string' ? prompt.slice(0, 300) : '' });
+        });
+      }
+    });
     py.setStdin({ stdin() {
       if (inputIndex < stdin.length) return stdin[inputIndex++];
       if (!channel || eof) return null;
       Atomics.store(channel, 0, 0);
-      emit('input', { id: ++inputId });
+      emit('input', { id: ++inputId, transport: 'shared' });
       if (Atomics.wait(channel, 0, 0, 90000) === 'timed-out') return null;
       const length = Atomics.load(channel, 1);
       if (length < 0 || length > 65536) { eof = true; return null; }

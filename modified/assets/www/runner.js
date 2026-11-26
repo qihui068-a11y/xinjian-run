@@ -142,13 +142,18 @@ var CodeRunner = (function () {
       var run = options.querySelector('.run-python');
       var interactive = options.querySelector('.run-python-interactive');
       var online = form.querySelector('.run-submit');
-      interactive.hidden = !window.crossOriginIsolated || typeof SharedArrayBuffer !== 'function';
+      if (!window.crossOriginIsolated || typeof SharedArrayBuffer !== 'function') {
+        var hint = document.createElement('p');
+        hint.textContent = '交互输入用法：from xinjian_terminal import readline，再用 await readline()。input() 可使用预填输入。';
+        options.appendChild(hint);
+      }
       function startPython(live) {
         var current = generation;
         var job;
         var files;
         try {
-          job = { source: readSource(), name: 'main.py', stdin: RunIO.stdin(input.value), channel: live ? PythonRun.channel() : null };
+          job = { source: readSource(), name: 'main.py', stdin: RunIO.stdin(input.value), interactive: live,
+            channel: live ? PythonRun.channel() : null };
           files = PythonRun.readFiles(selected.files);
         } catch (e) { status.textContent = e.message; return; }
         online.disabled = run.disabled = interactive.disabled = true;
@@ -255,7 +260,7 @@ var CodeRunner = (function () {
         function reply(eof) {
           try {
             var text = eof ? null : RunIO.stdin(input.value);
-            if (sendInput) sendInput(job, text);
+            if (sendInput && event.transport === 'shared') sendInput(job, text);
             else worker.postMessage({ kind: 'stdin', id: event.id, text: text });
             terminal.remove();
             terminal = null;

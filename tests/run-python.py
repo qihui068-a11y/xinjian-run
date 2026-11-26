@@ -6,13 +6,23 @@ import os
 from pathlib import Path
 import re
 import shutil
+import struct
 from threading import Thread
 from urllib.parse import urlsplit
+import zlib
 
 from playwright.sync_api import expect, sync_playwright
 
 
 WWW = Path(__file__).resolve().parents[1] / "modified/assets/www"
+
+
+def red_pixel_png():
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(b"\0\xff\0\0")) + chunk(b"IEND", b""))
 
 
 class AppHandler(SimpleHTTPRequestHandler):
@@ -115,11 +125,14 @@ plt.show()
     start("""from PIL import Image
 with open('/input/data.txt') as source:
     text = source.read()
+image = Image.open('/input/pixel.png')
+assert image.getpixel((0, 0)) == (255, 0, 0)
 print(text)
-Image.new('RGB', (16, 12), 'red').save('sample.png')
+image.resize((16, 12)).save('sample.png')
 with open('result.txt', 'w') as result:
     result.write(text.upper())
-""", files=[{"name": "data.txt", "mimeType": "text/plain", "buffer": b"hello offline"}])
+""", files=[{"name": "data.txt", "mimeType": "text/plain", "buffer": b"hello offline"},
+             {"name": "pixel.png", "mimeType": "image/png", "buffer": red_pixel_png()}])
     expect(status).to_have_text("运行完成", timeout=30000)
     expect(out).to_have_text("hello offline")
     expect(figure).to_have_count(1)
@@ -142,6 +155,22 @@ with open('result.txt', 'w') as result:
     assert status.inner_text() == "运行完成", out.inner_text()
     expect(out).to_have_text("batch only")
     print("PASS preloaded Python stdin on a non-isolated page")
+
+    terminal = page.locator(".run-terminal")
+    start("""from xinjian_terminal import readline
+first = await readline('异步输入一')
+second = await readline('异步输入二')
+print(first + second)
+""", interactive=True)
+    expect(terminal.locator('label')).to_have_text("异步输入一", timeout=30000)
+    terminal.get_by_role("textbox").fill("真")
+    terminal.get_by_role("button", name="发送").click()
+    expect(terminal.locator('label')).to_have_text("异步输入二")
+    terminal.get_by_role("textbox").fill("交互")
+    terminal.get_by_role("button", name="发送").click()
+    expect(status).to_have_text("运行完成")
+    expect(out).to_have_text("真交互")
+    print("PASS Python async input on a non-isolated page")
 
 
 if __name__ == "__main__":
