@@ -277,17 +277,23 @@ html.vt-run *::after{transition:none!important;}
 .submit:active{opacity:.8;}
 
 /* ========== 编辑器 ========== */
-.view.editor-view{bottom:var(--editor-ime-offset,0px);}
+.view.editor-view{
+  top:var(--editor-ime-top,0px);
+  bottom:var(--editor-ime-offset,0px);
+  bottom:max(0px,calc(100% - var(--editor-ime-bottom,100%)));
+}
 .editor-bar .t-text{flex:none;padding:0 .5rem;white-space:nowrap;}
 .editor-symbols{
   display:flex;flex:none;gap:.3rem;align-items:flex-start;
   padding:.3rem .5rem calc(.3rem + var(--safe-b));
+  touch-action:pan-x;
   border-top:1px solid rgba(var(--fg-rgb),.12);
 }
 .editor-symbols[hidden]{display:none;}
 .editor-ime-visible .editor-symbols{padding-bottom:.3rem;}
 .editor-symbol-list{
   display:flex;flex:1;min-width:0;gap:.3rem;overflow-x:auto;overflow-y:hidden;
+  overscroll-behavior:contain;touch-action:pan-x;
   -webkit-overflow-scrolling:touch;
 }
 .editor-symbols button{
@@ -881,9 +887,19 @@ html{font-size:15px;}
 .run-body iframe{display:block;width:100%;height:100%;border:0;background:white}
 
 .run-online{padding:0 .9rem .8rem;font-size:.85rem}
-.run-online p{margin:.25rem 0 .5rem}
-.run-online textarea{display:block;width:100%;margin:.2rem 0 .5rem;padding:.4rem;color:var(--fg);background:var(--bg);border:1px solid rgba(var(--fg-rgb),.35);border-radius:.3rem}
-.run-submit{padding:.45rem .8rem;color:var(--bg);background:var(--fg);border-radius:.35rem}
+.run-online .run-hint{margin:.3rem 0;color:rgba(var(--fg-rgb),.72);line-height:1.35;overflow-wrap:anywhere}
+.run-submit-row{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem .55rem}
+.run-submit-row .run-hint{flex:1 1 10rem;margin:0}
+.run-python-options,.run-c-options,.run-interactive-options{margin-top:.55rem;padding-top:.5rem;border-top:1px solid rgba(var(--fg-rgb),.16)}
+.run-python-options summary,.run-interactive-options summary{cursor:pointer}
+.run-python-actions{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.45rem}
+.run-file-input{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;margin-top:.5rem}
+.run-file-input input{flex:1 1 9rem;min-width:0;max-width:100%;font:inherit}
+.run-online textarea,.run-service-address{display:block;width:100%;margin:.2rem 0 .5rem;padding:.4rem;color:var(--fg);background:var(--bg);border:1px solid rgba(var(--fg-rgb),.35);border-radius:.3rem}
+.run-option-button{min-height:2.5rem;padding:.42rem .8rem;border:1px solid var(--fg);border-radius:.4rem;line-height:1.25}
+.run-submit,.run-python,.run-c,.run-interactive-start{color:var(--bg);background:var(--fg)}
+.run-python-batch{color:var(--fg);border-color:rgba(var(--fg-rgb),.35)}
+.run-option-button:disabled{opacity:.5}
 .chat-verify{
   display:flex;align-items:center;gap:.5rem;
   margin:.5rem .875rem 0;padding:.55rem .75rem;

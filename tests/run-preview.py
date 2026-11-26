@@ -2,6 +2,43 @@ from playwright.sync_api import sync_playwright,expect
 from pathlib import Path
 import json, os, re, shutil
 root=Path(__file__).resolve().parents[1]/'modified/assets/www'
+def check_symbol_dock(browser):
+    page = browser.new_page(viewport={'width': 390, 'height': 800},
+                            device_scale_factor=2, has_touch=True, is_mobile=True)
+    try:
+        page.add_init_script("""window.testViewport = Object.assign(new EventTarget(), {height:800, offsetTop:0, scale:1});
+            Object.defineProperty(window, 'visualViewport', {value:testViewport});""")
+        page.route('https://xj.test/**', lambda route: route.fulfill(path=root/route.request.url.split('https://xj.test/')[1]))
+        page.goto('https://xj.test/index.html')
+        page.evaluate("""async () => {
+          await Bridge.create('symbols.py', '');
+          Nav.reset('editor', {name:'symbols.py', mode:'edit'});
+        }""")
+        symbols = page.locator('.editor-symbols')
+        symbols.wait_for()
+
+        def near(actual, expected):
+            assert abs(actual - expected) <= 1, (actual, expected)
+
+        def bottom():
+            box = symbols.bounding_box()
+            return box['y'] + box['height']
+
+        page.evaluate('__xjKeyboardViewport(1000, true)')
+        near(bottom(), 500)
+        page.set_viewport_size({'width': 390, 'height': 500})
+        # Check immediately, before a new IME or visual viewport measurement.
+        near(bottom(), 500)
+        page.set_viewport_size({'width': 390, 'height': 800})
+        page.evaluate("Object.assign(testViewport,{height:500,offsetTop:20}); testViewport.dispatchEvent(new Event('scroll'))")
+        near(bottom(), 520)
+        near(page.locator('.editor-bar').bounding_box()['y'], 20)
+        assert page.locator('.editor-symbol-list').evaluate("el => getComputedStyle(el).touchAction") == 'pan-x'
+        print('PASS symbol bar tracks the keyboard through viewport resize and panning')
+    finally:
+        page.close()
+
+
 with sync_playwright() as pw:
  proxy=os.environ.get('HTTPS_PROXY') if os.environ.get('XJ_LIVE') else None
  b=pw.chromium.launch(executable_path=os.environ.get('XJ_CHROMIUM') or shutil.which('chromium'),proxy={'server':proxy} if proxy else None)
@@ -137,3 +174,4 @@ with sync_playwright() as pw:
  p.locator('.run-submit').click()
  expect(status).to_have_text('连接失败')
  print('PASS formats, runtime outputs and failure paths')
+ check_symbol_dock(b)

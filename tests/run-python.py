@@ -31,7 +31,7 @@ class AppHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/python-worker.js" and getattr(self.server, "legacy_stdin", False):
-            worker, count = re.subn(rb"^const promiseInput = .+;$", b"const promiseInput = false;",
+            worker, count = re.subn(rb"^const promiseInput = .+;(?=\r?$)", b"const promiseInput = false;",
                                     (WWW / "python-worker.js").read_bytes(), flags=re.MULTILINE)
             assert count == 1
             self.send_response(200)
@@ -76,11 +76,29 @@ def run(server, browser):
     terminal = page.locator(".run-terminal")
     run_button = page.locator('[data-act="run"]')
 
+    run_button.click()
+    controls = page.locator(".run-online")
+    textarea = controls.locator("textarea")
+    submit = controls.get_by_role("button", name="发送并运行", exact=True)
+    local = controls.get_by_role("button", name="本地运行", exact=True)
+    expect(controls.locator(".run-python-options")).to_have_attribute("open", "")
+    expect(controls.locator(".run-hint").first).to_have_text("源码和输入会发送至 wandbox.org。")
+    expect(controls.locator(".run-python-options .run-hint")).to_have_text("本地运行时可逐行输入。")
+    input_box, submit_box, local_box = textarea.bounding_box(), submit.bounding_box(), local.bounding_box()
+    assert input_box["y"] + input_box["height"] <= submit_box["y"] < local_box["y"]
+    assert local_box["height"] == submit_box["height"] and local_box["height"] >= 36
+    assert local.evaluate("el => getComputedStyle(el).backgroundColor") == submit.evaluate(
+        "el => getComputedStyle(el).backgroundColor")
+    page.set_viewport_size({"width": 320, "height": 700})
+    assert controls.evaluate("el => el.scrollWidth === el.clientWidth")
+    page.set_viewport_size({"width": 390, "height": 800})
+    page.locator('[data-act="closeRun"]').click()
+    print("PASS mobile run controls follow the prefill box and use concise labels and styled buttons")
+
     def start(source, stdin="", interactive=True, files=None):
         page.locator("#ta").fill(source)
         run_button.click()
         page.locator(".run-online textarea").fill(stdin)
-        page.get_by_text("本地 Python（实验）", exact=True).click()
         if files:
             page.locator('.run-online input[type="file"]').set_input_files(files)
         page.get_by_role("button", name="本地运行" if interactive else "预填运行", exact=True).click()

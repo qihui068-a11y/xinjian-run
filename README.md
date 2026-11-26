@@ -43,6 +43,8 @@
 
 modified 中已包含前端和打包后的离线引擎。使用 Apktool 2.12.1 执行 `apktool b modified -o unsigned.apk`，再用 Android SDK 的 zipalign 对齐并用 apksigner 签名。私钥独立管理。
 
+要复现 0.73 的 APK，先依次执行 `python runner/prepare-python.py`、`python runner/prepare-c.py` 和 `python runner/prepare-cpp.py`，再打包。
+
 若修改 QuickJS 适配代码，在 runner 目录运行 `npm ci` 和 `node build.cjs`。运行与预览入口位于 modified/assets/www/runner.js、run-formats.js 和 views/editor.js。许可证见 modified/assets/www/QuickJS-LICENSE.txt。
 
 修改局域网 Java 层后，用 JDK、Android 34 的 `android.jar`、R8 8.8.34 和 Apktool 2.12.1 执行 `python native/lan/build.py <android.jar> <r8.jar> <apktool.jar>`，再按上面的步骤重新打包。
@@ -51,6 +53,26 @@ modified 中已包含前端和打包后的离线引擎。使用 Apktool 2.12.1 �
 
 应用更新的原生源码位于 `native/update`。改动后使用同一构建命令并追加 `--component update` 生成 smali。
 
-本地 Python 的 Android 输入通道位于 `native/python`。改动后使用 `--component python` 生成 smali。
+本地 Python 和 C 共用的 Android 输入通道位于 `native/python`。改动后使用 `--component python` 生成 smali。
+
+试用本地 C 时，先运行 `python runner/prepare-c.py` 再打包。可在 `.c` 文件的运行面板选择「本地运行 C」，用 `scanf` 或 `fgets` 逐行输入。没有换行的提示文字可用 `fflush(stdout)` 立即显示。编译和运行在 Worker 中进行，程序只获得标准输入、输出和错误输出。实验版支持常见单文件 C 程序。浏览器验证可运行 `python tests/run-c.py`。
 
 在工程根目录运行 `npm ci --prefix tests` 和 `node tests/regression.cjs`。安装 Python Playwright 和 Chromium 后执行 `python tests/run-preview.py` 检查面板、示例和错误路径（模拟在线服务）。设置 XJ_LIVE=1 后，测试会向 Wandbox 提交测试文件中专门编写的短示例。
+
+
+### C++ 离线运行与 Java、C# 在线交互
+
+需要本地 C++ 的测试构建先运行 `python runner/prepare-c.py`，再运行
+`python runner/prepare-cpp.py`。运行面板里的「本地运行 C++」支持单文件 C++17，
+可用 `std::cin` 逐行输入。实验版的无线程 WASI 运行时只提供控制台输入输出，
+禁用 C++ 异常。
+
+Java、C# 以及 C++ 可从运行面板打开「在线交互」，填写自行部署、提供有效 TLS
+证书的 [Piston](https://github.com/engineer-man/piston#interactive-execution-endpoint-not-available-through-the-public-api)
+WebSocket 地址，例如 `wss://runner.example.org/api/v2/connect`。在服务端安装所需语言运行时，
+允许交互执行和 60 秒运行时限。点击「连接并运行」后，源码与输入发送给该服务。
+Piston 公共 API 不提供交互接口。当前在线终端使用 Piston 的 stdin 写入命令，
+逐行发送直到程序退出，或使用「取消等待」断开。断开后服务端作业可能继续到其执行限时。
+
+浏览器测试可运行 `python tests/run-c.py` 和 `python tests/run-online-interactive.py`。
+后者另外需要 Python `websockets`、JDK 和 C# 编译器，用本地测试服务运行两个固定样例。
