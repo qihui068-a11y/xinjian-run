@@ -123,6 +123,7 @@
 
   /* 弹层离场结束后摘节点。关闭动效时直接摘除。 */
   function dismiss(mask) {
+    if (mask.__dismiss) { mask.__dismiss(); return; }
     var anim = (typeof Anim !== 'undefined') && Anim.enabled();
     if (!anim) { mask.remove(); return; }
     mask.classList.add('m-leave');
@@ -179,6 +180,7 @@
         restoreFocus();
         resolve(null);
       });
+      if (!alert) GestureMotion.sheet(mask, close);
 
       mask.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') { e.preventDefault(); close(null); }
@@ -600,6 +602,7 @@
 
     return {
       count: function () { return layers.length; },
+      isTop: function (layer) { return layers[layers.length - 1] === layer; },
 
       /* onBack = 系统返回键到来时如何关掉这一层 */
       open: function (onBack) {
@@ -631,7 +634,17 @@
   var Nav = {
     stack: [{ name: 'home', params: {}, layer: null }],
     go: function (name, params) {
-      var entry = { name: name, params: params || {}, layer: null };
+      var current = $app.firstElementChild;
+      var card = this.card;
+      this.card = null;
+      var previous = null;
+      if (current && !card && this.motion !== 'tab' &&
+          ['create', 'chat', 'cset', 'settings', 'perm', 'update', 'about', 'backup'].indexOf(name) !== -1) {
+        previous = current.cloneNode(true);
+        var scroller = current.querySelector('.scroll, .chat-list');
+        if (scroller) previous.scrollOffset = scroller.scrollTop;
+      }
+      var entry = { name: name, params: params || {}, layer: null, card: card, previous: previous };
       this.stack.push(entry);
       if (!this.motion) this.motion = 'push';
       this.render();
@@ -652,16 +665,24 @@
     back: function (silent) {
       if (this.stack.length <= 1) return false;
       var entry = this.stack.pop();
-      this.motion = 'pop';
+      this.motion = this.edgeReturning ? '' : entry.card ? 'card-close' : 'pop';
+      this.returnCard = entry.card;
+      this.edgeReturning = false;
       this.render();
       if (!silent && entry.layer) Back.done(entry.layer);
       return true;
+    },
+    openCard: function (name, button) {
+      this.card = { name: name, rect: button.getBoundingClientRect(), radius: getComputedStyle(button).borderRadius };
+      this.motion = 'card-open';
+      if (name === 'shelf') this.tab(name);
+      else this.go('stub', { title: button.getAttribute('aria-label') });
     },
     /* 一级页之间切换：不压栈，栈深永远是 2（home + 当前 tab） */
     tab: function (name) {
       var top = this.stack[this.stack.length - 1];
       if (top && top.name === name) return;
-      this.motion = 'tab';
+      if (this.motion !== 'card-open') this.motion = 'tab';
       if (name === 'home') { this.reset('home'); return; }
       while (this.stack.length > 1) {
         var e = this.stack.pop();
@@ -680,11 +701,14 @@
     render: function () {
       popover.close();
       if (this.finishTransition) this.finishTransition();
+      this.finishTransition = null;
       var cur = this.stack[this.stack.length - 1];
       var old = $app.firstElementChild;
       if (old && old.__cleanup) old.__cleanup();
       var motion = this.motion;
       this.motion = '';
+      var returning = this.returnCard;
+      this.returnCard = null;
       var el = document.createElement('div');
       el.className = 'view' + (cur.name === 'home' ? '' : ' full');
       VIEWS[cur.name](el, cur.params);
@@ -703,8 +727,24 @@
       }
       $app.insertBefore(el, old);
       BottomNav.update(cur.name === 'editor' ? 'shelf' : cur.name);
+      if (cur.previous) {
+        var cleanup = el.__cleanup;
+        var detachEdge = GestureMotion.edge(el, cur.previous, function () {
+          return Back.isTop(cur.layer) && $app.firstElementChild === el;
+        }, function () {
+          Nav.edgeReturning = true;
+          window.__xjBack();
+          Nav.edgeReturning = false;
+        });
+        el.__cleanup = function () { detachEdge(); if (cleanup) cleanup(); };
+      }
       if (!old) return;
-      if (motion && Anim.swap) this.finishTransition = Anim.swap(old, el, motion);
+      var card = cur.card;
+      if (motion === 'card-close' && returning) {
+        var button = el.querySelector('[data-go="' + returning.name + '"]');
+        card = button && { rect: button.getBoundingClientRect(), radius: returning.radius };
+      }
+      if (motion && Anim.swap) this.finishTransition = Anim.swap(old, el, motion, card);
       else old.remove();
     }
   };

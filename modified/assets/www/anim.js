@@ -79,7 +79,7 @@
   var motionPreference = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)');
   if (motionPreference && motionPreference.addEventListener) motionPreference.addEventListener('change', syncClass);
 
-  function swap(oldEl, newEl, mode) {
+  function swap(oldEl, newEl, mode, detail) {
     if (!enabled() || typeof newEl.animate !== 'function') {
       oldEl.remove();
       return null;
@@ -92,20 +92,45 @@
     var incoming, outgoing, timer;
     function finish() {
       clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onInactive);
+      global.removeEventListener('xj:motionchange', onInactive);
       if (incoming) incoming.cancel();
       if (outgoing) outgoing.cancel();
       oldEl.remove();
       newEl.style.zIndex = '';
     }
+    function onInactive() {
+      if (document.hidden || !enabled()) finish();
+    }
     try {
       var tab = mode === 'tab';
+      var shared = detail && (mode === 'card-open' || mode === 'card-close');
       var shift = mode === 'pop' ? -16 : 16;
       var frames = tab ? [{ opacity: 0 }, { opacity: 1 }]
         : [{ opacity: .6, transform: 'translateX(' + shift + 'px)' }, { opacity: 1, transform: 'none' }];
       var duration = tab ? 200 : 350;
       var easing = tab ? 'linear' : 'cubic-bezier(.22,.78,.24,1)';
-      incoming = newEl.animate(frames, { duration: duration, easing: easing });
-      outgoing = oldEl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: duration, easing: easing });
+      if (shared) {
+        var opening = mode === 'card-open';
+        var surface = opening ? newEl : oldEl;
+        var bounds = surface.getBoundingClientRect();
+        var rect = detail.rect;
+        var insets = [rect.top - bounds.top, bounds.right - rect.right,
+          bounds.bottom - rect.bottom, rect.left - bounds.left];
+        var card = { clipPath: 'inset(' + insets.map(function (n) { return Math.max(0, n) + 'px'; }).join(' ') +
+          ' round ' + detail.radius + ')', opacity: .4 };
+        var full = { clipPath: 'inset(0px round 0px)', opacity: 1 };
+        duration = opening ? 350 : 300;
+        if (!opening) { newEl.style.zIndex = '24'; oldEl.style.zIndex = '25'; }
+        incoming = surface.animate(opening ? [card, full] : [full, card], {
+          duration: duration, easing: 'cubic-bezier(.16,.85,.28,1)', fill: 'both'
+        });
+      } else {
+        incoming = newEl.animate(frames, { duration: duration, easing: easing });
+        outgoing = oldEl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: duration, easing: easing });
+      }
+      document.addEventListener('visibilitychange', onInactive);
+      global.addEventListener('xj:motionchange', onInactive);
       incoming.onfinish = finish;
       timer = setTimeout(finish, duration + 60);
       return finish;

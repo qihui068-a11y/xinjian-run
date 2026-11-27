@@ -1127,6 +1127,15 @@ html.anim-off *,html.anim-off *::before,html.anim-off *::after{
 @keyframes xjMaskOut{from{opacity:1}to{opacity:0}}
 @keyframes xjSheetOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(8px)}}
 
+.view.edge-back,.edge-back .scroll,.edge-back .chat-list{touch-action:pan-y pinch-zoom;}
+.view.edge-back-preview{z-index:0!important;pointer-events:none;}
+.mask.gesture-sheet,.mask.gesture-sheet > .sheet{animation:none;}
+.mask.gesture-sheet{background:none;bottom:var(--editor-ime-offset,0px);}
+.gesture-sheet > .sheet{position:relative;}
+.sheet-scrim{position:absolute;inset:0;background:rgba(0,0,0,.35);pointer-events:none;}
+.sheet-grab{height:22px;display:grid;place-items:center;touch-action:none;cursor:grab;}
+.sheet-grab::before{content:"";width:32px;height:4px;border-radius:4px;background:rgba(var(--fg-rgb),.23);}
+
 /* 删除联系人：先失焦、再塌陷，最后才移除（规范第 12 条） */
 .ct-row.leaving{max-height:0;opacity:0;overflow:hidden;}
 /* ========== 验证通过的高光（唯一一处 Lottie） ========== */

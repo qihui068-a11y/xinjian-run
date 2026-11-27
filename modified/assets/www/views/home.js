@@ -26,8 +26,7 @@ VIEWS.home = function (el) {
     if (!button) return;
     if (button.dataset.act === 'notices') return Nav.go('requests');
     var name = button.dataset.go;
-    if (name === 'shelf') return Nav.tab('shelf');
-    if (name) Nav.go('stub', { title: button.getAttribute('aria-label') });
+    if (name) Nav.openCard(name, button);
   });
 };
 
