@@ -73,6 +73,54 @@ var PythonRun = (function () {
     });
   }
 
+  function syntaxSession(report) {
+    var worker, pending, active, timer, ready = false, closed = false;
+
+    function close() {
+      closed = true;
+      clearTimeout(timer);
+      if (worker) worker.terminate();
+      worker = pending = active = null;
+    }
+
+    function sendPending() {
+      if (!ready || active || !pending) return;
+      active = pending;
+      pending = null;
+      timer = setTimeout(close, 5000);
+      worker.postMessage(active);
+    }
+
+    timer = setTimeout(close, 20000);
+    spawn({}, function () { return !closed; }).then(function (instance) {
+      if (closed) { instance.worker.terminate(); return; }
+      worker = instance.worker;
+      worker.onerror = close;
+      worker.onmessage = function (event) {
+        var data = event.data || {};
+        if (data.kind === 'exit') { close(); return; }
+        if (data.kind === 'syntax-ready') {
+          clearTimeout(timer);
+          ready = true;
+        } else if (data.kind === 'syntax-result' && active && data.id === active.id) {
+          clearTimeout(timer);
+          active = null;
+          report(data.id, data.issue);
+        }
+        sendPending();
+      };
+      worker.postMessage({ kind: 'syntax-session' });
+    }, close);
+    return {
+      check: function (id, source) {
+        if (closed) return;
+        pending = { kind: 'syntax-check', id: id, source: source };
+        sendPending();
+      },
+      close: close
+    };
+  }
+
   function sendInput(job, event, text) {
     if (event.transport === 'native') {
       var native = nativeTerminal();
@@ -104,5 +152,5 @@ var PythonRun = (function () {
     }));
   }
 
-  return { supported: supported, nativeCompilerAvailable: nativeCompilerAvailable, spawn: spawn, canShareInput: canShareInput, nativeTerminal: nativeTerminal, sendInput: sendInput, readFiles: readFiles };
+  return { supported: supported, nativeCompilerAvailable: nativeCompilerAvailable, spawn: spawn, canShareInput: canShareInput, nativeTerminal: nativeTerminal, syntaxSession: syntaxSession, sendInput: sendInput, readFiles: readFiles };
 })();

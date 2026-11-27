@@ -12,8 +12,7 @@ VIEWS.home = function (el) {
   el.innerHTML =
     '<header class="workspace-heading"><div><h1>信笺</h1><p>写代码、聊天与探索的空间</p></div>' +
     '<div class="workspace-actions">' + ThemeReveal.buttonHtml(true) +
-    '<button type="button" class="icon-btn" data-act="notices" aria-label="好友申请">' + svg('bell') + '</button>' +
-    '<button type="button" class="icon-btn" data-act="settings" aria-label="设置">' + svg('more') + '</button></div></header>' +
+    '<button type="button" class="icon-btn" data-act="notices" aria-label="好友申请">' + svg('bell') + '</button></div></header>' +
     '<div class="scroll entries">' + cards.map(function (card) {
       return '<button type="button" class="entry" data-go="' + card[0] + '" aria-label="' + card[2] + '">' +
         '<span class="entry-main">' + svg(card[1]) + '<span><strong>' + card[2] + '</strong><small>' + card[3] +
@@ -26,7 +25,6 @@ VIEWS.home = function (el) {
     var button = event.target.closest('button');
     if (!button) return;
     if (button.dataset.act === 'notices') return Nav.go('requests');
-    if (button.dataset.act === 'settings') return Nav.go('settings');
     var name = button.dataset.go;
     if (name === 'shelf') return Nav.tab('shelf');
     if (name) Nav.go('stub', { title: button.getAttribute('aria-label') });

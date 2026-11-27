@@ -48,7 +48,7 @@ var CodeRunner = (function () {
     return frame;
   }
 
-  function attach(panel, onVisibility, stopButton) {
+  function attach(panel, onVisibility, stopButton, onIssue) {
     var status = panel.querySelector('.run-status');
     var body = panel.querySelector('.run-body');
     var stopLabel = stopButton.querySelector('span');
@@ -127,7 +127,8 @@ var CodeRunner = (function () {
         var current = generation;
         lastInput = input.value;
         var data;
-        try { data = RunFormats.payload(ext, readSource(), RunIO.stdin(lastInput)); }
+        var source = readSource();
+        try { data = RunFormats.payload(ext, source, RunIO.stdin(lastInput)); }
         catch (e) {
           if (submitError) body.querySelector('pre').remove();
           submitError = RunIO.output(body);
@@ -164,6 +165,15 @@ var CodeRunner = (function () {
               var r = JSON.parse(xhr.responseText);
               if (r.status == null && !r.signal) throw new Error('服务响应缺少退出状态');
               var ok = String(r.status) === '0' && !r.signal;
+              var filenames = data.codes ? data.codes.map(function (file) { return file.file; }) :
+                ext === 'java' ? ['prog.java'] : ext === 'cs' ? ['prog.cs'] : ext === 'c' ? ['prog.c'] :
+                /^(?:cpp|cxx|cc|c\+\+)$/.test(ext) ? ['prog.cc', 'prog.cpp', 'prog.cxx'] : [];
+              var issue = !ok && EditorDiagnostics.compilerIssue(r.compiler_error || r.compiler_message, filenames);
+              if (!ok && python) {
+                issue = EditorDiagnostics.runtimeIssue(r.program_error, 'prog.py') ||
+                  EditorDiagnostics.runtimeIssue(r.program_error, 'main.py');
+              }
+              if (onIssue) onIssue(issue || null, source);
               var logged = false;
               ['compiler', 'program'].forEach(function (stage) {
                 var normal = r[stage + '_output'];
@@ -358,8 +368,15 @@ var CodeRunner = (function () {
       var pre = document.createElement('pre');
       var label = RunFormats.label(ext);
       if (label === '校验') {
-        try { status.textContent = RunFormats.validate(ext, source); }
-        catch (e) { status.textContent = '校验出错'; pre.textContent = e.message; body.appendChild(pre); }
+        try {
+          status.textContent = RunFormats.validate(ext, source);
+          if (onIssue) onIssue(null, source);
+        } catch (e) {
+          status.textContent = '校验出错';
+          pre.textContent = e.message;
+          body.appendChild(pre);
+          if (onIssue) onIssue(EditorDiagnostics.validationIssue(e, source, ext), source);
+        }
         return;
       }
       if (ext === 'txt') {
@@ -433,6 +450,7 @@ var CodeRunner = (function () {
       showOutput();
       var current = generation;
       var remaining = activeMs, deadline;
+      var stderr = '', started = false;
       function finish(label) { stop(); status.textContent = label; }
       function timeout(delay, label) {
         clearTimeout(timer);
@@ -474,9 +492,19 @@ var CodeRunner = (function () {
           var event = e.data;
           if (event.kind === 'input') terminalInput(event);
           else if (event.kind === 'stdin-mode') panel.dataset.stdinMode = event.mode;
-          else if (event.kind === 'ready' && !terminal) activeTimeout();
-          else if (event.kind === 'exit') finish(event.ok ? '运行完成' : '运行出错');
-          else outputView.emit(event);
+          else if (event.kind === 'ready' && !terminal) { started = true; activeTimeout(); }
+          else if (event.kind === 'exit') {
+            var issue = null;
+            if (!event.ok) {
+              if (job.language && !started) issue = EditorDiagnostics.compilerIssue(stderr, ['main.' + job.language]);
+              else issue = EditorDiagnostics.runtimeIssue(stderr, job.name);
+            }
+            if (onIssue) onIssue(issue, job.source);
+            finish(event.ok ? '运行完成' : '运行出错');
+          } else {
+            if (event.kind === 'stderr' && typeof event.text === 'string') stderr = (stderr + event.text).slice(-8192);
+            outputView.emit(event);
+          }
         };
         worker.onerror = function (e) {
           if (current !== generation) return;

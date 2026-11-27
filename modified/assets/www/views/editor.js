@@ -31,10 +31,13 @@
       '<div class="topbar editor-bar" id="edBar"></div><div class="editor-wrap">' +
       '<div class="gutter"><div class="gutter-inner" id="gin"></div></div>' +
       '<div class="code-area' + (plain ? ' plain' : '') + '" id="ca">' +
+      '<span class="editor-error-line" aria-hidden="true" hidden></span>' +
       '<pre id="pre" aria-hidden="true"></pre><textarea id="ta" aria-label="文本编辑区" ' +
       'spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" ' +
       'wrap="' + (plain ? 'soft' : 'off') + '"></textarea>' +
       '</div></div><div class="md-view hidden" id="mdView"></div>' +
+      '<button type="button" class="editor-diagnostic" data-act="diagnostic" hidden><span aria-live="polite"></span></button>' +
+      '<div class="editor-completion" role="listbox" aria-label="代码补全" hidden></div>' +
       '<div class="editor-symbols" role="group" aria-label="常用符号" hidden>' +
       '<div class="editor-symbol-list"></div>' +
       '<button type="button" class="indent-key" data-act="indent" aria-label="插入缩进">Tab</button>' +
@@ -70,6 +73,13 @@
     var symbolList = symbols.querySelector('.editor-symbol-list');
     var symbolsExt;
     var composing = false;
+    var issue = null;
+    var errorLine = el.querySelector('.editor-error-line');
+    var errorHint = el.querySelector('.editor-diagnostic');
+    var diagnostics = EditorDiagnostics.attach(showIssue);
+    var completion = EditorCompletion.attach(ta, el.querySelector('.editor-completion'), function (value, start, end, caret) {
+      replaceRange(value, start, end, caret, caret);
+    });
     var isMd = (ext === 'md');
 
     var tabList = el.querySelector('.ide-tabs');
@@ -87,8 +97,14 @@
         el.classList.remove('ide-output-expanded');
         panel.querySelector('[data-act="expandRun"]').setAttribute('aria-label', '放大结果区');
       }
+      if (visible) {
+        diagnostics.pause();
+        completion.hide();
+      } else if (!issue) checkSyntax();
       paintSymbols();
-    }, stopControl);
+    }, stopControl, function (result, source) {
+      if (!disposed && source === ta.value) showIssue(result);
+    });
     var grip = panel.querySelector('.run-resize');
     var workspace = panel.parentElement;
     var drag;
@@ -286,8 +302,18 @@
       }
     }
 
-    function textChanged() {
+    function canComplete() {
+      return loaded && !disposed && mode === 'edit' && !plain && !composing && panel.hidden;
+    }
+
+    function textChanged(event) {
+      if (canComplete() && event && !event.isComposing &&
+          /^(?:insertText|insertReplacementText|insertFromComposition|deleteContentBackward|deleteContentForward)$/.test(event.inputType)) {
+        completion.request(false);
+      } else completion.hide();
       dirty = true;
+      showIssue(null);
+      checkSyntax();
       scheduleHL();
       updateStatus();
     }
@@ -298,12 +324,56 @@
       // WebView 将 insertText 放进原生撤销历史。其他浏览器可直接修改选区。
       var inserted = false;
       if (typeof document.execCommand === 'function') {
-        try { inserted = document.execCommand('insertText', false, value); } catch (e) {}
+        try { inserted = document.execCommand(value ? 'insertText' : 'delete', false, value); } catch (e) {}
       }
       if (!inserted) ta.setRangeText(value, start, end, 'end');
       ta.setSelectionRange(selectionStart, selectionEnd, direction);
       textChanged();
     }
+
+    function applyIndent(change) {
+      if (change.caret !== undefined) {
+        ta.focus();
+        ta.setSelectionRange(change.caret, change.caret);
+        updateStatus();
+      } else {
+        replaceRange(change.text, change.start, change.end, change.selectionStart, change.selectionEnd, ta.selectionDirection);
+      }
+    }
+
+    function changeIndent(action, event) {
+      if (!loaded || mode !== 'edit' || composing || (event && event.isComposing)) return;
+      if (plain) {
+        if (!event && action === 'tab') insertSymbol('    ');
+        return;
+      }
+      var change = EditorTools.indentEdit(ta.value, ta.selectionStart, ta.selectionEnd, action, ext);
+      if (!change) return;
+      if (event) event.preventDefault();
+      applyIndent(change);
+    }
+
+    ta.addEventListener('keydown', function (event) {
+      if (canComplete() && !event.isComposing) {
+        if (event.ctrlKey && !event.altKey && !event.metaKey && (event.code === 'Space' || event.key === ' ')) {
+          event.preventDefault();
+          completion.request(true);
+          scheduleHL();
+          return;
+        }
+        if (completion.key(event)) return;
+      }
+      if (event.key !== 'Tab' || event.ctrlKey || event.altKey || event.metaKey) return;
+      changeIndent(event.shiftKey ? 'outdent' : 'tab', event);
+    });
+
+    ta.addEventListener('beforeinput', function (event) {
+      if (!event.cancelable) return;
+      var type = event.inputType;
+      if (type === 'insertLineBreak' || type === 'insertParagraph') changeIndent('enter', event);
+      else if (type === 'insertText' && event.data === ' ') changeIndent('space', event);
+      else if (type === 'deleteContentBackward') changeIndent('backspace', event);
+    });
 
     function insertSymbol(key) {
       var parts = EditorTools.parts(key);
@@ -365,6 +435,9 @@
     function refreshLanguage() {
       plain = ['txt', 'md'].indexOf(ext) >= 0;
       isMd = (ext === 'md');
+      diagnostics.pause();
+      completion.hide();
+      showIssue(null);
       ca.classList.toggle('plain', plain);
       ta.setAttribute('wrap', plain ? 'soft' : 'off');
       el.querySelector('#stSyn').textContent = languageLabel();
@@ -375,6 +448,7 @@
       if (plain) { pre.textContent = ''; return; }
       /* 零宽结尾让空文件和末尾空行也有行框，源码本身保持原样。 */
       pre.innerHTML = HL.highlight(ta.value, ext) + '\u200b';
+      if (canComplete()) completion.render(pre, ext);
       syncScroll();
     }
     function scheduleHL() {
@@ -385,10 +459,53 @@
       });
     }
 
+    function checkSyntax() {
+      if (loaded && !disposed && !composing && mode === 'edit' && panel.hidden) diagnostics.schedule(ext, ta.value);
+    }
+
+    function showIssue(result) {
+      issue = !plain && result && Number.isInteger(result.line) && result.line > 0 && result.line <= gin.__n ? result : null;
+      errorHint.hidden = errorLine.hidden = !issue;
+      if (issue) {
+        errorHint.dataset.line = issue.line;
+        errorHint.firstElementChild.textContent = '第 ' + issue.line + ' 行 · ' + issue.message;
+        ta.setAttribute('aria-invalid', 'true');
+        positionIssue();
+      } else {
+        delete errorHint.dataset.line;
+        errorHint.firstElementChild.textContent = '';
+        ta.removeAttribute('aria-invalid');
+      }
+    }
+
+    function positionIssue() {
+      if (!issue) return;
+      var style = getComputedStyle(ta);
+      var height = parseFloat(style.lineHeight);
+      if (height < 4) height *= parseFloat(style.fontSize);
+      if (!height) return;
+      errorLine.style.height = height + 'px';
+      errorLine.style.transform = 'translateY(' + (parseFloat(style.paddingTop) + (issue.line - 1) * height - ta.scrollTop) + 'px)';
+    }
+
+    function jumpToIssue() {
+      if (!issue) return;
+      var rows = ta.value.split('\n');
+      var offset = rows.slice(0, issue.line - 1).reduce(function (sum, line) { return sum + line.length + 1; }, 0);
+      offset += Math.min(rows[issue.line - 1].length, Math.max(0, (issue.column || 1) - 1));
+      ta.focus();
+      ta.setSelectionRange(offset, offset);
+      var height = errorLine.offsetHeight;
+      ta.scrollTop = Math.max(0, (issue.line - 2) * height);
+      syncScroll();
+      updateStatus();
+    }
+
     function syncScroll() {
       var st = ta.scrollTop, sl = ta.scrollLeft;
       pre.scrollTop = st; pre.scrollLeft = sl;
       gin.style.transform = 'translateY(' + (-st) + 'px)';
+      positionIssue();
     }
 
     var statusTimer = null, gutterTimer = null;
@@ -430,6 +547,7 @@
     }
 
     function setMode(m) {
+      completion.hide();
       mode = m;
       paintBar();
       paintSymbols();
@@ -446,7 +564,10 @@
       el.querySelector('#stWords').textContent =
         ta.value.replace(/\s/g, '').length + ' 字';
 
-      if (m === 'edit') setTimeout(function () { ta.focus(); }, 60);
+      if (m === 'edit') {
+        checkSyntax();
+        setTimeout(function () { if (!disposed && mode === 'edit' && panel.hidden) ta.focus(); }, 60);
+      } else diagnostics.pause();
     }
 
     /* 目录里的 [第一章](#第一章风雨欲来上) 要能跳。
@@ -518,8 +639,10 @@
       } else if ((act === 'undo' || act === 'redo') && mode === 'edit' && !composing) {
         ta.focus();
         if (typeof document.execCommand === 'function') document.execCommand(act);
-      } else if (act === 'indent' && mode === 'edit' && !composing) {
-        insertSymbol('    ');
+      } else if (act === 'diagnostic') {
+        jumpToIssue();
+      } else if (act === 'indent') {
+        changeIndent('tab');
       } else if (act === 'format' && mode === 'edit' && !composing) {
         formatText();
       } else if (act === 'symbol' && mode === 'edit' && !composing) {
@@ -601,9 +724,15 @@
     }
 
     ta.addEventListener('input', textChanged);
-    ta.addEventListener('compositionstart', function () { composing = true; });
+    ta.addEventListener('compositionstart', function () {
+      composing = true;
+      diagnostics.pause();
+      completion.hide();
+    });
     ta.addEventListener('compositionend', function () {
       composing = false;
+      if (canComplete()) completion.request(false);
+      checkSyntax();
       scheduleHL();
     });
     /* 滚动时行号栏淡下去一点，停下 400ms 再回来：编辑器里唯一的动效 */
@@ -628,6 +757,7 @@
     /* 系统返回键：编辑态先存盘并退回阅读态，再按一次才离开这篇 */
     el.__onBack = function () {
       if (!panel.hidden) { runner.close(); return true; }
+      if (completion.hide()) return true;
       if (mode !== 'edit') return false;
       save(true).then(function (ok) { if (ok) setMode('read'); });
       return true;
@@ -635,6 +765,8 @@
 
     el.__cleanup = function () {
       disposed = true;
+      completion.hide();
+      diagnostics.pause();
       runner.close();
       clearInterval(timer);
       clearTimeout(statusTimer);

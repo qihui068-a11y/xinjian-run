@@ -283,6 +283,7 @@ function input(w, source) {
   });
   await require('./web-cases.cjs')({ test, app, settle, preFor, texts, input, languages });
   await require('./editor-tools.cjs')({ test, app, settle });
+  await require('./editor-completion.cjs')({ test, app, settle });
   await require('./lan.cjs')({ test, app, settle });
 await require('./motion.cjs')({ test, app, settle });
   await require('./update.cjs')({ test, app });

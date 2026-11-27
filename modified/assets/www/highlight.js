@@ -156,7 +156,7 @@
     if (ext === 'py' || ext === 'pyw' || ext === 'python') return tokenizePython(text);
     if (ext === 'java') return tokenizeJava(text);
     if (ext === 'bf' || ext === 'bfh') return tokenizeBF(text);
-    if (ext === 'c' || ext === 'cpp' || ext === 'cs') return tokenizeCFamily(text);
+    if (/^(?:c|h|cpp|cxx|cc|c\+\+|hpp|hxx|hh|cs)$/.test(ext)) return tokenizeCFamily(text);
     if (ext === 'js' || ext === 'mjs' || ext === 'cjs' || ext === 'javascript') return tokenizeJavaScript(text);
     if (ext === 'json' || ext === 'jsonc') return tokenizeJSON(text, ext === 'jsonc');
     if (ext === 'css') return tokenizeCSS(text);
@@ -754,7 +754,26 @@
     return out;
   }
 
+  var completionWords = {
+    py: { keywords: Object.keys(PY_KEY).concat(['True', 'False', 'None']),
+      types: Object.keys(PY_TYPES), functions: Object.keys(PY_BUILTINS) },
+    java: { keywords: Object.keys(JAVA_KEY).concat(['true', 'false', 'null']), types: Object.keys(JAVA_TYPES) },
+    js: { keywords: Object.keys(JS_KEY).concat(Object.keys(JS_LITERAL)), types: Object.keys(JS_TYPES) },
+    bf: { keywords: BF_KEYWORDS, types: BF_TYPES },
+    c: { keywords: C_KEY.filter(function (word) {
+      return !/^(?:class|public|private|protected|namespace|using|template|new|delete)$/.test(word);
+    }).concat(['inline', 'restrict', 'volatile', '_Bool']) },
+    cpp: { keywords: C_KEY.concat(['alignof', 'constexpr', 'decltype', 'explicit', 'friend', 'noexcept', 'operator', 'static_assert', 'throw', 'try', 'typename', 'virtual']) },
+    cs: { keywords: C_KEY.filter(function (word) {
+      return !/^(?:union|unsigned|signed|extern|typedef|template|delete|nullptr|auto)$/.test(word);
+    }).concat(['null', 'readonly', 'static', 'void', 'using']) }
+  };
+  var noCompletionWords = {};
+
   global.HL = {
+    completionVocabulary: function (kind) {
+      return Object.prototype.hasOwnProperty.call(completionWords, kind) ? completionWords[kind] : noCompletionWords;
+    },
     highlight: highlight,
     javascriptLiterals: function (source) {
       var ranges = Object.create(null);

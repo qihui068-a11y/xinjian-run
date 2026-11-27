@@ -75,6 +75,35 @@ self.onmessage = async ({ data: job }) => {
     importScripts(indexURL + 'pyodide.js');
     const py = await loadPyodide({ indexURL, jsglobals: Object.create(null),
       stdout: line => log('stdout', line + '\n'), stderr: line => log('stderr', line + '\n') });
+    if (job.kind === 'syntax-session') {
+      // Compile the supplied string without executing the resulting code object.
+      const check = py.runPython(`from ast import PyCF_ALLOW_TOP_LEVEL_AWAIT
+def _xj_check_syntax(source):
+    try:
+        compile(source, "<editor>", "exec", flags=PyCF_ALLOW_TOP_LEVEL_AWAIT, dont_inherit=True)
+    except SyntaxError as error:
+        return error.lineno or 1, max(1, error.offset or 1), error.msg
+    return None
+_xj_check_syntax`);
+      self.onmessage = ({ data }) => {
+        if (!data || data.kind !== 'syntax-check' || typeof data.source !== 'string' ||
+            data.source.length > 128 * 1024) return;
+        let result, issue = null;
+        try {
+          result = check(data.source);
+          if (result) issue = { line: result.get(0), column: result.get(1), message: result.get(2) };
+        } catch (_) {
+          emit('exit', { ok: false });
+          self.close();
+          return;
+        } finally {
+          if (result) result.destroy();
+        }
+        emit('syntax-result', { id: data.id, issue });
+      };
+      emit('syntax-ready');
+      return;
+    }
     py.setStdout(stream('stdout'));
     py.setStderr(stream('stderr'));
     const stdin = job.stdin ? job.stdin.replace(/\n$/, '').split('\n') : [];

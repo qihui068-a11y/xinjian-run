@@ -119,6 +119,53 @@ def check_editor_viewport(browser):
     finally:
         page.close()
 
+def check_code_completion(browser):
+    page = browser.new_page(viewport={'width': 390, 'height': 800},
+                            device_scale_factor=2, has_touch=True, is_mobile=True)
+    try:
+        page.route('https://xj.test/**', lambda route: route.fulfill(path=root/route.request.url.split('https://xj.test/')[1]))
+        page.goto('https://xj.test/index.html')
+        page.evaluate('''async () => {
+          await Bridge.create('completion.py', '');
+          Nav.reset('editor', {name:'completion.py', mode:'edit'});
+        }''')
+        area = page.locator('#ta')
+        area.focus()
+        page.evaluate('__xjKeyboardViewport(1000, true)')
+        page.keyboard.type('pr')
+        candidates = page.get_by_role('listbox', name='代码补全')
+        print_option = candidates.get_by_role('option').filter(has_text='print()')
+        expect(print_option).to_be_visible()
+        dock = candidates.bounding_box()
+        symbols = page.locator('.editor-symbols').bounding_box()
+        assert dock['y'] + dock['height'] <= symbols['y'] + 1
+        assert abs(symbols['y'] + symbols['height'] - 500) <= 1
+        print_option.tap()
+        expect(area).to_have_value('print()')
+        assert area.evaluate('el => el.selectionStart === 6 && document.activeElement === el')
+        expect(candidates).to_be_hidden()
+        page.keyboard.press('Control+z')
+        expect(area).to_have_value('pr')
+        page.evaluate('__xjKeyboardViewport(800, false)')
+
+        area.fill('local_answer = 42\nlocal_')
+        area.press('End')
+        page.keyboard.type('a')
+        item = candidates.get_by_role('option').filter(has_text='local_answer')
+        expect(item).to_be_visible()
+        area.press('ArrowDown')
+        expect(item).to_have_attribute('aria-selected', 'true')
+        area.press('Tab')
+        expect(area).to_have_value('local_answer = 42\nlocal_answer')
+        expect(candidates).to_be_hidden()
+        area.fill('def example():')
+        area.press('End')
+        area.press('Enter')
+        expect(area).to_have_value('def example():\n    ')
+        print('PASS completion touch, keyboard selection, undo, and dock above Android keyboard')
+    finally:
+        page.close()
+
 with sync_playwright() as pw:
  proxy=os.environ.get('HTTPS_PROXY') if os.environ.get('XJ_LIVE') else None
  b=pw.chromium.launch(executable_path=os.environ.get('XJ_CHROMIUM') or shutil.which('chromium'),proxy={'server':proxy} if proxy else None)
@@ -142,9 +189,10 @@ with sync_playwright() as pw:
  run('console.log(typeof XinJianBridge, typeof fetch, typeof document); Promise.resolve(7).then(x => console.log(x))')
  expect(status).to_have_text('运行完成')
  expect(out).to_have_text('undefined undefined undefined\n7')
- run('const a = ;')
+ run('const valid = 1;\nconst a = ;')
  expect(status).to_have_text('运行出错')
  expect(out).to_contain_text('SyntaxError')
+ expect(p.locator('.editor-diagnostic')).to_have_attribute('data-line','2')
  run('throw new Error("出错")')
  expect(out).to_contain_text('出错')
  run('for (;;) {}')
@@ -200,6 +248,14 @@ with sync_playwright() as pw:
   expect(status).to_contain_text('正确')
   run('{' if ext!='xml' else '<a><b></a>')
   expect(status).to_have_text('校验出错')
+ openfile('live.jsonc')
+ area=p.locator('#ta')
+ area.fill('{\n  "active": , // invalid\n  "url": "https://a"\n}')
+ issue=p.locator('.editor-diagnostic')
+ expect(issue).to_have_attribute('data-line','2')
+ area.fill('{\n  "active": true, // valid\n  "url": "https://a"\n}')
+ expect(issue).to_be_hidden()
+ print('PASS runtime source marking and live JSONC syntax diagnostics')
  openfile('style.css')
  run('.card{color:red}')
  expect(p.frame_locator('.run-body iframe').locator('.card')).to_have_css('color','rgb(255, 0, 0)')
@@ -234,6 +290,13 @@ with sync_playwright() as pw:
   if ext!='bfh':expect(out).to_have_text('5')
   assert len(calls)==before+1 and calls[-1].post_data_json['stdin']=='2'
   print('PASS',ext,flush=True)
+ if not os.environ.get('XJ_LIVE'):
+  p.route(api,lambda r:r.fulfill(json={'status':'1','compiler_error':'prog.c:2:3: error: expected expression'}),times=1)
+  openfile('bad.c')
+  run('int main(void) {\n  return +;\n}')
+  p.locator('.run-submit').click()
+  expect(p.locator('.editor-diagnostic')).to_have_attribute('data-line','2')
+  print('PASS compiler-located error on the current source')
  openfile('bad.bf')
  run('int main(){over!}')
  before=len(calls)
@@ -254,5 +317,6 @@ with sync_playwright() as pw:
  p.locator('.run-submit').click()
  expect(status).to_have_text('连接失败')
  print('PASS formats, runtime outputs and failure paths')
+ check_code_completion(b)
  check_symbol_dock(b)
  check_editor_viewport(b)

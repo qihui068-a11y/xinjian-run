@@ -86,6 +86,9 @@ def compare(browser, scheme):
     expect(entries.first.locator('.entry-main svg')).to_have_css('stroke', 'rgb(245, 245, 245)' if dark else 'rgb(23, 23, 23)')
     button = toggle.bounding_box()
     assert button['x'] > page.viewport_size['width'] / 2 and button['y'] < bounds[0]['y']
+    actions = page.locator('.home-view .workspace-actions')
+    expect(actions.get_by_role('button')).to_have_count(2)
+    expect(actions.get_by_role('button', name='好友申请')).to_be_visible()
     snapshot(page, 'home-' + scheme)
 
     entries.first.click()
@@ -189,7 +192,21 @@ def compare(browser, scheme):
     page.get_by_role('button', name='清空终端').click()
     expect(page.locator('.run-body pre')).to_have_text('')
     tabs.get_by_role('button', name='书架').click()
-    expect(page.locator('.shelf-recent-list button').first).to_contain_text('console.js')
+    recent = page.locator('.shelf-recent-list [data-recent="console.js"]')
+    full = page.locator('.shelf-files [data-name="console.js"]')
+    expect(recent).to_be_visible()
+    expect(full).to_have_css('flex-direction', 'row')
+    for item in (full, recent):
+        icon = item.locator('svg').bounding_box()
+        title = item.locator('.b-name').bounding_box()
+        date = item.locator('time').bounding_box()
+        assert icon['x'] + icon['width'] < title['x'] < date['x']
+    assert abs(full.bounding_box()['height'] - recent.bounding_box()['height']) <= 1
+    for part in ('.b-name', '.b-excerpt'):
+        for prop in ('font-size', 'line-height', 'font-weight', 'margin-top'):
+            expect(full.locator(part)).to_have_css(prop, recent.locator(part).evaluate(
+                '(el, prop) => getComputedStyle(el).getPropertyValue(prop)', prop))
+    snapshot(page, 'shelf-rows-' + scheme)
 
     page.evaluate("""() => {
       const session = Pigeon.create('阿晚');

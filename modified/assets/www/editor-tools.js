@@ -222,6 +222,109 @@ var EditorTools = (function () {
     return out;
   }
 
+  var indentWidth = 4;
+
+  function indentColumn(prefix) {
+    var column = 0;
+    for (var i = 0; i < prefix.length; i++) {
+      column += prefix[i] === '\t' ? indentWidth - column % indentWidth : 1;
+    }
+    return column;
+  }
+
+  function indentOffset(whitespace, target) {
+    var i = 0, column = 0;
+    while (i < whitespace.length && column < target) {
+      column += whitespace[i++] === '\t' ? indentWidth - column % indentWidth : 1;
+    }
+    return { index: i, column: column };
+  }
+
+  function blockIndent(source, cursor, line, ext) {
+    var kind = formats[ext] && formats[ext].kind;
+    if (!kind || cursor > 128 * 1024) return null;
+    if (!/[{:\[][ \t]*(?:(?:#|\/\/)[^\n]*)?$/.test(line)) return null;
+    if (!/^(?:py|c|cpp|cs|java|js|css|json|jsonc|bf)$/.test(kind)) return null;
+    var tokens;
+    try { tokens = lex(source.slice(0, cursor), kind); }
+    catch (_) { return null; }
+    var head = '', indentation = '', previous = '', depth = 0;
+    tokens.forEach(function (token) {
+      if (!depth && HAS_BREAK.test(token.gap) && previous !== '\\') {
+        head = previous = '';
+      }
+      if (token.type !== 'code') return;
+      if (!head) {
+        head = token.value;
+        indentation = /[ \t]*$/.exec(token.gap)[0];
+      }
+      if (/^[([{]$/.test(token.value)) depth++;
+      if (/^[)\]}]$/.test(token.value)) depth = Math.max(0, depth - 1);
+      previous = token.value;
+    });
+    if (kind === 'py') {
+      var suite = /^(?:async|def|class|if|elif|else|for|while|with|try|except|finally|match|case)$/;
+      return !depth && previous === ':' && suite.test(head) ? indentation : null;
+    }
+    var opens = previous === '{' || ((kind === 'json' || kind === 'jsonc') && previous === '[');
+    return opens ? /^[ \t]*/.exec(line)[0] : null;
+  }
+
+  function indentEdit(source, start, end, action, ext) {
+    var lineStart = start === 0 ? 0 : source.lastIndexOf('\n', start - 1) + 1;
+    var prefix = source.slice(lineStart, start);
+    var leading = /^[ \t]*/.exec(prefix)[0];
+
+    function replace(from, to, text, selectionStart, selectionEnd) {
+      var caret = from + text.length;
+      return { start: from, end: to, text: text, selectionStart: selectionStart == null ? caret : selectionStart,
+        selectionEnd: selectionEnd == null ? caret : selectionEnd };
+    }
+
+    if (action === 'enter') {
+      var block = blockIndent(source, start, prefix, ext);
+      return replace(start, end, '\n' + (block === null ? leading : block + ' '.repeat(indentWidth)));
+    }
+
+    var tab = action === 'tab', outdent = action === 'outdent';
+    var multiline = end > start && source.slice(start, end).indexOf('\n') >= 0;
+    if (outdent || (tab && multiline)) {
+      var last = end > start && source[end - 1] === '\n' ? end - 1 : end;
+      var lineEnd = source.indexOf('\n', last);
+      if (lineEnd < 0) lineEnd = source.length;
+      var block = source.slice(lineStart, lineEnd), removed = 0;
+      var edited = block.split('\n').map(function (line, i) {
+        if (!outdent) return ' '.repeat(indentWidth) + line;
+        var cut = indentOffset(/^[ \t]*/.exec(line)[0], indentWidth).index;
+        if (i === 0) removed = cut;
+        return line.slice(cut);
+      }).join('\n');
+      if (edited === block) return null;
+      if (end > start) return replace(lineStart, lineEnd, edited, lineStart, lineStart + edited.length);
+      var caret = Math.max(lineStart, start - removed);
+      return replace(lineStart, lineEnd, edited, caret, caret);
+    }
+    if (tab && (start !== end || prefix !== leading)) {
+      var column = indentColumn(prefix);
+      return replace(start, end, ' '.repeat(indentWidth - column % indentWidth));
+    }
+    if (start !== end || prefix !== leading) return null;
+
+    var column = indentColumn(leading);
+    if (action === 'backspace') {
+      if (!column) return null;
+      var previous = indentWidth * Math.floor((column - 1) / indentWidth);
+      return replace(lineStart + indentOffset(leading, previous).index, start, '');
+    }
+    if (action !== 'space' && !tab) return null;
+    var next = column + indentWidth - column % indentWidth;
+    var whitespace = /^[ \t]*/.exec(source.slice(lineStart))[0];
+    var stop = indentOffset(whitespace, next);
+    var position = lineStart + stop.index;
+    if (stop.column === next) return { caret: position };
+    return replace(position, position, ' '.repeat(next - stop.column));
+  }
+
   function normalizedGap(gap, indent) {
     return gap.replace(/[ \t]*$/, indent);
   }
@@ -385,6 +488,7 @@ var EditorTools = (function () {
     customKeys: function (ext) { return savedKeys(formats[ext] || formats.txt, preferences()); },
     changeKey: changeKey,
     parts: function (key) { return pairs[key] || [key, '']; },
-    format: format
+    format: format,
+    indentEdit: indentEdit
   };
 })();
