@@ -20,19 +20,15 @@
       '<input type="search" id="pgSearch" placeholder="搜索会话或消息" aria-label="搜索会话或消息"></label>' +
       '<div class="workspace-shortcuts">' +
       '<button type="button" data-act="lan-toggle" id="pgLan"></button>' +
-      '<button type="button" data-act="nearby" id="pgNearby"></button></div>' +
-      '<div class="pg-scan" id="pgScan" hidden><div class="pg-scan-list" id="pgScanList"></div></div>' +
+      '<button type="button" data-act="nearby" id="pgNearby" aria-haspopup="dialog" aria-expanded="false"></button></div>' +
       '<button type="button" class="pg-safe" data-act="boundary">仅限可信网络 · 明文传输</button>' +
       '<div class="workspace-section"><h2>最近聊天</h2><button type="button" data-act="requests" id="pgRequests">好友申请</button></div>' +
       '<div class="pg-sessions"></div></div>';
     var sessionList = el.querySelector('.pg-sessions');
-    var scanBox = el.querySelector('#pgScan');
-    var scanList = el.querySelector('#pgScanList');
     var lanBtn = el.querySelector('#pgLan');
     var nearby = el.querySelector('#pgNearby');
-    nearby.innerHTML = '<span class="pg-radar" aria-hidden="true"><span class="pg-waves"></span>' + svg('radar') +
-      '</span><span><strong>附近设备</strong><small></small></span>';
-    var scanStatus = nearby.querySelector('small'), knownPeers;
+    nearby.innerHTML = svg('radar') + '<span><strong>附近设备</strong><small></small></span>';
+    var scanStatus = nearby.querySelector('small'), radar;
     var search = el.querySelector('#pgSearch');
     var requests = el.querySelector('#pgRequests');
     search.addEventListener('input', render);
@@ -46,40 +42,11 @@
       lanBtn.classList.toggle('on', on);
     }
 
-    /* 只有真的扫到设备才亮出这张表：局域网开着但空着的时候，整块不存在 */
-    function paintScan() {
-      var scanning = Lan.running();
-      var near = scanning ? Lan.peers() : [];
-      nearby.classList.toggle('is-scanning', scanning);
-      scanStatus.textContent = near.length ? '发现 ' + near.length + ' 台设备' :
-        scanning ? '暂未发现设备' : '开启局域网后查看';
-      if (!near.length) {
-        scanBox.hidden = true;
-        knownPeers = new Set();
-        if (scanList.innerHTML !== '') scanList.innerHTML = '';
-        return;
-      }
-      var h = near.map(function (d) {
-        return '<button type="button" class="pg-scan-row" data-peer="' + esc(d.id) + '">' +
-          '<span class="pg-scan-id">' + esc(Lan.short(d.id)) + '</span>' +
-          '<span class="pg-scan-name">' + esc(d.name || '未命名设备') + '</span>' +
-        '</button>';
-      }).join('');
-      scanBox.hidden = false;
-      if (scanList.innerHTML !== h) {
-        scanList.innerHTML = h;
-        scanList.querySelectorAll('.pg-scan-row').forEach(function (row) {
-          if (knownPeers && !knownPeers.has(row.dataset.peer)) {
-            Motion.play(row, [{ opacity: 0, transform: 'translateY(4px) scale(.985)' },
-              { opacity: 1, transform: 'none' }], 210);
-          }
-        });
-      }
-      knownPeers = new Set(near.map(function (peer) { return peer.id; }));
-    }
     function render() {
       paintLan();
-      paintScan();
+      var count = Lan.running() ? Lan.peers().length : 0;
+      scanStatus.textContent = count ? '发现 ' + count + ' 台设备' :
+        Lan.running() ? '查看局域网设备' : '开启局域网后搜索';
       var term = search.value.trim().toLowerCase();
       var pending = Pigeon.requestCount();
       requests.textContent = pending ? '好友申请 · ' + pending : '好友申请';
@@ -113,14 +80,23 @@
     }
 
     render();
-    el.__cleanup = Lan.observe(render);
+    var unobserve = Lan.observe(render);
+    el.__cleanup = function () {
+      unobserve();
+      if (radar && radar.isOpen()) radar.dispose();
+    };
 
     el.addEventListener('click', function (e) {
       if (e.target.closest('[data-act=requests]')) return Nav.go('requests');
       if (e.target.closest('[data-act=nearby]')) {
-        if (!Lan.running()) return Lan.toggle();
-        if (scanBox.hidden) return toast('暂未发现附近设备');
-        return scanBox.scrollIntoView({ block: 'nearest' });
+        if (!radar || !radar.isOpen()) {
+          radar = RadarSheet.open(el, nearby, function (id) {
+            var peer = Lan.peer(id);
+            if (peer) Nav.go('chat', { sid: Pigeon.openLan(peer.id, peer.name).id });
+            else toast('设备已离线');
+          });
+        }
+        return;
       }
       if (e.target.closest('[data-act=more]')) {
         return popover([
@@ -131,12 +107,6 @@
       if (e.target.closest('[data-act=lan-toggle]')) return Lan.toggle();
       if (e.target.closest('[data-act=contacts]')) return Nav.go('contacts');
       if (e.target.closest('[data-act=boundary]')) return Nav.go('about');
-      var peerButton = e.target.closest('[data-peer]');
-      if (peerButton) {
-        var peer = Lan.peer(peerButton.dataset.peer);
-        if (peer) Nav.go('chat', { sid: Pigeon.openLan(peer.id, peer.name).id });
-        return;
-      }
       if (e.target.closest('[data-act=new]')) {
         var btn = e.target.closest('[data-act=new]');
         popover([

@@ -909,10 +909,6 @@ body.dark{
 .chips.seg .chip.on{background:none;color:var(--bg);border-color:transparent;}
 .chips.seg .chip:active{transform:none;}
 .chips.seg .chip-detail{font-size:var(--fs-footnote);}
-/* 格式较多且 JavaScript 名称较长：扩展名另起一行，窄屏也不挤占邻格。 */
-#fmtChips .chip{flex-direction:column;gap:.125rem;min-height:3.75rem;}
-#fmtChips .chip-detail{max-width:100%;margin-left:0;opacity:.65;}
-#fmtChips .chip.on .chip-detail{margin-left:0;opacity:.8;}
 .chips.seg .ni-bar{
   background:var(--fg);
   border-radius:0;
@@ -1073,36 +1069,6 @@ html.anim-off *,html.anim-off *::before,html.anim-off *::after{
   white-space:nowrap;}
 .req-acts{display:flex;gap:.4rem;flex:none;}
 
-/* ========== 鸽屋：扫描结果气泡（指向底栏「局域网」） ==========
-   同一个圆角深色气泡，只是内容换成行列表；只在扫到设备时出现。 */
-.pg-scan{
-  position:fixed;left:25%;transform:translateX(-50%);
-  bottom:calc(var(--bar) + var(--safe-b) + 1.5rem + 12px);
-  width:min(15rem,72vw);max-height:38vh;
-  display:flex;flex-direction:column;
-  background:#4A4A4C;color:#fff;
-  border-radius:.7rem;
-  border:1px solid rgba(255,255,255,.10);
-  box-shadow:0 .5rem 1.5rem rgba(0,0,0,.28);
-  z-index:30;
-}
-.pg-scan[hidden]{display:none;}
-.pg-scan::after{
-  content:"";position:absolute;bottom:-.32rem;left:50%;margin-left:-.32rem;
-  width:.64rem;height:.64rem;background:#4A4A4C;transform:rotate(45deg);border-radius:1px;
-}
-.pg-scan-list{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:.25rem 0;}
-.pg-scan-row{
-  display:flex;align-items:center;gap:.6rem;width:100%;
-  padding:.6rem .8rem;color:#fff;background:none;border:0;text-align:left;
-}
-.pg-scan-row:active{background:rgba(255,255,255,.09);}
-.pg-scan-id{
-  flex:none;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:var(--fs-caption1);
-  padding:.1rem .35rem;border-radius:.3rem;background:rgba(255,255,255,.12);
-}
-.pg-scan-name{flex:1;min-width:0;font-size:var(--fs-subhead);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-
 /* 鸽屋底栏上沿的边界提示：常驻、可点，点开是「关于」里的完整说明 */
 .pg-safe{
   position:fixed;left:0;right:0;
@@ -1136,17 +1102,7 @@ html.anim-off *,html.anim-off *::before,html.anim-off *::after{
 .sheet-grab{height:22px;display:grid;place-items:center;touch-action:none;cursor:grab;}
 .sheet-grab::before{content:"";width:32px;height:4px;border-radius:4px;background:rgba(var(--fg-rgb),.23);}
 
-:root{--m-radar:1900ms;--m-radar-delay:650ms;--m-ui-loop:900ms;}
-.pg-radar{position:relative;display:inline-grid;place-items:center;flex:none;}
-.pg-waves{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity var(--m-3) var(--e-out);}
-.is-scanning .pg-waves{opacity:1;}
-.pg-waves::before,.pg-waves::after{
-  content:"";position:absolute;inset:0;border:1px solid currentColor;border-radius:50%;
-  animation:xjRadar var(--m-radar) linear infinite paused;
-}
-.pg-waves::after{animation-delay:var(--m-radar-delay);}
-.is-scanning .pg-waves::before,.is-scanning .pg-waves::after{animation-play-state:running;}
-@keyframes xjRadar{from{transform:scale(.85);opacity:.68}to{transform:scale(1.72);opacity:0}}
+:root{--m-ui-loop:900ms;}
 
 .run-status:is([data-stage=initializing],[data-stage=compiling],[data-stage=running])::before,
 .msg-transfer.is-busy{
@@ -1158,12 +1114,9 @@ html.anim-off *,html.anim-off *::before,html.anim-off *::after{
 .msg-transfer{display:inline-flex;vertical-align:middle;margin-left:.4em;}
 .msg-transfer svg,.msg-st button svg{width:1em;height:1em;vertical-align:middle;}
 @keyframes xjStatusSpin{to{transform:rotate(360deg)}}
-html.motion-background .pg-waves::before,html.motion-background .pg-waves::after,
 html.motion-background .run-status::before,html.motion-background .msg-transfer{
   animation-play-state:paused;
 }
-html.anim-off .pg-waves{visibility:hidden;}
-@media (prefers-reduced-motion: reduce){.pg-waves{visibility:hidden;}}
 
 /* 删除联系人：先失焦、再塌陷，最后才移除（规范第 12 条） */
 .ct-row.leaving{max-height:0;opacity:0;overflow:hidden;}

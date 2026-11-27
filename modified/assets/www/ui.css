@@ -5,7 +5,7 @@ body {
   line-height: var(--lh-body);
   font-variant-numeric: tabular-nums;
 }
-button:focus-visible, .row:focus-visible, .create-name:focus-within {
+button:focus-visible, .row:focus-visible {
   outline: 2px solid var(--tint);
   outline-offset: -2px;
 }
@@ -212,13 +212,6 @@ html.dark .home-view {
 .ct-group .ct-face { background: var(--group); }
 .ct-list .ct-section, .section-label { color: var(--fg-2); font-size: var(--fs-footnote); line-height: var(--lh-footnote); opacity: 1; }
 
-.create-scroll { padding: var(--sp-4) 0 calc(var(--safe-b) + var(--glass-gap) + var(--glass-h) + 82px); }
-.create-scroll .form { gap: var(--group-gap); padding: 0; }
-.create-scroll .rows { margin-top: 0; margin-bottom: 0; }
-.create-scroll .section-label { margin: 0 var(--inset-x) var(--sp-2); }
-.create-name label { flex: none; }
-.create-name input { flex: 1; min-width: 0; border: 0; padding: 0; background: transparent; text-align: right; color: var(--fg); font-size: var(--fs-body); }
-.create-name input::placeholder { color: var(--fg-3); }
 .choice-row .row-v { margin-left: auto; }
 .chips.seg[data-cols="3"] { grid-template-columns: repeat(3,minmax(0,1fr)); }
 .chips.seg {
@@ -230,12 +223,6 @@ html.dark .home-view {
   font-size: var(--fs-footnote); line-height: var(--lh-footnote);
 }
 .chips.seg .ni-bar { border-radius: var(--r-sm); background: var(--seg-thumb); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-.create-submit {
-  position: fixed; z-index: 15; margin: 0; left: var(--page-x); right: var(--page-x);
-  bottom: calc(var(--safe-b) + var(--glass-gap) + var(--glass-h) + var(--sp-4));
-}
-.editor-ime-visible .create-submit { bottom: calc(var(--editor-ime-offset,0px) + var(--sp-2)); }
-.editor-ime-visible .create-scroll { padding-bottom: calc(var(--editor-ime-offset,0px) + 68px); }
 .submit, .run-submit, .run-python, .run-c, .run-interactive-start {
   min-height: 50px; border-radius: var(--r-card); background: var(--fg); color: var(--bg);
   font-weight: 600; box-shadow: none;

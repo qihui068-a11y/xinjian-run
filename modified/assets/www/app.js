@@ -634,12 +634,13 @@
   var Nav = {
     stack: [{ name: 'home', params: {}, layer: null }],
     go: function (name, params) {
+      if (name === 'create') return FileCreate.open();
       var current = $app.firstElementChild;
       var card = this.card;
       this.card = null;
       var previous = null;
       if (current && !card && this.motion !== 'tab' &&
-          ['create', 'chat', 'cset', 'settings', 'perm', 'update', 'about', 'backup'].indexOf(name) !== -1) {
+          ['chat', 'cset', 'settings', 'perm', 'update', 'about', 'backup'].indexOf(name) !== -1) {
         previous = current.cloneNode(true);
         var scroller = current.querySelector('.scroll, .chat-list');
         if (scroller) previous.scrollOffset = scroller.scrollTop;
@@ -699,6 +700,7 @@
       this.render();
     },
     render: function () {
+      FileCreate.dismiss();
       popover.close();
       if (this.finishTransition) this.finishTransition();
       this.finishTransition = null;

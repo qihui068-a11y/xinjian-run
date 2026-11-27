@@ -151,11 +151,12 @@
       var isFirst = first;
       first = false;
       var moved = Math.abs(g.left - geo.left) > 0.5 || Math.abs(g.width - geo.width) > 0.5 ||
-        Math.abs(g.top - geo.top) > 0.5;
+        Math.abs(g.top - geo.top) > 0.5 || Math.abs(g.height - geo.height) > 0.5;
 
       /* 折行只在「线」形态下放弃动画 */
       var blocked = !isBlock && isWrapped(list);
 
+      if (animating && !changed && !moved && !reducedNow()) return;
       if (isFirst || !changed || reducedNow() || blocked || !moved) {
         settle(g);
         return;
@@ -203,6 +204,7 @@
     }
     function onResize() { sync(); }
     global.addEventListener('resize', onResize);
+    global.addEventListener('xj:motionchange', sync);
 
     var handle = {
       root: root,
@@ -212,6 +214,7 @@
       destroy: function () {
         if (ro) ro.disconnect();
         global.removeEventListener('resize', onResize);
+        global.removeEventListener('xj:motionchange', sync);
         bar.removeEventListener('transitionend', onEnd);
         var i = handles.indexOf(handle);
         if (i >= 0) handles.splice(i, 1);

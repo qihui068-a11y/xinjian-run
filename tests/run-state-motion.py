@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 from pathlib import Path
 from urllib.parse import urlparse
@@ -63,20 +64,23 @@ def check(browser):
     print('PASS save feedback follows real success, failure preserves text')
 
     page.evaluate("Nav.tab('pigeon')")
-    radar = page.locator('#pgNearby')
+    page.locator('#pgNearby').click()
+    radar = page.locator('.radar-sheet')
     assert 'is-scanning' not in (radar.get_attribute('class') or '').split()
     page.evaluate("__xjLan(JSON.stringify({t:'state',on:true}))")
-    expect(radar).to_have_class('is-scanning')
+    expect(radar).to_have_class(re.compile(r'\bis-scanning\b'))
     page.evaluate("__xjLan(JSON.stringify({t:'peer',id:'xj-123456abcdef',nick:'测试设备'}))")
-    device = page.locator('.pg-scan-row')
+    device = page.locator('.radar-peer')
     expect(device).to_contain_text('测试设备')
     assert device.evaluate('el => el.getAnimations().length') == 1
-    page.wait_for_function("!document.querySelector('.pg-scan-row').getAnimations().length")
+    page.wait_for_function("!document.querySelector('.radar-peer').getAnimations().length")
     page.evaluate("__xjLan(JSON.stringify({t:'peer',id:'xj-123456abcdef',nick:'测试设备'}))")
     assert device.evaluate('el => el.getAnimations().length') == 0
     page.evaluate("__xjLan(JSON.stringify({t:'state',on:false}))")
     expect(device).to_have_count(0)
     assert 'is-scanning' not in (radar.get_attribute('class') or '').split()
+    page.get_by_role('button', name='关闭附近设备').click()
+    expect(radar).to_have_count(0)
     print('PASS radar follows LAN state and only new device rows animate')
 
     page.evaluate("""() => {

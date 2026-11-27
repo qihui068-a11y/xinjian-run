@@ -63,7 +63,8 @@ def check(browser):
     expect(page.get_by_role('button', name='排序')).to_be_focused()
     print('PASS sheet drag, scrim, snap back, dismissal and focus return')
 
-    page.locator('.shelf-view [data-act=create]').click()
+    page.evaluate("Nav.tab('me')")
+    page.get_by_role('button', name='设置', exact=True).click()
     expect(page.locator('.edge-back')).to_have_count(1)
     page.wait_for_function("document.querySelectorAll('#app .view').length === 1")
     session = page.context.new_cdp_session(page)
@@ -75,10 +76,10 @@ def check(browser):
     touch('touchStart', 12)
     touch('touchMove', 70)
     expect(page.locator('.edge-back-preview')).to_have_count(1)
-    assert page.evaluate('Nav.stack.at(-1).name') == 'create'
+    assert page.evaluate('Nav.stack.at(-1).name') == 'settings'
     touch('touchCancel')
     expect(page.locator('.edge-back-preview')).to_have_count(0)
-    assert page.evaluate('Nav.stack.at(-1).name') == 'create'
+    assert page.evaluate('Nav.stack.at(-1).name') == 'settings'
     touch('touchStart', 12)
     for x in (42, 92, 142, 212):
         touch('touchMove', x)
@@ -88,18 +89,18 @@ def check(browser):
       return new DOMMatrix(getComputedStyle(view).transform).m41 > 130;
     }""", timeout=3000)
     touch('touchEnd')
-    page.wait_for_function("Nav.stack.at(-1).name === 'shelf'")
+    page.wait_for_function("Nav.stack.at(-1).name === 'me'")
     expect(page.locator('.edge-back-preview')).to_have_count(0)
     print('PASS edge gesture preview, cancellation, commit and cleanup')
 
     page.emulate_media(reduced_motion='reduce')
-    page.evaluate("Nav.go('create')")
+    page.evaluate("Nav.go('settings')")
     touch('touchStart', 12)
     touch('touchMove', 212)
     touch('touchEnd')
-    assert page.evaluate('Nav.stack.at(-1).name') == 'create'
+    assert page.evaluate('Nav.stack.at(-1).name') == 'settings'
     assert page.evaluate('__xjBack()') == 'handled'
-    assert page.evaluate('Nav.stack.at(-1).name') == 'shelf'
+    assert page.evaluate('Nav.stack.at(-1).name') == 'me'
     print('PASS reduced motion keeps native Back available')
     page.close()
 

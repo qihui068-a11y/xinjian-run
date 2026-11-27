@@ -137,49 +137,69 @@ var GestureMotion = (function () {
     };
   }
 
-  function sheet(mask, close) {
+  function sheet(mask, close, options) {
+    options = options || {};
     var panel = mask.querySelector('.sheet');
-    if (typeof panel.animate !== 'function') return;
-    var handle = document.createElement('div');
-    handle.className = 'sheet-grab';
-    handle.setAttribute('aria-hidden', 'true');
-    panel.prepend(handle);
+    var animates = typeof panel.animate === 'function';
+    if (!animates && !options.handle) return;
+    var handle = options.handle || document.createElement('div');
+    if (!options.handle) {
+      handle.className = 'sheet-grab';
+      handle.setAttribute('aria-hidden', 'true');
+      panel.prepend(handle);
+    }
     var scrim = document.createElement('div');
     scrim.className = 'sheet-scrim';
     mask.prepend(scrim);
     mask.classList.add('gesture-sheet');
-    var panelMotion, dimMotion, timer, travel = 0, grabStart = 0, closed = false;
+    var background = options.background, shrink = options.shrink || 1;
+    var transforms = [], timer, onClosed, travel = 0, grab, closed = false;
 
     function cancel() {
-      if (panelMotion) panelMotion.cancel();
-      if (dimMotion) dimMotion.cancel();
-      panelMotion = dimMotion = null;
+      transforms.forEach(function (animation) { animation.cancel(); });
+      transforms = [];
       clearTimeout(timer);
     }
+    function translate(value) { return 'translateY(' + value + 'px)'; }
+    function scale(alpha) { return 'scale(' + (1 - (1 - shrink) * alpha) + ')'; }
     function current() {
-      return new DOMMatrix(getComputedStyle(panel).transform).m42;
+      return {
+        y: new DOMMatrix(getComputedStyle(panel).transform || 'none').m42,
+        alpha: Number(getComputedStyle(scrim).opacity),
+        scale: background ? new DOMMatrix(getComputedStyle(background).transform || 'none').a : 1
+      };
     }
-    function animate(frames, opacity, duration, end) {
+    function apply(y, alpha) {
+      panel.style.transform = y ? translate(y) : '';
+      scrim.style.opacity = String(alpha);
+      if (background) background.style.transform = alpha && Anim.enabled() ? scale(alpha) : '';
+    }
+    function animate(frames, from, to, duration, end, initialScale) {
       cancel();
-      panel.style.transform = '';
-      scrim.style.opacity = '';
-      if (!Anim.enabled() || document.hidden || typeof panel.animate !== 'function') {
+      function finish() {
+        cancel();
+        apply(0, to);
         if (end) end();
-        return;
       }
-      panelMotion = panel.animate(frames, { duration: duration, easing: EASE, fill: 'both' });
-      dimMotion = scrim.animate(opacity.map(function (value) { return { opacity: value }; }),
-        { duration: duration, easing: EASE, fill: 'both' });
-      function finish() { cancel(); if (end) end(); }
-      panelMotion.onfinish = finish;
+      if (!Anim.enabled() || document.hidden || !animates) return finish();
+      var timing = { duration: duration, easing: EASE, fill: 'both' };
+      var panelTiming = frames[0].easing ? { duration: duration, fill: 'both' } : timing;
+      transforms.push(panel.animate(frames, panelTiming), scrim.animate([{ opacity: from }, { opacity: to }], timing));
+      if (background) {
+        transforms.push(background.animate([
+          { transform: initialScale === undefined ? scale(from) : 'scale(' + initialScale + ')' },
+          { transform: scale(to) }
+        ], timing));
+      }
+      transforms[0].onfinish = finish;
       timer = setTimeout(finish, duration + 60);
     }
     var detach = drag(handle, {
       vertical: true,
-      start: function () { return !closed; },
+      start: function () { return !closed && animates && (!options.canDrag || options.canDrag()); },
       activate: function () {
         travel = panel.offsetHeight || 1;
-        grabStart = Math.max(0, current());
+        grab = current();
         cancel();
         paint(0);
       },
@@ -190,46 +210,69 @@ var GestureMotion = (function () {
           close(null);
           return;
         }
-        animate([{ transform: 'translateY(' + current() + 'px)' }, { transform: 'none' }],
-          [Number(getComputedStyle(scrim).opacity), 1], 190);
+        var pose = current();
+        animate([{ transform: translate(pose.y) }, { transform: 'none' }], pose.alpha, 1, 190, null, pose.scale);
       }
     });
     function paint(distance) {
-      var y = Math.min(travel, grabStart + distance);
-      panel.style.transform = 'translateY(' + y + 'px)';
-      scrim.style.opacity = String(1 - y / travel);
+      var offset = options.resistance ? distance / (1 + distance / (travel * 2)) : distance;
+      var y = Math.max(-travel, Math.min(travel, grab.y + offset));
+      var rest = Math.max(1, travel - grab.y);
+      apply(y, grab.alpha * (1 - Math.min(1, offset / rest)));
     }
     function inactive() {
       if (!document.hidden && Anim.enabled()) return;
       if (closed) remove();
       else {
         cancel();
-        panel.style.transform = '';
-        scrim.style.opacity = '';
+        apply(0, 1);
+        if (background) background.style.transform = '';
       }
     }
     function remove() {
       cancel();
+      if (background) background.style.transform = '';
       window.removeEventListener('xj:motionchange', inactive);
       document.removeEventListener('visibilitychange', inactive);
       mask.remove();
+      var done = onClosed;
+      onClosed = null;
+      if (done) done();
     }
-    mask.__dismiss = function () {
+    mask.__dismiss = function (done, immediate) {
+      if (closed) { if (immediate) remove(); return; }
+      var pose = animates && !immediate && Anim.enabled() ? current() : null;
       closed = true;
+      onClosed = done;
       detach();
       mask.classList.add('m-leave');
+      panel.inert = true;
       mask.setAttribute('aria-hidden', 'true');
-      if (!Anim.enabled() || document.hidden || typeof panel.animate !== 'function') { remove(); return; }
-      var from = current();
-      var alpha = Number(getComputedStyle(scrim).opacity);
-      animate([{ transform: 'translateY(' + from + 'px)' }, { transform: 'translateY(100%)' }],
-        [alpha, 0], 220, remove);
+      if (!pose || document.hidden) { remove(); return; }
+      animate([{ transform: translate(pose.y) }, { transform: 'translateY(100%)' }],
+        pose.alpha, 0, options.closeDuration || 220, remove, pose.scale);
     };
     window.addEventListener('xj:motionchange', inactive);
     document.addEventListener('visibilitychange', inactive);
-    animate([{ transform: 'translateY(100%)' },
-      { transform: 'translateY(-1%)', offset: .86 }, { transform: 'none' }], [0, 1], 350);
+    if (!Anim.enabled() || !animates || document.hidden) {
+      scrim.style.opacity = '1';
+      return;
+    }
+    var openFrames = [{ transform: 'translateY(100%)' },
+      { transform: 'translateY(' + -(options.rebound || 1) + '%)', offset: .86 }, { transform: 'none' }];
+    if (options.rebound) {
+      openFrames[0].easing = EASE;
+      openFrames[1].easing = 'ease-out';
+    }
+    animate(openFrames, 0, 1, options.openDuration || 350);
   }
 
-  return { edge: edge, sheet: sheet };
+  function workspaceSheet(mask, close, background, canDrag) {
+    sheet(mask, close, {
+      handle: mask.querySelector('.sheet-grab'), background: background, shrink: .98,
+      openDuration: 360, closeDuration: 240, rebound: .6, resistance: true, canDrag: canDrag
+    });
+  }
+
+  return { edge: edge, sheet: sheet, workspaceSheet: workspaceSheet };
 })();

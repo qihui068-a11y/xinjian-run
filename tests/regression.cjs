@@ -100,14 +100,15 @@ function input(w, source) {
       await settle(a.w);
       assert.match(a.w.document.title, /信笺/);
       assert.match(a.w.document.body.textContent, /书架/);
-      a.w.Nav.reset('create'); await settle(a.w);
-      a.w.document.querySelector('#fmtSum').click();
+      a.w.Nav.go('create'); await settle(a.w);
       const chips = [...a.w.document.querySelectorAll('[data-fmt]')];
       assert.deepEqual(chips.map(n => n.dataset.fmt), ['txt','md','py','html','css','java','json','js','xml','c','cpp','cs','bf','bfh']);
       assert.equal(new Set(chips.map(n => n.dataset.fmt)).size, 14);
       for (const [ext,label] of languages) {
-        const text = a.w.document.querySelector('[data-fmt="' + ext + '"]').textContent;
-        assert(text.includes(label) && text.includes('.' + ext));
+        const choice = a.w.document.querySelector('[data-fmt="' + ext + '"]');
+        assert(choice.textContent.includes(label) && choice.querySelector('svg path'));
+        choice.click();
+        assert.equal(a.w.document.querySelector('#createSuffix').textContent, '.' + ext);
       }
     } finally { a.close(); }
   });
@@ -115,12 +116,11 @@ function input(w, source) {
     await test('New ' + ext + ' file defaults to correct extension and opens editable highlighting', async () => {
       const a = app(); try {
         const w = a.w;
-        w.Nav.reset('create'); await settle(w);
-        w.document.querySelector('#fmtSum').click();
+        w.Nav.go('create'); await settle(w);
         w.document.querySelector('[data-fmt="' + ext + '"]').click();
         await settle(w);
         w.document.querySelector('#nameIpt').value = ext === 'java' ? 'Main' : 'hello';
-        w.document.querySelector('[data-act="ok"]').click(); await settle(w);
+        w.document.querySelector('.create-submit').click(); await settle(w);
         const name = (ext === 'java' ? 'Main' : 'hello') + '.' + ext;
         assert.equal(w.Nav.stack.at(-1).params.name, name);
         assert.equal(w.document.querySelector('#stSyn').textContent, label);
