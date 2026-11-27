@@ -1136,6 +1136,35 @@ html.anim-off *,html.anim-off *::before,html.anim-off *::after{
 .sheet-grab{height:22px;display:grid;place-items:center;touch-action:none;cursor:grab;}
 .sheet-grab::before{content:"";width:32px;height:4px;border-radius:4px;background:rgba(var(--fg-rgb),.23);}
 
+:root{--m-radar:1900ms;--m-radar-delay:650ms;--m-ui-loop:900ms;}
+.pg-radar{position:relative;display:inline-grid;place-items:center;flex:none;}
+.pg-waves{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity var(--m-3) var(--e-out);}
+.is-scanning .pg-waves{opacity:1;}
+.pg-waves::before,.pg-waves::after{
+  content:"";position:absolute;inset:0;border:1px solid currentColor;border-radius:50%;
+  animation:xjRadar var(--m-radar) linear infinite paused;
+}
+.pg-waves::after{animation-delay:var(--m-radar-delay);}
+.is-scanning .pg-waves::before,.is-scanning .pg-waves::after{animation-play-state:running;}
+@keyframes xjRadar{from{transform:scale(.85);opacity:.68}to{transform:scale(1.72);opacity:0}}
+
+.run-status:is([data-stage=initializing],[data-stage=compiling],[data-stage=running])::before,
+.msg-transfer.is-busy{
+  content:"";display:inline-block;width:.8em;height:.8em;box-sizing:border-box;border-radius:50%;
+  border:1.5px solid rgba(var(--fg-rgb),.27);border-top-color:currentColor;
+  animation:xjStatusSpin var(--m-ui-loop) linear infinite;
+}
+.run-status::before{margin-right:.4em;}
+.msg-transfer{display:inline-flex;vertical-align:middle;margin-left:.4em;}
+.msg-transfer svg,.msg-st button svg{width:1em;height:1em;vertical-align:middle;}
+@keyframes xjStatusSpin{to{transform:rotate(360deg)}}
+html.motion-background .pg-waves::before,html.motion-background .pg-waves::after,
+html.motion-background .run-status::before,html.motion-background .msg-transfer{
+  animation-play-state:paused;
+}
+html.anim-off .pg-waves{visibility:hidden;}
+@media (prefers-reduced-motion: reduce){.pg-waves{visibility:hidden;}}
+
 /* 删除联系人：先失焦、再塌陷，最后才移除（规范第 12 条） */
 .ct-row.leaving{max-height:0;opacity:0;overflow:hidden;}
 /* ========== 验证通过的高光（唯一一处 Lottie） ========== */

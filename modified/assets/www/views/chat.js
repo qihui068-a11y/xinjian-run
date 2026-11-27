@@ -30,6 +30,9 @@
     var scanList = el.querySelector('#pgScanList');
     var lanBtn = el.querySelector('#pgLan');
     var nearby = el.querySelector('#pgNearby');
+    nearby.innerHTML = '<span class="pg-radar" aria-hidden="true"><span class="pg-waves"></span>' + svg('radar') +
+      '</span><span><strong>附近设备</strong><small></small></span>';
+    var scanStatus = nearby.querySelector('small'), knownPeers;
     var search = el.querySelector('#pgSearch');
     var requests = el.querySelector('#pgRequests');
     search.addEventListener('input', render);
@@ -45,11 +48,14 @@
 
     /* 只有真的扫到设备才亮出这张表：局域网开着但空着的时候，整块不存在 */
     function paintScan() {
-      var near = Lan.running() ? Lan.peers() : [];
-      nearby.innerHTML = svg('radar') + '<span><strong>附近设备</strong><small>' + (near.length ?
-        '发现 ' + near.length + ' 台设备' : Lan.running() ? '暂未发现设备' : '开启局域网后查看') + '</small></span>';
+      var scanning = Lan.running();
+      var near = scanning ? Lan.peers() : [];
+      nearby.classList.toggle('is-scanning', scanning);
+      scanStatus.textContent = near.length ? '发现 ' + near.length + ' 台设备' :
+        scanning ? '暂未发现设备' : '开启局域网后查看';
       if (!near.length) {
         scanBox.hidden = true;
+        knownPeers = new Set();
         if (scanList.innerHTML !== '') scanList.innerHTML = '';
         return;
       }
@@ -59,8 +65,17 @@
           '<span class="pg-scan-name">' + esc(d.name || '未命名设备') + '</span>' +
         '</button>';
       }).join('');
-      if (scanList.innerHTML !== h) scanList.innerHTML = h;
       scanBox.hidden = false;
+      if (scanList.innerHTML !== h) {
+        scanList.innerHTML = h;
+        scanList.querySelectorAll('.pg-scan-row').forEach(function (row) {
+          if (knownPeers && !knownPeers.has(row.dataset.peer)) {
+            Motion.play(row, [{ opacity: 0, transform: 'translateY(4px) scale(.985)' },
+              { opacity: 1, transform: 'none' }], 210);
+          }
+        });
+      }
+      knownPeers = new Set(near.map(function (peer) { return peer.id; }));
     }
     function render() {
       paintLan();
@@ -466,7 +481,18 @@
       if (!lanChat || message.dir !== 'out' || !message.mid) return '';
       if (message.delivery !== 'failed' && (message.delivery || Lan.pending(message.mid))) return '';
       return '<div class="msg-st"><button type="button" data-retry="' + esc(message.mid) +
-        '" aria-label="未送达，重发"><span aria-hidden="true">!</span>重发</button></div>';
+        '" aria-label="未送达，重发">' + svg('redo') + '重发</button></div>';
+    }
+
+    function transferState(message) {
+      if (!lanChat || message.dir !== 'out' || !message.mid || !/^(image|file)$/.test(message.kind)) return '';
+      if (message.delivery === 'pending' && Lan.pending(message.mid)) {
+        return '<span class="msg-transfer is-busy" role="status" aria-label="正在发送"></span>';
+      }
+      if (message.delivery === 'delivered') {
+        return '<span class="msg-transfer is-delivered" role="img" aria-label="已送达">' + svg('check') + '</span>';
+      }
+      return '';
     }
 
     /* 对方终止通讯后只弹一次三选一：删除 / 备份后删除 / 保留 */
@@ -498,6 +524,7 @@
       }, function () { toast('备份失败'); });
     }
 
+    var seenMessages = new WeakSet(), deliveryStates = new WeakMap(), chatMarkup = null;
     function render() {
       var cur = Pigeon.get(s.id);
       if (!cur) return;
@@ -511,11 +538,27 @@
           if (Number.isFinite(m.t)) h += '<div class="msg-time">' + esc(fmtTime(m.t)) + '</div>';
         }
         h += '<div class="msg ' + (m.dir === 'out' ? 'out' : 'in') +
-          (grouped ? ' is-continuation' : '') + '">' + bodyOf(m) + failedDelivery(m) + '</div></div>';
+          (grouped ? ' is-continuation' : '') + '">' + bodyOf(m) + failedDelivery(m) + transferState(m) + '</div></div>';
         previous = m;
       }
-      listEl.innerHTML = h || '<div class="chat-tip">这里还没有消息</div>';
-      listEl.scrollTop = listEl.scrollHeight;
+      if (h !== chatMarkup) {
+        listEl.innerHTML = h || '<div class="chat-tip">这里还没有消息</div>';
+        listEl.querySelectorAll('.msg').forEach(function (row, i) {
+          var message = cur.msgs[i];
+          if (chatMarkup !== null && !seenMessages.has(message)) {
+            var sent = message.dir === 'out';
+            Motion.play(row, sent ? [{ opacity: 0, transform: 'translateY(10px) scale(.96)' },
+              { opacity: 1, transform: 'none' }] : [{ opacity: .3 }, { opacity: 1 }], sent ? 230 : 180);
+          } else if (seenMessages.has(message) && deliveryStates.get(message) !== message.delivery) {
+            Motion.play(row.querySelector('.msg-transfer, [data-retry]'),
+              [{ opacity: .3, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }], 200);
+          }
+          seenMessages.add(message);
+          deliveryStates.set(message, message.delivery);
+        });
+        chatMarkup = h;
+        listEl.scrollTop = listEl.scrollHeight;
+      }
       if (!lanChat) {
         tipEl.textContent = s.npc ? 'FUO 是内置占位对象，只会重复一句开场白。' : '消息只保存在本机。';
       } else if (cur.terminated) {

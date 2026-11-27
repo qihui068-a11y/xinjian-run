@@ -26,6 +26,7 @@ async function runOfflineC(job, emit, log, input, root) {
   let executable;
   if (cpp) {
     const { commands, Exit } = await import(new URL('../clang/bundle.js', root).href);
+    emit('compiling');
     try {
       const result = await commands['clang++'](
         ['-std=c++17', '-fno-exceptions', '-fno-color-diagnostics', '-O0',
@@ -56,6 +57,7 @@ async function runOfflineC(job, emit, log, input, root) {
       }
       entries.set(leaf, new File(Uint8Array.from(atob(encoded), char => char.charCodeAt(0))));
     }
+    emit('compiling');
     const result = start(cc, ['cc', '-o', 'main.wasm', 'main.c'],
       ['PWD=/', 'INCLUDE=/usr/include', 'LIB=/usr/lib'],
       [new OpenFile(new File([])), out, err, new PreopenDirectory('/', tree), new PreopenDirectory('.', tree)]);

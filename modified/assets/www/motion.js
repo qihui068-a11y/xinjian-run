@@ -66,5 +66,43 @@ var Motion = (function () {
     return true;
   }
 
-  return { verify: verify, reduced: reduced };
+  function morph(shape, to, duration) {
+    var from = shape.getAttribute('points').trim().split(/[ ,]+/).map(Number);
+    var points = to.trim().split(/[ ,]+/).map(Number);
+    var frame, start = performance.now();
+    function draw(now) {
+      var remaining = 1 - Math.min(1, Math.max(0, (now - start) / duration));
+      if (remaining <= 0 || reduced() || document.hidden || !shape.isConnected) {
+        shape.setAttribute('points', to);
+        return;
+      }
+      var fraction = 1 - remaining * remaining * remaining;
+      shape.setAttribute('points', points.map(function (value, i) {
+        return from[i] + (value - from[i]) * fraction;
+      }).join(' '));
+      frame = requestAnimationFrame(draw);
+    }
+    if (reduced() || document.hidden) shape.setAttribute('points', to);
+    else frame = requestAnimationFrame(draw);
+    return function () { cancelAnimationFrame(frame); };
+  }
+
+  var active = new Set();
+  function play(node, frames, duration) {
+    if (!node || reduced() || document.hidden || typeof node.animate !== 'function') return;
+    var animation = node.animate(frames, { duration: duration, easing: 'cubic-bezier(.16,.85,.28,1)' });
+    active.add(animation);
+    animation.onfinish = animation.oncancel = function () { active.delete(animation); };
+  }
+  function updateActivity() {
+    document.documentElement.classList.toggle('motion-background', document.hidden);
+    if (!document.hidden && !reduced()) return;
+    active.forEach(function (animation) { animation.cancel(); });
+    active.clear();
+  }
+  document.addEventListener('visibilitychange', updateActivity);
+  window.addEventListener('xj:motionchange', updateActivity);
+  updateActivity();
+
+  return { verify: verify, reduced: reduced, morph: morph, play: play };
 })();

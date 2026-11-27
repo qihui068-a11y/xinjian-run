@@ -20,9 +20,16 @@
     var leaving = false;
     var disposed = false;
     var expanded = false;
+    var running = false, cancelRunMorph, cancelSaveMorph, saveFeedbackTimer;
+    var playPoints = '7,4 20,12 20,12 7,20';
+    var stopPoints = '5,5 19,5 19,19 5,19';
+    var diskPoints = '5,5 18,5 18,19 5,19 5,5';
+    var checkPoints = '5,12 10,17 19,7 19,7 19,7';
 
     el.innerHTML =
-      '<header class="workspace-heading ide-heading"><h1>信笺</h1><div class="workspace-actions">' +
+      '<header class="workspace-heading ide-heading"><h1>信笺</h1>' +
+      '<span class="ide-saved" role="status" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="' +
+      diskPoints + '"/></svg>已保存</span><div class="workspace-actions">' +
       '<button type="button" class="icon-btn" data-act="find" aria-label="在文件中查找">' + svg('search') + '</button>' +
       '<button type="button" class="icon-btn" data-act="newFile" aria-label="新建文件">' + svg('plus') + '</button>' +
       '<button type="button" class="icon-btn" data-act="openFile" aria-label="打开书架文件">' + svg('more') + '</button></div></header>' +
@@ -44,7 +51,8 @@
       '<button type="button" data-act="manageSymbols" aria-label="添加或管理符号" title="添加或管理符号">' +
       svg('more') + '</button></div></div>' +
       '<div class="ide-run-tools" hidden>' +
-      '<button type="button" class="ide-run" data-act="run">' + svg('play') + '<span>运行</span></button>' +
+      '<button type="button" class="ide-run" data-act="run"><svg viewBox="0 0 24 24" aria-hidden="true">' +
+      '<polygon points="' + playPoints + '"/></svg><span>运行</span></button>' +
       '<button type="button" data-act="stop" disabled>' + svg('stop') + '<span>停止</span></button>' +
       '<button type="button" data-act="runConfig">' + svg('terminal') + '<span>运行配置</span></button></div>' +
       '<section class="ide-output-idle" aria-label="运行结果"><strong>' + svg('terminal') + '运行结果</strong><p>等待运行</p></section>' +
@@ -85,6 +93,9 @@
     var tabList = el.querySelector('.ide-tabs');
     var runTools = el.querySelector('.ide-run-tools');
     var runControl = el.querySelector('[data-act="run"]');
+    var runShape = runControl.querySelector('polygon');
+    var saveFeedback = el.querySelector('.ide-saved');
+    var saveShape = saveFeedback.querySelector('polyline');
     var stopControl = el.querySelector('[data-act="stop"]');
     var configControl = el.querySelector('[data-act="runConfig"]');
     var panel = el.querySelector('.run-panel');
@@ -104,6 +115,13 @@
       paintSymbols();
     }, stopControl, function (result, source) {
       if (!disposed && source === ta.value) showIssue(result);
+    }, function (active) {
+      if (active === running) return;
+      running = active;
+      if (cancelRunMorph) cancelRunMorph();
+      cancelRunMorph = Motion.morph(runShape, active ? stopPoints : playPoints, 210);
+      runControl.querySelector('span').textContent = active ? '停止' : '运行';
+      runControl.setAttribute('aria-label', active ? '停止运行' : RunFormats.label(ext) || '运行');
     });
     var grip = panel.querySelector('.run-resize');
     var workspace = panel.parentElement;
@@ -186,7 +204,7 @@
         ? '<button type="button" class="t-text" data-act="format">格式化</button>' : '';
       runTools.hidden = !label;
       outputIdle.hidden = !label || !panel.hidden;
-      runControl.setAttribute('aria-label', label || '运行');
+      runControl.setAttribute('aria-label', running ? '停止运行' : label || '运行');
       configControl.hidden = !label;
       var version = languageLabel() + (languageLabel() === 'Python' ? ' 3' : '');
       var title = mode === 'edit'
@@ -533,7 +551,7 @@
       }
     }
 
-    function save(silent) {
+    function save(silent, showFeedback) {
       var savedName = name, savedText = ta.value;
       function failed() {
         toast('保存失败，请保留当前内容后重试');
@@ -543,6 +561,14 @@
         if (ok === false) return failed();
         dirty = (name !== savedName || ta.value !== savedText);
         if (!silent) toast('已保存');
+        if (showFeedback && !disposed && !dirty) {
+          clearTimeout(saveFeedbackTimer);
+          if (cancelSaveMorph) cancelSaveMorph();
+          saveShape.setAttribute('points', diskPoints);
+          saveFeedback.hidden = false;
+          cancelSaveMorph = Motion.morph(saveShape, checkPoints, 230);
+          saveFeedbackTimer = setTimeout(function () { saveFeedback.hidden = true; }, 950);
+        }
         return true;
       }, failed);
     }
@@ -614,6 +640,7 @@
       var act = t.dataset.act;
       if (act === 'run' || act === 'runConfig') {
         if (!loaded) return;
+        if (act === 'run' && running) return runner.cancel();
         ta.blur();
         function run() { runner.start(function () { return ta.value; }, name, ext); }
         if (act === 'runConfig' && !RunFormats.compilers[ext]) {
@@ -673,7 +700,7 @@
       } else if (act === 'edit') {
         setMode('edit');
       } else if (act === 'done') {
-        save(true).then(function (ok) { if (ok) setMode('read'); });
+        save(true, true).then(function (ok) { if (ok && !disposed && !dirty) setMode('read'); });
       } else if (act === 'rename') {
         inputBox('重命名', name, '新文件名').then(function (nv) {
           if (!nv || nv === name) return;
@@ -749,6 +776,9 @@
       if (!gutter || typeof Anim === 'undefined' || !Anim.enabled()) return;
       gutter.classList.add('dim');
       clearTimeout(gutterTimer);
+      clearTimeout(saveFeedbackTimer);
+      if (cancelRunMorph) cancelRunMorph();
+      if (cancelSaveMorph) cancelSaveMorph();
       gutterTimer = setTimeout(function () { gutter.classList.remove('dim'); }, 400);
     });
     ta.addEventListener('click', updateStatus);
