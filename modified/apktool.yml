@@ -1,5 +1,5 @@
 version: 2.12.1
-apkFileName: 信笺_0.8.4.apk
+apkFileName: 信笺_0.8.6.apk
 usesFramework:
   ids:
   - 1
@@ -9,7 +9,7 @@ sdkInfo:
 packageInfo:
   forcedPackageId: 127
 versionInfo:
-  versionCode: 34
-  versionName: 0.8.5
+  versionCode: 35
+  versionName: 0.8.6
 doNotCompress:
 - arsc
