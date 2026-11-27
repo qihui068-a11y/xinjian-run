@@ -108,17 +108,19 @@ var CodeRunner = (function () {
     actions.querySelector('.run-clear').onclick = function () { if (outputView) outputView.clear(); };
     rerun.onclick = function () { if (repeat) repeat(); };
     function remoteForm(readSource, ext) {
+      var python = PythonRun.supported(ext);
       status.textContent = RunFormats.compilers[ext].name;
       body.innerHTML = '<div class="run-online">' +
         '<label>标准输入（可留空）<textarea rows="2" placeholder="每行一组输入"></textarea></label>' +
         '<div class="run-submit-row"><button type="button" class="run-submit run-option-button"></button>' +
-        '<span class="run-hint">源码和输入会发送至 wandbox.org。</span></div></div>';
+        '<span class="run-hint">源码和输入会发送至 wandbox.org。' +
+        (python ? '请提前填写程序所需的输入。' : '') + '</span></div></div>';
       var input = body.querySelector('textarea');
       var submitError;
       input.value = lastInput;
       var submit = body.querySelector('.run-submit');
       submit.textContent = ext === 'bfh' ? '发送并检查' : '发送并运行';
-      if (PythonRun.supported(ext)) addPythonOption(input, readSource);
+      if (python) addPythonOption(input, readSource);
       else if (ext === 'c' || /^(cpp|cxx|cc|c\+\+)$/.test(ext)) addCOption(input, readSource, ext === 'c' ? 'c' : 'cpp');
       if (InteractiveRun.supported(ext)) addInteractiveOption(input, readSource, ext);
       submit.onclick = function () {
@@ -175,7 +177,7 @@ var CodeRunner = (function () {
               });
               var detail = r.signal ? (logged ? '\n' : '') + r.signal : (!ok && !logged ? '退出状态 ' + r.status : '');
               result(ok ? (ext === 'bfh' ? '头文件编译通过' : '运行完成') : '编译或运行出错', detail);
-              if (!ok && PythonRun.supported(ext) && /EOFError/.test(xhr.responseText)) {
+              if (!ok && python && /EOFError/.test(xhr.responseText)) {
                 outputView.emit({ kind: 'stderr', text: '\n请补充标准输入，或选「本地运行」逐行输入。' });
               }
             } catch (e) { result('服务响应异常', e.message); }

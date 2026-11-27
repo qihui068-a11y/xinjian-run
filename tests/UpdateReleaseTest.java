@@ -24,7 +24,7 @@ final class UpdateReleaseTest {
 
     public static void main(String[] args) throws Exception {
         check("v0.7.19", "0.7.19", "0.7.18-run", "0.7.19");
-        check("v0.7.20", "0.7.20", "0.7.19", "0.7.20");
+        check("v0.8.0", "0.8.0", "0.7.19", "0.8.0");
         check("v0.7.18-run", "0.7.18", "0.7.17", "0.7.18-run");
         check("v0.7.19", "0.7.19", "0.7.19-run", null);
         check("v0.7.18-run", "0.7.18", "0.7.19", null);
