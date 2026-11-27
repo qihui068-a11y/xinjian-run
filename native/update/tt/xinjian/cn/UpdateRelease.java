@@ -11,7 +11,10 @@ import java.util.regex.Pattern;
 final class UpdateRelease {
     static final String REPOSITORY = "qihui068-a11y/xinjian-run";
     static final String LATEST = "https://api.github.com/repos/" + REPOSITORY + "/releases/latest";
-    private static final Pattern VERSION = Pattern.compile("v?([0-9]{1,5}\\.[0-9]{1,5}(?:\\.[0-9]{1,5})?)(?:-run)?");
+    private static final String DIGITS = "[0-9]{1,5}\\.[0-9]{1,5}(?:\\.[0-9]{1,5})?";
+    private static final String LEGACY_SUFFIX = "(?:-run)?";
+    private static final Pattern VERSION = Pattern.compile("v?(" + DIGITS + ")" + LEGACY_SUFFIX);
+    private static final Pattern CACHE_NAME = Pattern.compile("update-" + DIGITS + LEGACY_SUFFIX + "-[a-f0-9]{64}\\.apk");
     private static final long MAX_APK_BYTES = 64L * 1024 * 1024;
 
     final String version;
@@ -24,6 +27,14 @@ final class UpdateRelease {
         this.url = url;
         this.sha256 = sha256;
         this.bytes = bytes;
+    }
+
+    String cacheName() {
+        return "update-" + version + "-" + sha256 + ".apk";
+    }
+
+    static boolean isCacheName(String name) {
+        return name != null && CACHE_NAME.matcher(name).matches();
     }
 
     private static String numericVersion(String value) throws IOException {

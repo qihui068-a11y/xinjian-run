@@ -26,6 +26,19 @@ final class UpdateReleaseTest {
         check("v0.7.19", "0.7.19", "0.7.18-run", "0.7.19");
         check("v0.8.0", "0.8.0", "0.7.19", "0.8.0");
         check("v0.8.1", "0.8.1", "0.8.0", "0.8.1");
+        UpdateRelease first = UpdateRelease.read(release("v0.8.0", "0.8.0"), "0.7.19");
+        UpdateRelease second = UpdateRelease.read(release("v0.8.1", "0.8.1"), "0.8.0");
+        JSONObject replaced = release("v0.8.1", "0.8.1");
+        replaced.getJSONArray("assets").getJSONObject(0).put("digest",
+                "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+        UpdateRelease rebuilt = UpdateRelease.read(replaced, "0.8.0");
+        if (first.cacheName().equals(second.cacheName()) || second.cacheName().equals(rebuilt.cacheName()) ||
+                !UpdateRelease.isCacheName(second.cacheName()) || UpdateRelease.isCacheName("update.apk") ||
+                UpdateRelease.isCacheName("../" + second.cacheName()) ||
+                !UpdateRelease.isCacheName(UpdateRelease.read(release("v0.7.18-run", "0.7.18"), "0.7.17").cacheName())) {
+            throw new AssertionError("APK cache names must identify a specific version and digest");
+        }
+        System.out.println("PASS versioned SHA-256 APK cache names");
         check("v0.7.18-run", "0.7.18", "0.7.17", "0.7.18-run");
         check("v0.7.19", "0.7.19", "0.7.19-run", null);
         check("v0.7.18-run", "0.7.18", "0.7.19", null);

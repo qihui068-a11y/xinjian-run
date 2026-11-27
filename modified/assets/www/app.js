@@ -47,6 +47,8 @@
     gear: '<circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.2M12 18.8V21M4.6 7.6l1.9 1.1M17.5 15.3l1.9 1.1M4.6 16.4l1.9-1.1M17.5 8.7l1.9-1.1"/>',
     download: '<path d="M12 3v11M8 10l4 4 4-4"/><path d="M5 19h14"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 8h.01"/>',
+    lineStart: '<path d="M4 5v14m16-7H8m4-4-4 4 4 4"/>',
+    lineEnd: '<path d="M20 5v14M4 12h12m-4-4 4 4-4 4"/>',
     cup: '<path d="M5 8h11v6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z"/><path d="M16 9h2a2 2 0 0 1 0 4h-2"/><path d="M6 21h10"/>',
     users: '<circle cx="9" cy="8" r="3.2"/><path d="M3 19a6 6 0 0 1 12 0"/><path d="M16 5.3a3.2 3.2 0 0 1 0 5.4"/><path d="M18 19a5.5 5.5 0 0 0-2-4.3"/>',
     contacts: '<path d="M6 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6z"/><path d="M6 3v18"/><circle cx="13" cy="10" r="1.9"/><path d="M10.6 15.6a2.9 2.9 0 0 1 4.8 0"/>',
@@ -251,55 +253,134 @@
   }
 
 
-  /* 下拉气泡菜单：从某个按钮下方长出来，点空白关闭，占返回键一层。
-     items: [{ico, label, value}] | 'sep' */
-  function popover(items, anchorEl) {
-    return new Promise(function (resolve) {
+  /* 锚点菜单共用一层。收起时释放交互，保留节点直到动画结束。 */
+  var popover = (function () {
+    var active = null;
+
+    function clamp(value, min, max) { return Math.max(min, Math.min(value, max)); }
+
+    function create(anchor) {
       var mask = document.createElement('div');
       mask.className = 'pop';
-      var html = '<div class="pop-menu">';
-      items.forEach(function (it, idx) {
-        if (it === 'sep') { html += '<div class="pop-sep"></div>'; return; }
-        html += '<div class="pop-item" data-i="' + idx + '">' +
-          svg(it.ico) + '<span>' + esc(it.label) + '</span></div>';
-      });
-      html += '</div>';
-      mask.innerHTML = html;
+      mask.innerHTML = '<div class="pop-menu" id="xj-popover-menu" role="group">' +
+        '<span class="pop-tip" aria-hidden="true"></span><div class="pop-content"></div></div>';
       document.body.appendChild(mask);
-
       var menu = mask.firstChild;
-      var rect = (anchorEl && anchorEl.getBoundingClientRect) ? anchorEl.getBoundingClientRect() : null;
-      var top = (rect && rect.bottom) ? rect.bottom + 10 : 64;
-      var right = rect ? (window.innerWidth - rect.right) : 12;
-      if (!isFinite(right) || right < 8) right = 8;
-      if (right > window.innerWidth - 160) right = Math.max(8, window.innerWidth - 160);
-      menu.style.top = top + 'px';
-      menu.style.right = right + 'px';
+      var content = menu.querySelector('.pop-content');
+      var viewport = window.visualViewport;
+      var motionPreference = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+      var layer, resolve, motion, items;
+      var entry = { anchor: anchor, isOpen: function () { return !!resolve; }, open: open, close: close, remove: remove };
 
-      var layer = null, settled = false;
-      function close(v) {
-        if (settled) return;
-        settled = true;
-        dismiss(mask);
-        if (layer) Back.done(layer);
-        resolve(v);
+      function position() {
+        if (!anchor.isConnected) return close(null);
+        var rect = anchor.getBoundingClientRect();
+        var left = (viewport ? viewport.offsetLeft : 0) + 8;
+        var top = (viewport ? viewport.offsetTop : 0) + 8;
+        var right = left + (viewport ? viewport.width : window.innerWidth) - 16;
+        var bottom = top + (viewport ? viewport.height : window.innerHeight) - 16;
+        var below = Math.max(0, bottom - rect.bottom - 10);
+        var above = Math.max(0, rect.top - top - 10);
+        menu.style.setProperty('--pop-max-width', Math.max(0, right - left) + 'px');
+        menu.style.setProperty('--pop-max-height', Math.max(above, below) + 'px');
+        var up = below < menu.offsetHeight && above > below;
+        menu.classList.toggle('pop-up', up);
+        menu.style.setProperty('--pop-max-height', (up ? above : below) + 'px');
+        var width = menu.offsetWidth;
+        var x = clamp(rect.right - width, left, right - width);
+        var corner = Math.min(17, width / 2);
+        var tip = clamp((rect.left + rect.right) / 2 - x, corner, width - corner);
+        menu.style.left = x + 'px';
+        menu.style.top = (up ? rect.top - 10 - menu.offsetHeight : rect.bottom + 10) + 'px';
+        menu.style.setProperty('--pop-tip-x', tip + 'px');
       }
-      /* 系统返回键：先关菜单，不许退出这一页 */
-      layer = Back.open(function () {
-        if (settled) return;
-        settled = true;
-        dismiss(mask);
-        resolve(null);
-      });
+
+      function motionChanged() {
+        if (motion && !Anim.enabled()) motion.finish();
+      }
+      function remove() {
+        if (resolve) close(null, true);
+        if (motion) motion.cancel();
+        window.removeEventListener('resize', position);
+        if (viewport) {
+          viewport.removeEventListener('resize', position);
+          viewport.removeEventListener('scroll', position);
+        }
+        if (motionPreference && motionPreference.removeEventListener) motionPreference.removeEventListener('change', motionChanged);
+        mask.remove();
+        if (active === entry) active = null;
+      }
+
+      function open(nextItems, title) {
+        items = nextItems;
+        menu.setAttribute('aria-label', title || anchor.getAttribute('aria-label') || '选项');
+        content.innerHTML = (title ? '<div class="pop-title">' + esc(title) + '</div>' : '') +
+          items.map(function (item, i) {
+            if (item === 'sep') return '<div class="pop-sep" aria-hidden="true"></div>';
+            if (item.title) return '<div class="pop-caption">' + esc(item.title) + '</div>';
+            return '<button type="button" class="pop-item" data-i="' + i + '">' +
+              (item.ico ? svg(item.ico) : '') + '<span>' + esc(item.label) + '</span></button>';
+          }).join('');
+        return new Promise(function (done) {
+          resolve = done;
+          layer = Back.open(function () { close(null); });
+          mask.classList.remove('pop-closing');
+          mask.removeAttribute('aria-hidden');
+          anchor.setAttribute('aria-expanded', 'true');
+          anchor.setAttribute('aria-controls', menu.id);
+          position();
+          var first = content.querySelector('button');
+          if (first) first.focus({ preventScroll: true });
+          motion = Anim.popover(menu, content, true, motion, function () { motion = null; });
+        });
+      }
+
+      function close(value, immediate) {
+        if (!resolve) return;
+        var done = resolve;
+        resolve = null;
+        Back.done(layer);
+        layer = null;
+        if (menu.contains(document.activeElement) && anchor.isConnected) anchor.focus({ preventScroll: true });
+        anchor.setAttribute('aria-expanded', 'false');
+        anchor.removeAttribute('aria-controls');
+        mask.classList.add('pop-closing');
+        mask.setAttribute('aria-hidden', 'true');
+        content.querySelectorAll('button').forEach(function (button) { button.disabled = true; });
+        if (!immediate) motion = Anim.popover(menu, content, false, motion, remove);
+        done(value);
+      }
+
       mask.addEventListener('click', function (e) {
-        if (e.target === mask) return close(null);
-        var it = e.target.closest('.pop-item');
-        if (!it) return;
-        var item = items[+it.dataset.i];
-        close(item && item.value !== undefined ? item.value : null);
+        if (e.target === mask) { close(null); return; }
+        var button = e.target.closest('.pop-item');
+        if (button) close(items[+button.dataset.i].value);
       });
-    });
-  }
+      mask.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { e.preventDefault(); close(null); }
+      });
+      window.addEventListener('resize', position);
+      if (viewport) {
+        viewport.addEventListener('resize', position);
+        viewport.addEventListener('scroll', position);
+      }
+      if (motionPreference && motionPreference.addEventListener) motionPreference.addEventListener('change', motionChanged);
+      return entry;
+    }
+
+    function show(items, anchor, title) {
+      if (!anchor || !anchor.isConnected) return Promise.resolve(null);
+      if (active && active.anchor === anchor && active.isOpen()) {
+        active.close(null);
+        return Promise.resolve(null);
+      }
+      if (active && active.anchor !== anchor) active.remove();
+      if (!active) active = create(anchor);
+      return active.open(items, title);
+    }
+    show.close = function () { if (active) active.close(null); };
+    return show;
+  })();
 
 
   /* ================= 主题 ================= */
@@ -594,6 +675,7 @@
       this.render();
     },
     render: function () {
+      popover.close();
       if (this.finishTransition) this.finishTransition();
       var cur = this.stack[this.stack.length - 1];
       var old = $app.firstElementChild;

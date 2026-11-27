@@ -93,6 +93,9 @@ def compare(browser, scheme):
 
     entries.first.click()
     expect(page.locator('#shelfBar .t-title')).to_have_text('书架')
+    shelf_actions = page.locator('#shelfBar .workspace-actions').get_by_role('button')
+    expect(shelf_actions).to_have_count(1)
+    expect(shelf_actions).to_have_attribute('aria-label', '书架操作')
     expect(tabs.locator('[aria-current=page] svg')).to_have_attribute('data-icon', 'bookshelf-active')
     tabs.get_by_role('button', name='主页').click()
     for label in ('小镇', '后院', '小宿店'):
@@ -217,6 +220,9 @@ def compare(browser, scheme):
       Nav.reset('pigeon');
     }""")
     expect(tabs.locator('[aria-current=page] svg')).to_have_attribute('data-icon', 'pigeon-active')
+    pigeon_actions = page.locator('.pigeon-view .workspace-actions').get_by_role('button')
+    assert pigeon_actions.evaluate_all("buttons => buttons.map(button => button.getAttribute('aria-label'))") == [
+        '添加朋友', '鸽屋选项']
     expect(page.locator('.pg-item')).to_have_count(2)
     search = page.get_by_role('searchbox', name='搜索会话或消息')
     search.fill('书架比之前清爽')
@@ -257,11 +263,13 @@ def appearance_and_motion(browser):
     page.get_by_role('button', name='小家', exact=True).click()
     page.wait_for_function("document.querySelectorAll('#app .view').length === 1")
     frames = page.evaluate('tabFrames')
-    assert len(frames) == 2 and all(x['options']['duration'] == 120 for x in frames)
+    assert len(frames) == 2 and all(x['options']['duration'] == 200 for x in frames)
     assert all('transform' not in f for x in frames for f in x['frames'])
     first_slide = page.evaluate('capsuleFrames[0]')
-    assert first_slide['options']['duration'] == 420
-    assert any('scaleX(1.12)' in f['transform'] for f in first_slide['frames'])
+    assert first_slide['options']['duration'] == 300
+    start_x, rebound_x = page.evaluate("""() => [0, 2].map(index =>
+        new DOMMatrix(capsuleFrames[0].frames[index].transform).e)""")
+    assert start_x < 0 < rebound_x <= -start_x * .02
     page.evaluate("""() => {
       for (const tab of ['pigeon','home','shelf','me']) document.querySelector('[data-tab='+tab+']').click();
     }""")
@@ -341,6 +349,6 @@ with sync_playwright() as playwright:
         compare(browser, appearance)
         print('PASS mobile GUI', appearance, flush=True)
     appearance_and_motion(browser)
-    print('PASS system appearance, independent editor metrics, persisted homepage switch and 120 ms crossfade')
+    print('PASS system appearance, independent editor metrics, persisted homepage switch and 200 ms crossfade')
     if BASELINE:
         print('PASS light and dark screenshots match all baseline pixels')

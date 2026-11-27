@@ -12,7 +12,7 @@
   --workspace-gap: 16px;
   --workspace-radius: 16px;
   --workspace-icon: 23px;
-  --tab-slide-duration: 420ms;
+  --tab-slide-duration: 300ms;
   --workspace-tab-height: 64px;
 }
 html.dark {
@@ -78,7 +78,8 @@ html.dark {
   z-index: 30; border: 1px solid var(--workspace-border); border-radius: 999px;
   box-shadow: 0 3px 9px rgba(0,0,0,.08);
   background: var(--workspace-surface);
-  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
+  user-select: none;
   -webkit-backdrop-filter: none; backdrop-filter: none;
 }
 @supports ((backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px))) {
@@ -93,7 +94,13 @@ html.dark {
   color: var(--workspace-muted); transition: color var(--m-2) var(--e-out), transform var(--m-2) var(--e-hold);
 }
 .tabbar.main-tabs .tab:active { transform: scale(.91); }
+.tabbar.main-tabs.tab-pressing .tab:active { transform: none; }
 .tabbar.main-tabs .tab.active { color: var(--workspace-fg); background: transparent; box-shadow: none; }
+.tabbar.main-tabs .tab.tab-preview { color: var(--workspace-fg); }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.anim-off) .main-tabs .tab-icon { transition: transform var(--m-1) var(--e-out); }
+  html:not(.anim-off) .main-tabs .tab-preview .tab-icon { transform: scale(1.07); }
+}
 .tabbar.main-tabs .tab .adaptive-icon { display: block; width: var(--workspace-icon); height: var(--workspace-icon); transform: none; }
 .tab-icon { display: block; position: relative; }
 .tab-label { font-size: min(var(--fs-caption2), 15px); white-space: nowrap; }
@@ -105,7 +112,7 @@ html.dark {
 .tab-capsule {
   position: absolute; inset-block: var(--tab-inset); width: var(--tab-width);
   left: calc(var(--tab-inset) + var(--tab-position, 0) * var(--tab-width));
-  background: var(--workspace-selected); border-radius: 999px; pointer-events: none; transform-origin: left center;
+  background: var(--workspace-selected); border-radius: 999px; pointer-events: none;
 }
 .has-tabs .scroll:not(.create-scroll) {
   padding-bottom: calc(var(--safe-b) + var(--glass-gap) + var(--workspace-tab-height) + 16px);

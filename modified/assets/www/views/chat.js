@@ -10,8 +10,7 @@
     el.classList.add('pigeon-view');
     el.innerHTML =
       '<header class="workspace-heading"><div><h1 class="t-title">鸽屋</h1><p>和朋友聊聊代码与日常</p></div>' +
-      '<div class="workspace-actions"><button type="button" class="icon-btn" data-act="focusSearch" aria-label="搜索会话">' +
-      svg('search') + '</button><button type="button" class="icon-btn" data-act="new" aria-label="添加朋友">' +
+      '<div class="workspace-actions"><button type="button" class="icon-btn" data-act="new" aria-label="添加朋友">' +
       svg('plus-square') + '</button><button type="button" class="icon-btn" data-act="more" aria-label="鸽屋选项">' +
       svg('more') + '</button></div></header>' +
       '<div class="scroll workspace-content pg-scroll" id="pgList">' +
@@ -102,7 +101,6 @@
     el.__cleanup = Lan.observe(render);
 
     el.addEventListener('click', function (e) {
-      if (e.target.closest('[data-act=focusSearch]')) return search.focus();
       if (e.target.closest('[data-act=requests]')) return Nav.go('requests');
       if (e.target.closest('[data-act=nearby]')) {
         if (!Lan.running()) return Lan.toggle();

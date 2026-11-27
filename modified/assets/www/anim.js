@@ -96,7 +96,7 @@
       var shift = mode === 'pop' ? -16 : 16;
       var frames = tab ? [{ opacity: 0 }, { opacity: 1 }]
         : [{ opacity: .6, transform: 'translateX(' + shift + 'px)' }, { opacity: 1, transform: 'none' }];
-      var duration = tab ? 120 : 350;
+      var duration = tab ? 200 : 350;
       var easing = tab ? 'linear' : 'cubic-bezier(.22,.78,.24,1)';
       incoming = newEl.animate(frames, { duration: duration, easing: easing });
       outgoing = oldEl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: duration, easing: easing });
@@ -109,10 +109,79 @@
     }
   }
 
+  function popover(panel, content, opening, previous, done) {
+    if (!enabled() || typeof panel.animate !== 'function') {
+      if (previous) previous.cancel();
+      done();
+      return null;
+    }
+
+    var scale = .15, opacity = 0, textOpacity = 0;
+    if (previous || !opening) {
+      var current = getComputedStyle(panel);
+      var matrix = /^matrix\(([^,]+)/.exec(current.transform);
+      scale = matrix ? Number(matrix[1]) : 1;
+      opacity = Number(current.opacity);
+      textOpacity = Number(getComputedStyle(content).opacity);
+    }
+    if (previous) previous.cancel();
+
+    var easeOut = 'cubic-bezier(.16,.8,.3,1)';
+    function frame(size, alpha, offset, easing) {
+      return { transform: 'scale(' + size + ')', opacity: alpha, offset: offset, easing: easing };
+    }
+    // A reopened menu starts from its visible frame instead of jumping back to .15.
+    function approach(size) {
+      return scale + (Math.max(1, scale) - scale) * ((size - .15) / .85);
+    }
+    var frames = opening ? [
+      frame(scale, opacity, 0, easeOut),
+      frame(approach(.65), Math.max(.9, opacity), .2, 'ease-out'),
+      frame(approach(.90), 1, .45, 'ease-out'),
+      frame(approach(.995), 1, .70, 'ease-out'),
+      frame(1.01, 1, .85, 'ease-in-out'),
+      frame(1, 1, 1, 'linear')
+    ] : [frame(scale, opacity, 0, easeOut), frame(.15, 0, 1, 'linear')];
+
+    var panelAnimation, contentAnimation, timer, stopped = false;
+    function cancel() {
+      if (stopped) return;
+      stopped = true;
+      clearTimeout(timer);
+      if (panelAnimation) panelAnimation.cancel();
+      if (contentAnimation) contentAnimation.cancel();
+    }
+    function finish() {
+      if (stopped) return;
+      cancel();
+      done();
+    }
+    try {
+      var duration = opening ? 340 : 190;
+      panelAnimation = panel.animate(frames, { duration: duration, fill: 'both' });
+      if (opening) {
+        contentAnimation = content.animate([{ opacity: textOpacity }, { opacity: 1 }], {
+          delay: previous ? 0 : 50, duration: 130, easing: 'ease-out', fill: 'both'
+        });
+      } else if (textOpacity < 1) {
+        contentAnimation = content.animate([{ opacity: textOpacity }, { opacity: textOpacity }], {
+          duration: duration, fill: 'both'
+        });
+      }
+      panelAnimation.onfinish = finish;
+      timer = setTimeout(finish, duration + 60);
+      return { cancel: cancel, finish: finish };
+    } catch (error) {
+      finish();
+      return null;
+    }
+  }
+
   global.Anim = {
     enabled: enabled,
     setEnabled: setEnabled,
     stagger: stagger,
-    swap: swap
+    swap: swap,
+    popover: popover
   };
 })(window);

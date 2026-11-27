@@ -686,20 +686,20 @@
           });
         });
       } else if (act === 'menu') {
-        openMenu();
+        openMenu(t);
       }
     });
 
-    function openMenu() {
-      sheet('文件', [
+    function openMenu(anchor) {
+      popover([
         { title: '编码 · ' + (p.enc || 'UTF-8') },
-        { label: '跳转到行首', value: 'ls' },
-        { label: '跳转到行尾', value: 'le' },
+        { ico: 'lineStart', label: '跳转到行首', value: 'ls' },
+        { ico: 'lineEnd', label: '跳转到行尾', value: 'le' },
         'sep',
-        { label: '分享 / 导出', value: 'share' },
+        { ico: 'share', label: '分享 / 导出', value: 'share' },
         'sep',
-        { label: '发布（未接入）', value: 'pub' }
-      ]).then(function (v) {
+        { ico: 'send', label: '发布（未接入）', value: 'pub' }
+      ], anchor, '文件').then(function (v) {
         if (v === 'ls' || v === 'le') {
           setMode('edit');
           setTimeout(function () {

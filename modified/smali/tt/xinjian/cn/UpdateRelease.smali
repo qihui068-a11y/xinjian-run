@@ -4,7 +4,13 @@
 
 
 # static fields
+.field private static final CACHE_NAME:Ljava/util/regex/Pattern;
+
+.field private static final DIGITS:Ljava/lang/String; = "[0-9]{1,5}\\.[0-9]{1,5}(?:\\.[0-9]{1,5})?"
+
 .field static final LATEST:Ljava/lang/String; = "https://api.github.com/repos/qihui068-a11y/xinjian-run/releases/latest"
+
+.field private static final LEGACY_SUFFIX:Ljava/lang/String; = "(?:-run)?"
 
 .field private static final MAX_APK_BYTES:J = 0x4000000L
 
@@ -27,7 +33,7 @@
 .method static constructor <clinit>()V
     .locals 1
 
-    .line 14
+    .line 16
     const-string v0, "v?([0-9]{1,5}\\.[0-9]{1,5}(?:\\.[0-9]{1,5})?)(?:-run)?"
 
     invoke-static {v0}, Ljava/util/regex/Pattern;->compile(Ljava/lang/String;)Ljava/util/regex/Pattern;
@@ -36,35 +42,44 @@
 
     sput-object v0, Ltt/xinjian/cn/UpdateRelease;->VERSION:Ljava/util/regex/Pattern;
 
+    .line 17
+    const-string v0, "update-[0-9]{1,5}\\.[0-9]{1,5}(?:\\.[0-9]{1,5})?(?:-run)?-[a-f0-9]{64}\\.apk"
+
+    invoke-static {v0}, Ljava/util/regex/Pattern;->compile(Ljava/lang/String;)Ljava/util/regex/Pattern;
+
+    move-result-object v0
+
+    sput-object v0, Ltt/xinjian/cn/UpdateRelease;->CACHE_NAME:Ljava/util/regex/Pattern;
+
     return-void
 .end method
 
 .method private constructor <init>(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)V
     .locals 0
 
-    .line 22
+    .line 25
     invoke-direct {p0}, Ljava/lang/Object;-><init>()V
 
-    .line 23
+    .line 26
     iput-object p1, p0, Ltt/xinjian/cn/UpdateRelease;->version:Ljava/lang/String;
 
-    .line 24
+    .line 27
     iput-object p2, p0, Ltt/xinjian/cn/UpdateRelease;->url:Ljava/lang/String;
 
-    .line 25
+    .line 28
     iput-object p3, p0, Ltt/xinjian/cn/UpdateRelease;->sha256:Ljava/lang/String;
 
-    .line 26
+    .line 29
     iput-wide p4, p0, Ltt/xinjian/cn/UpdateRelease;->bytes:J
 
-    .line 27
+    .line 30
     return-void
 .end method
 
 .method private static compare(Ljava/lang/String;Ljava/lang/String;)I
     .locals 4
 
-    .line 36
+    .line 47
     const-string v0, "\\."
 
     invoke-virtual {p0, v0}, Ljava/lang/String;->split(Ljava/lang/String;)[Ljava/lang/String;
@@ -75,7 +90,7 @@
 
     move-result-object p1
 
-    .line 37
+    .line 48
     const/4 v0, 0x0
 
     const/4 v1, 0x0
@@ -85,7 +100,7 @@
 
     if-ge v1, v2, :cond_3
 
-    .line 38
+    .line 49
     array-length v2, p0
 
     if-ge v1, v2, :cond_0
@@ -101,7 +116,7 @@
     :cond_0
     const/4 v2, 0x0
 
-    .line 39
+    .line 50
     :goto_1
     array-length v3, p1
 
@@ -118,7 +133,7 @@
     :cond_1
     const/4 v3, 0x0
 
-    .line 40
+    .line 51
     :goto_2
     if-eq v2, v3, :cond_2
 
@@ -128,15 +143,44 @@
 
     return p0
 
-    .line 37
+    .line 48
     :cond_2
     add-int/lit8 v1, v1, 0x1
 
     goto :goto_0
 
-    .line 42
+    .line 53
     :cond_3
     return v0
+.end method
+
+.method static isCacheName(Ljava/lang/String;)Z
+    .locals 1
+
+    .line 37
+    if-eqz p0, :cond_0
+
+    sget-object v0, Ltt/xinjian/cn/UpdateRelease;->CACHE_NAME:Ljava/util/regex/Pattern;
+
+    invoke-virtual {v0, p0}, Ljava/util/regex/Pattern;->matcher(Ljava/lang/CharSequence;)Ljava/util/regex/Matcher;
+
+    move-result-object p0
+
+    invoke-virtual {p0}, Ljava/util/regex/Matcher;->matches()Z
+
+    move-result p0
+
+    if-eqz p0, :cond_0
+
+    const/4 p0, 0x1
+
+    goto :goto_0
+
+    :cond_0
+    const/4 p0, 0x0
+
+    :goto_0
+    return p0
 .end method
 
 .method private static numericVersion(Ljava/lang/String;)Ljava/lang/String;
@@ -147,21 +191,21 @@
         }
     .end annotation
 
-    .line 30
+    .line 41
     sget-object v0, Ltt/xinjian/cn/UpdateRelease;->VERSION:Ljava/util/regex/Pattern;
 
     invoke-virtual {v0, p0}, Ljava/util/regex/Pattern;->matcher(Ljava/lang/CharSequence;)Ljava/util/regex/Matcher;
 
     move-result-object p0
 
-    .line 31
+    .line 42
     invoke-virtual {p0}, Ljava/util/regex/Matcher;->matches()Z
 
     move-result v0
 
     if-eqz v0, :cond_0
 
-    .line 32
+    .line 43
     const/4 v0, 0x1
 
     invoke-virtual {p0, v0}, Ljava/util/regex/Matcher;->group(I)Ljava/lang/String;
@@ -170,7 +214,7 @@
 
     return-object p0
 
-    .line 31
+    .line 42
     :cond_0
     new-instance p0, Ljava/io/IOException;
 
@@ -190,14 +234,14 @@
         }
     .end annotation
 
-    .line 46
+    .line 57
     const-string v0, "tag_name"
 
     invoke-virtual {p0, v0}, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 
-    .line 47
+    .line 58
     const-string v1, "v"
 
     invoke-virtual {v0, v1}, Ljava/lang/String;->startsWith(Ljava/lang/String;)Z
@@ -222,12 +266,12 @@
 
     if-nez v1, :cond_4
 
-    .line 50
+    .line 61
     invoke-static {v0}, Ltt/xinjian/cn/UpdateRelease;->numericVersion(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v1
 
-    .line 51
+    .line 62
     invoke-static {p1}, Ltt/xinjian/cn/UpdateRelease;->numericVersion(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object p1
@@ -242,7 +286,7 @@
 
     return-object p0
 
-    .line 53
+    .line 64
     :cond_0
     new-instance p1, Ljava/lang/StringBuilder;
 
@@ -268,7 +312,7 @@
 
     move-result-object p1
 
-    .line 54
+    .line 65
     new-instance v1, Ljava/lang/StringBuilder;
 
     invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
@@ -297,14 +341,14 @@
 
     move-result-object v4
 
-    .line 55
+    .line 66
     const-string v1, "assets"
 
     invoke-virtual {p0, v1}, Lorg/json/JSONObject;->getJSONArray(Ljava/lang/String;)Lorg/json/JSONArray;
 
     move-result-object p0
 
-    .line 56
+    .line 67
     const/4 v1, 0x0
 
     :goto_0
@@ -314,12 +358,12 @@
 
     if-ge v1, v2, :cond_3
 
-    .line 57
+    .line 68
     invoke-virtual {p0, v1}, Lorg/json/JSONArray;->getJSONObject(I)Lorg/json/JSONObject;
 
     move-result-object v2
 
-    .line 58
+    .line 69
     const-string v3, "name"
 
     invoke-virtual {v2, v3}, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
@@ -332,12 +376,12 @@
 
     if-nez v3, :cond_1
 
-    .line 56
+    .line 67
     add-int/lit8 v1, v1, 0x1
 
     goto :goto_0
 
-    .line 59
+    .line 70
     :cond_1
     const-string p0, "size"
 
@@ -347,14 +391,14 @@
 
     move-result-wide v6
 
-    .line 60
+    .line 71
     const-string p0, "digest"
 
     invoke-virtual {v2, p0}, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object p0
 
-    .line 61
+    .line 72
     const-string p1, "browser_download_url"
 
     invoke-virtual {v2, p1}, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
@@ -381,7 +425,7 @@
 
     if-eqz p1, :cond_2
 
-    .line 62
+    .line 73
     const-string p1, "sha256:[a-f0-9]{64}"
 
     invoke-virtual {p0, p1}, Ljava/lang/String;->matches(Ljava/lang/String;)Z
@@ -402,7 +446,7 @@
 
     if-gtz p1, :cond_2
 
-    .line 65
+    .line 76
     new-instance p1, Ltt/xinjian/cn/UpdateRelease;
 
     const/4 v1, 0x1
@@ -423,7 +467,7 @@
 
     return-object p1
 
-    .line 63
+    .line 74
     :cond_2
     new-instance p0, Ljava/io/IOException;
 
@@ -433,7 +477,7 @@
 
     throw p0
 
-    .line 67
+    .line 78
     :cond_3
     new-instance p0, Ljava/io/IOException;
 
@@ -443,7 +487,7 @@
 
     throw p0
 
-    .line 48
+    .line 59
     :cond_4
     new-instance p0, Ljava/io/IOException;
 
@@ -452,4 +496,51 @@
     invoke-direct {p0, p1}, Ljava/io/IOException;-><init>(Ljava/lang/String;)V
 
     throw p0
+.end method
+
+
+# virtual methods
+.method cacheName()Ljava/lang/String;
+    .locals 2
+
+    .line 33
+    new-instance v0, Ljava/lang/StringBuilder;
+
+    invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v1, "update-"
+
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    iget-object v1, p0, Ltt/xinjian/cn/UpdateRelease;->version:Ljava/lang/String;
+
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    const-string v1, "-"
+
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    iget-object v1, p0, Ltt/xinjian/cn/UpdateRelease;->sha256:Ljava/lang/String;
+
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    const-string v1, ".apk"
+
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    move-result-object v0
+
+    invoke-virtual {v0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v0
+
+    return-object v0
 .end method

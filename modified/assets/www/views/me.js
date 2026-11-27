@@ -163,7 +163,7 @@
       '<div class="field"><label>当前版本</label><div data-update-current></div></div>' +
       '<div class="field"><div class="update-status" data-update-status role="status"></div>' +
       '<progress data-update-progress max="100" aria-label="下载进度" hidden></progress></div>' +
-      '<div class="chips"><button type="button" class="chip" data-act="check">检查更新</button>' +
+      '<div class="chips update-actions"><button type="button" class="chip" data-act="check">检查更新</button>' +
       '<button type="button" class="chip on" data-act="apply" hidden></button></div>' +
       '</div></div>';
 

@@ -22,6 +22,8 @@
   --glass: rgba(255,255,255,.68); --glass-edge: rgba(255,255,255,.48);
   --glass-solid: rgba(250,250,253,.96); --glass-highlight: rgba(255,255,255,.72);
   --seg-thumb: #FFFFFF;
+  --pop-bg: var(--bg); --pop-border: #E6E6E6; --pop-fg: #171717;
+  --pop-shadow: 0 4px 16px rgba(0,0,0,.09);
   --bar: 44px; --glass-h: 48px; --glass-gap: 12px; --group-gap: 28px;
   --page-x: 20px; --inset-x: 16px;
   --tab-fade: 120ms; --sheet-duration: 420ms;
@@ -36,5 +38,7 @@ html.dark, body.dark {
   --glass: rgba(44,44,46,.70); --glass-edge: rgba(90,89,86,.38);
   --glass-solid: rgba(42,42,44,.96); --glass-highlight: rgba(247,242,232,.14);
   --seg-thumb: #49494B;
+  --pop-bg: #121212; --pop-border: #303030; --pop-fg: #F5F5F5;
+  --pop-shadow: 0 6px 18px rgba(0,0,0,.36);
 }
 @media (max-width: 370px) { :root { --page-x: 16px; } }

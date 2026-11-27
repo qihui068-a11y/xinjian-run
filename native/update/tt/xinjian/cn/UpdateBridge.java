@@ -63,7 +63,7 @@ public final class UpdateBridge {
         worker.execute(() -> {
             try {
                 UpdateRelease next = UpdateRelease.read(fetchLatest(), installed.versionName);
-                boolean cached = next != null && validCached(UpdateApkProvider.apk(activity), next);
+                boolean cached = next != null && validCached(UpdateApkProvider.apk(activity, next), next);
                 synchronized (UpdateBridge.this) {
                     release = next;
                     ready = cached;
@@ -98,18 +98,18 @@ public final class UpdateBridge {
         if (!ready || release == null || !begin("verifying", 100)) return;
         UpdateRelease next = release;
         worker.execute(() -> {
-            if (!validCached(UpdateApkProvider.apk(activity), next)) {
+            if (!validCached(UpdateApkProvider.apk(activity, next), next)) {
                 synchronized (UpdateBridge.this) {
                     ready = false;
                     finish("downloadError", 0, "安装包校验失败，请重新下载");
                 }
                 return;
             }
-            web.post(this::openInstaller);
+            web.post(() -> openInstaller(next));
         });
     }
 
-    private void openInstaller() {
+    private void openInstaller(UpdateRelease next) {
         if (closed || activity.isFinishing()) {
             finish("ready", 100, "");
             return;
@@ -127,10 +127,11 @@ public final class UpdateBridge {
         }
         try {
             Intent install = new Intent(Intent.ACTION_VIEW);
-            install.setDataAndType(UpdateApkProvider.uri(activity), UpdateApkProvider.TYPE);
+            // Give each verified APK its own URI so the installer cannot reuse a previous URI for another version.
+            install.setDataAndType(UpdateApkProvider.uri(activity, next), UpdateApkProvider.TYPE);
             install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             activity.startActivity(install);
-            finish("ready", 100, "");
+            finish("ready", 100, "请在系统安装器中确认更新");
         } catch (ActivityNotFoundException | SecurityException error) {
             finish("ready", 100, "无法打开系统安装器");
         }
@@ -226,7 +227,7 @@ public final class UpdateBridge {
     }
 
     private void downloadVerified(UpdateRelease next) throws IOException {
-        File target = UpdateApkProvider.apk(activity);
+        File target = UpdateApkProvider.apk(activity, next);
         File directory = target.getParentFile();
         if (!directory.isDirectory() && !directory.mkdirs()) throw new IOException("无法创建下载目录");
         File part = File.createTempFile("download-", ".apk", directory);

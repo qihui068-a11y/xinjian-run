@@ -57,10 +57,11 @@ module.exports = async ({ test, app }) => {
       check.click();
       emit('current');
       assert.equal(select('[data-update-status]').textContent, '已是最新版本');
-      assert.equal(apply.hidden, true);
+      assert.equal(w.getComputedStyle(apply).display, 'none');
       check.click();
       emit('available');
       assert.equal(apply.textContent, '下载更新');
+      assert.notEqual(w.getComputedStyle(apply).display, 'none');
       apply.click();
       emit('downloading', 45);
       assert.equal(check.disabled, true);

@@ -13,20 +13,31 @@ import java.io.File;
 import java.io.FileNotFoundException;
 
 public final class UpdateApkProvider extends ContentProvider {
-    private static final String NAME = "update.apk";
     static final String TYPE = "application/vnd.android.package-archive";
 
-    static File apk(Context context) {
-        return new File(new File(context.getCacheDir(), "updates"), NAME);
+    private static File cacheFile(Context context, String filename) {
+        return new File(new File(context.getCacheDir(), "updates"), filename);
     }
 
-    static Uri uri(Context context) {
-        return Uri.parse("content://" + context.getPackageName() + ".updates/" + NAME);
+    static File apk(Context context, UpdateRelease release) {
+        return cacheFile(context, release.cacheName());
+    }
+
+    private static Uri fileUri(Context context, String filename) {
+        return Uri.parse("content://" + context.getPackageName() + ".updates/" + filename);
+    }
+
+    static Uri uri(Context context, UpdateRelease release) {
+        return fileUri(context, release.cacheName());
     }
 
     private File file(Uri uri) {
-        if (!uri(getContext()).equals(uri)) throw new IllegalArgumentException("Unknown update file");
-        return apk(getContext());
+        String filename = uri.getLastPathSegment();
+        Context context = getContext();
+        if (!UpdateRelease.isCacheName(filename) || !fileUri(context, filename).equals(uri)) {
+            throw new IllegalArgumentException("Unknown update file");
+        }
+        return cacheFile(context, filename);
     }
 
     @Override public boolean onCreate() { return true; }
@@ -48,7 +59,7 @@ public final class UpdateApkProvider extends ContentProvider {
         if (!apk.isFile()) return cursor;
         MatrixCursor.RowBuilder row = cursor.newRow();
         for (String column : columns) {
-            if (OpenableColumns.DISPLAY_NAME.equals(column)) row.add(NAME);
+            if (OpenableColumns.DISPLAY_NAME.equals(column)) row.add(apk.getName());
             else if (OpenableColumns.SIZE.equals(column)) row.add(apk.length());
             else row.add(null);
         }

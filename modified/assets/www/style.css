@@ -648,32 +648,51 @@ body.dark{
 }
 .chat-send:active{opacity:.8;}
 
-/* ========== 下拉气泡菜单（鸽屋 + 号） ========== */
+/* ========== 锚点菜单 ========== */
 .pop{position:fixed;inset:0;z-index:150;}
+.pop-closing{pointer-events:none;}
 .pop-menu{
-  position:absolute;min-width:10.5rem;
-  background:#4A4A4C;color:#fff;
-  border-radius:.7rem;padding:.3rem 0;
-  border:1px solid rgba(255,255,255,.10);
-  box-shadow:0 .5rem 1.5rem rgba(0,0,0,.28);
+  --pop-tip-height:8px;
+  position:absolute;width:max-content;
+  min-width:min(10.5rem,var(--pop-max-width));max-width:var(--pop-max-width);
+  background:var(--pop-bg);color:var(--pop-fg);
+  border-radius:.7rem;border:1px solid var(--pop-border);box-shadow:var(--pop-shadow);
+  transform-origin:var(--pop-tip-x) calc(-1 * var(--pop-tip-height));
 }
-.pop-menu::before{
-  content:"";position:absolute;top:-.45rem;right:1.05rem;
-  border:.45rem solid transparent;border-top:0;
-  border-bottom-color:#4A4A4C;
+.pop-tip{
+  position:absolute;top:calc(-1px - var(--pop-tip-height));left:calc(var(--pop-tip-x) - 1px);
+  width:16px;height:calc(var(--pop-tip-height) + 1px);
+  transform:translateX(-50%);clip-path:polygon(50% 0,100% 100%,0 100%);
+  background:var(--pop-border);pointer-events:none;
+}
+.pop-tip::after{
+  content:"";position:absolute;inset:1.4px 1.4px 0;
+  clip-path:inherit;background:var(--pop-bg);
+}
+.pop-up{transform-origin:var(--pop-tip-x) calc(100% + var(--pop-tip-height));}
+.pop-up .pop-tip{
+  top:auto;bottom:calc(-1px - var(--pop-tip-height));transform:translateX(-50%) rotate(180deg);
+}
+.pop-content{
+  max-height:max(0px,calc(var(--pop-max-height) - 2px));overflow:auto;
+  overscroll-behavior:contain;border-radius:inherit;padding:.3rem 0;
 }
 .pop-item{
-  display:flex;align-items:center;gap:.7rem;
-  padding:.8rem 1rem;font-size:var(--fs-callout);color:#fff;
-  white-space:nowrap;
+  display:flex;align-items:center;gap:var(--sp-3);
+  width:100%;padding:.8rem var(--sp-4);font-size:var(--fs-callout);
+  color:inherit;text-align:start;overflow-wrap:anywhere;
 }
-.pop-item:active{background:rgba(255,255,255,.09);}
+.pop-item:active{background:rgba(var(--fg-rgb),.08);}
+.pop-item:focus-visible{outline:1px solid currentColor;outline-offset:-3px;}
 .pop-item svg{
   width:1.25rem;height:1.25rem;flex:none;
-  stroke:#fff;stroke-width:2;fill:none;
+  stroke:currentColor;stroke-width:2;fill:none;
   stroke-linecap:round;stroke-linejoin:round;
 }
-.pop-sep{height:1px;background:rgba(255,255,255,.14);margin:.3rem .6rem;}
+.pop-title,.pop-caption{padding:var(--sp-1) var(--sp-4);overflow-wrap:anywhere;}
+.pop-title{font-weight:600;font-size:var(--fs-callout);}
+.pop-caption{font-size:var(--fs-footnote);}
+.pop-sep{height:1px;background:var(--pop-border);margin:.3rem .6rem;}
 
 /* 设置页：外观在上，功能行在中间，关于永远贴最底 */
 .set-body{display:flex;flex-direction:column;min-height:100%;}
@@ -817,6 +836,7 @@ body.dark{
              border-color var(--m-2) var(--e-out),transform var(--m-2) var(--e-out);
 }
 .chip:active{transform:scale(.97);transition-duration:var(--m-1);}
+.update-actions .chip[hidden]{display:none;}
 /* 展开细节不再改 max-width（那会触发布局）。改成裁剪 + 淡入，只动 clip-path/opacity。
    新建页的格式格子本来就一直显示扩展名，所以去掉宽度塌陷不影响排版。 */
 .chip-detail{

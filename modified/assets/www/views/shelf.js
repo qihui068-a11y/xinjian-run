@@ -83,8 +83,7 @@
       } else {
         bar.innerHTML =
           '<div><h1 class="t-title">书架</h1><p>管理你的代码与工程</p></div>' +
-          '<div class="workspace-actions"><button type="button" class="icon-btn" data-act="create" aria-label="新建文件">' +
-          svg('file-plus') + '</button><button type="button" class="icon-btn" data-act="more" aria-label="书架操作">' +
+          '<div class="workspace-actions"><button type="button" class="icon-btn" data-act="more" aria-label="书架操作">' +
           svg('more') + '</button></div>';
       }
     }
