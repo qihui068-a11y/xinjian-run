@@ -93,6 +93,7 @@ var Motion = (function () {
     var animation = node.animate(frames, { duration: duration, easing: 'cubic-bezier(.16,.85,.28,1)' });
     active.add(animation);
     animation.onfinish = animation.oncancel = function () { active.delete(animation); };
+    return animation;
   }
   function updateActivity() {
     document.documentElement.classList.toggle('motion-background', document.hidden);

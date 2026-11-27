@@ -13,6 +13,7 @@
   --workspace-radius: 16px;
   --workspace-icon: 23px;
   --tab-slide-duration: 280ms;
+  --m-press: 170ms;
   --workspace-tab-height: 64px;
 }
 html.dark {
@@ -61,7 +62,7 @@ html.dark {
   min-height: 76px; padding: 10px 16px 10px 20px; border-radius: 999px;
   border-color: var(--workspace-border); background: var(--home-card);
 }
-.home-view .entry:active { transform: scale(.96); }
+.home-view .entry:active { transform: scale(.975); }
 .entry-main > .adaptive-icon { width: var(--workspace-icon); height: var(--workspace-icon); }
 .entry-main strong, .entry-main small, .workspace-shortcuts strong, .workspace-shortcuts small { display: block; }
 .entry-main small, .workspace-shortcuts small, .shelf-row .b-excerpt, .shelf-row time {
@@ -122,13 +123,14 @@ html.dark {
 .workspace-search {
   display: flex; align-items: center; gap: 8px; padding: 0 12px;
   border: 1px solid var(--workspace-border); border-radius: 999px; background: var(--workspace-surface);
+  transition: border-color var(--m-2) var(--e-out), box-shadow var(--m-2) var(--e-out);
 }
 .workspace-search svg { width: 20px; height: 20px; flex: none; }
 .workspace-search input {
   min-width: 0; flex: 1; min-height: 44px; background: transparent; border: 0; color: inherit;
   font-size: var(--fs-footnote); padding: 0;
 }
-.workspace-search:focus-within { outline: 1px solid var(--workspace-muted); }
+.workspace-search:focus-within { border-color: var(--workspace-muted); box-shadow: 0 0 0 1px var(--workspace-muted); }
 .workspace-shortcuts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-top: 12px; }
 .workspace-shortcuts button {
   display: flex; align-items: center; gap: 8px; padding: 9px 10px; min-height: 58px; text-align: left;
@@ -137,6 +139,12 @@ html.dark {
 .workspace-shortcuts button strong { font-size: var(--fs-footnote); }
 .workspace-shortcuts button svg { flex: none; }
 .workspace-shortcuts button:active, .shelf-row:active { background: var(--workspace-selected); }
+.home-view .entry, .workspace-shortcuts button, .shelf-row, .pg-scan-row, .workspace-actions .icon-btn {
+  transition: transform var(--m-press) var(--e-out), background-color var(--m-press) var(--e-out);
+}
+.workspace-shortcuts button:active, .shelf-row:active, .pg-scan-row:active, .workspace-actions .icon-btn:active {
+  transform: scale(.975);
+}
 .workspace-section { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; min-height: 44px; }
 .workspace-content h2 { font-size: var(--fs-headline); margin: 0; }
 .workspace-section > button:not(.icon-btn) { min-height: 44px; font-size: var(--fs-footnote); color: var(--workspace-muted); }
@@ -152,6 +160,13 @@ html.dark {
 }
 .shelf-row + .shelf-row { border-top: 1px solid var(--workspace-border); }
 .shelf-row .b-check { position: static; flex: none; }
+.shelf-selecting .book .b-check { display: flex; }
+.shelf-view .workspace-content { position: relative; }
+.shelf-refresh {
+  position: absolute; inset: 7px 0 auto; text-align: center; pointer-events: none;
+  color: var(--workspace-muted); font-size: var(--fs-caption2);
+}
+.shelf-refresh.floating { z-index: 1; background: var(--workspace-surface); padding: 3px; }
 .shelf-row svg { flex: none; }
 .shelf-file-info { min-width: 0; flex: 1; }
 .shelf-row .b-name, .shelf-row .b-excerpt { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

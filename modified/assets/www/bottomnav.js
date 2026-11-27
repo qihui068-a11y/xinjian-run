@@ -9,6 +9,7 @@ var BottomNav = (function () {
   var nav, buttons, indicator, badge, selected, animation, iconAnimation, gesture;
   var swallowClick = false;
   var preview = -1;
+  var lastBadge;
   var DRAG_SLOP = 8;
 
   function includes(name) {
@@ -69,6 +70,11 @@ var BottomNav = (function () {
     badge.textContent = count > 99 ? '99+' : count || '';
     if (count) badge.setAttribute('aria-label', count + ' 条未读好友申请');
     else badge.removeAttribute('aria-label');
+    if (lastBadge !== undefined && count > lastBadge && !nav.hidden) {
+      Motion.play(badge, [{ transform: 'scale(.88)', opacity: .65 },
+        { transform: 'scale(1.012)', opacity: 1, offset: .83 }, { transform: 'none', opacity: 1 }], 220);
+    }
+    lastBadge = count;
   }
 
   function cancel() {
