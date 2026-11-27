@@ -7,14 +7,23 @@ def check_symbol_dock(browser):
                             device_scale_factor=2, has_touch=True, is_mobile=True)
     try:
         page.add_init_script("""window.testViewport = Object.assign(new EventTarget(), {height:800, offsetTop:0, scale:1});
-            Object.defineProperty(window, 'visualViewport', {value:testViewport});""")
+            Object.defineProperty(window, 'visualViewport', {value:testViewport});
+            window.editorFocusCalls = [];
+            const focus = HTMLElement.prototype.focus;
+            HTMLElement.prototype.focus = function(options) {
+              if (this.id === 'ta') editorFocusCalls.push(options?.preventScroll === true);
+              return focus.call(this, options);
+            };""")
         page.route('https://xj.test/**', lambda route: route.fulfill(path=root/route.request.url.split('https://xj.test/')[1]))
         page.goto('https://xj.test/index.html')
         page.evaluate("""async () => {
           await Bridge.create('symbols.py', '');
-          Nav.reset('editor', {name:'symbols.py', mode:'edit'});
+          Nav.reset('editor', {name:'symbols.py', mode:'read'});
         }""")
         symbols = page.locator('.editor-symbols')
+        page.get_by_role('button', name='编辑', exact=True).tap()
+        area = page.locator('#ta')
+        expect(area).to_be_focused()
         symbols.wait_for()
 
         def near(actual, expected):
@@ -24,17 +33,41 @@ def check_symbol_dock(browser):
             box = symbols.bounding_box()
             return box['y'] + box['height']
 
+        def fits_code_area():
+            field = area.bounding_box()
+            code = page.locator('.code-area').bounding_box()
+            near(field['y'], code['y'])
+            near(field['y'] + field['height'], code['y'] + code['height'])
+
         page.evaluate('__xjKeyboardViewport(1000, true)')
         near(bottom(), 500)
+        fits_code_area()
         page.set_viewport_size({'width': 390, 'height': 500})
         # Check immediately, before a new IME or visual viewport measurement.
         near(bottom(), 500)
-        page.set_viewport_size({'width': 390, 'height': 800})
+        fits_code_area()
         page.evaluate("Object.assign(testViewport,{height:500,offsetTop:20}); testViewport.dispatchEvent(new Event('scroll'))")
+        near(page.locator('.editor-bar').bounding_box()['y'], 0)
+        page.set_viewport_size({'width': 390, 'height': 800})
+        for height, offset in [(500,20), (472,8), (500,0)]:
+            area.tap(position={'x':35,'y':25})
+            page.evaluate("""([height,offsetTop]) => {
+              Object.assign(testViewport,{height,offsetTop});
+              testViewport.dispatchEvent(new Event('scroll'));
+            }""", [height, offset])
+            near(bottom(), 500)
+            near(page.locator('.editor-bar').bounding_box()['y'], offset)
+            fits_code_area()
+        assert page.evaluate('editorFocusCalls') == [True]
+
+        # Without the Android bridge, use the measured browser viewport.
+        page.evaluate("Object.assign(testViewport,{height:500,offsetTop:20}); __xjKeyboardViewport(0, false)")
         near(bottom(), 520)
         near(page.locator('.editor-bar').bounding_box()['y'], 20)
+        page.evaluate("Object.assign(testViewport,{height:800,offsetTop:0}); testViewport.dispatchEvent(new Event('resize'))")
+        expect(page.locator('html')).not_to_have_class(re.compile('editor-ime-visible'))
         assert page.locator('.editor-symbol-list').evaluate("el => getComputedStyle(el).touchAction") == 'pan-x'
-        print('PASS symbol bar tracks the keyboard through viewport resize and panning')
+        print('PASS repeated editor taps keep the input inside the code area and symbols at the keyboard edge')
     finally:
         page.close()
 

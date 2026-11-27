@@ -298,8 +298,17 @@ html.vt-run *::after{transition:none!important;}
 .editor-workspace{flex:1;min-height:0;display:flex;flex-direction:column}
 .editor-wrap{
   --editor-font-size:14px;
+  --editor-code-top:.75rem;
+  --editor-tail-space:1rem;
   flex:1;min-height:0;position:relative;overflow:hidden;
   display:flex;touch-action:pan-x pan-y;
+}
+@supports (container-type:size) and (padding:1cqh){
+  .editor-wrap{
+    container-type:size;
+    --editor-code-top:min(.75rem,20cqh);
+    --editor-tail-space:60cqh;
+  }
 }
 .gutter{
   flex:none;width:2.94em;font-size:calc(var(--editor-font-size) * .8571429);
@@ -309,7 +318,7 @@ html.vt-run *::after{transition:none!important;}
 .gutter{transition:opacity var(--m-2) var(--e-out);}
 .gutter.dim{opacity:.35;}
 .gutter-inner{
-  padding:0.75rem 0.375rem 60vh 0;
+  padding:var(--editor-code-top) .375rem var(--editor-tail-space) 0;
   text-align:right;line-height:calc(var(--editor-font-size) * 1.55);
   opacity:.28;
   font-family:ui-monospace,"SF Mono",Menlo,monospace;
@@ -347,7 +356,7 @@ html.dark,body.dark{
      某些内核会退回 HTML 默认的 cols=20 字符宽（就是“只占左半边”的根源） */
   position:absolute;top:0;right:0;bottom:0;left:0;
   width:100%;height:100%;
-  margin:0;padding:0.75rem 0.75rem 60vh 0.25rem;
+  margin:0;padding:var(--editor-code-top) .75rem var(--editor-tail-space) .25rem;
   font-family:ui-monospace,"SF Mono",Menlo,monospace;
   font-size:var(--editor-font-size);line-height:1.55;
   font-weight:400;font-style:normal;font-variant-ligatures:none;

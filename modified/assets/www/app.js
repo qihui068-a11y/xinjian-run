@@ -549,15 +549,17 @@
     var root = document.documentElement;
     var layoutHeight = root.clientHeight || window.innerHeight;
     var viewport = window.visualViewport;
-    var visualTop = viewport ? Math.max(0, viewport.offsetTop) : 0;
     var visibleHeight = viewport ? viewport.height : layoutHeight;
-    if (editorKeyboardVisible) {
+    var visualTop = viewport ? Math.min(Math.max(0, viewport.offsetTop), Math.max(0, layoutHeight - visibleHeight)) : 0;
+    var bottom = visualTop + visibleHeight;
+    if (editorKeyboardVisible && editorNativeVisibleHeight > 0) {
       var scale = viewport ? viewport.scale || 1 : 1;
       var nativeHeight = editorNativeVisibleHeight / ((window.devicePixelRatio || 1) * scale);
-      visibleHeight = Math.min(visibleHeight, nativeHeight);
+      // 原生边界从 WebView 顶部量起。常规比例下浏览器平移光标不会移动键盘上沿。
+      bottom = nativeHeight + (scale === 1 ? 0 : visualTop);
     }
-    // 以键盘上沿定位。布局已经随键盘缩小时，底部补偿自然为零。
-    var bottom = visualTop + visibleHeight;
+    bottom = Math.min(layoutHeight, bottom);
+    visualTop = Math.min(visualTop, bottom);
     var overlap = Math.ceil(Math.max(0, layoutHeight - bottom));
     var imeVisible = editorKeyboardVisible || overlap > 0;
     if (imeVisible) root.style.setProperty('--editor-ime-bottom', Math.floor(bottom) + 'px');

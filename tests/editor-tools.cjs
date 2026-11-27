@@ -172,13 +172,16 @@ module.exports = async function ({ test, app, settle }) {
       assert.equal(offset(), '300px');
       viewport.offsetTop = 20;
       viewport.dispatchEvent(new w.Event('scroll'));
-      assert.equal(offset(), '280px');
+      assert.equal(offset(), '300px');
       assert.equal(top(), '20px');
-      assert.equal(bottom(), '520px');
+      assert.equal(bottom(), '500px');
+      viewport.height = 470;
+      viewport.dispatchEvent(new w.Event('resize'));
+      assert.equal(bottom(), '500px');
 
       // Android may resize the layout without sending another native IME callback.
       layoutHeight = 500;
-      viewport.offsetTop = 0;
+      viewport.height = 500;
       w.dispatchEvent(new w.Event('resize'));
       assert.equal(offset(), '0px');
       assert.equal(top(), '0px');
@@ -191,6 +194,7 @@ module.exports = async function ({ test, app, settle }) {
 
       // Use the visual viewport as Android clears its IME insets.
       layoutHeight = 800;
+      viewport.offsetTop = 0;
       w.__xjKeyboardViewport(0, false);
       assert.equal(offset(), '300px');
       viewport.height = 800;

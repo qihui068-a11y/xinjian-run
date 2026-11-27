@@ -211,6 +211,10 @@
       }).join('');
     }
 
+    function focusEditor() {
+      if (!disposed && document.activeElement !== ta) ta.focus({ preventScroll: true });
+    }
+
     function leaveWorkspace(continuation) {
       if (!loaded || leaving) return;
       if (!stopControl.disabled) return toast('请先停止当前运行');
@@ -247,7 +251,7 @@
         var start = ta.value.indexOf(query, ta.selectionEnd);
         if (start < 0) start = ta.value.indexOf(query);
         if (start < 0) return toast('未找到匹配内容');
-        ta.focus();
+        focusEditor();
         ta.setSelectionRange(start, start + query.length);
         var line = ta.value.slice(0, start).split('\n').length - 1;
         ta.scrollTop = Math.max(0, (line - 2) * (parseFloat(getComputedStyle(ta).lineHeight) || 21));
@@ -319,7 +323,7 @@
     }
 
     function replaceRange(value, start, end, selectionStart, selectionEnd, direction) {
-      ta.focus();
+      focusEditor();
       ta.setSelectionRange(start, end);
       // WebView 将 insertText 放进原生撤销历史。其他浏览器可直接修改选区。
       var inserted = false;
@@ -333,7 +337,7 @@
 
     function applyIndent(change) {
       if (change.caret !== undefined) {
-        ta.focus();
+        focusEditor();
         ta.setSelectionRange(change.caret, change.caret);
         updateStatus();
       } else {
@@ -496,7 +500,7 @@
       var rows = ta.value.split('\n');
       var offset = rows.slice(0, issue.line - 1).reduce(function (sum, line) { return sum + line.length + 1; }, 0);
       offset += Math.min(rows[issue.line - 1].length, Math.max(0, (issue.column || 1) - 1));
-      ta.focus();
+      focusEditor();
       ta.setSelectionRange(offset, offset);
       var height = errorLine.offsetHeight;
       ta.scrollTop = Math.max(0, (issue.line - 2) * height);
@@ -569,7 +573,7 @@
 
       if (m === 'edit') {
         checkSyntax();
-        setTimeout(function () { if (!disposed && mode === 'edit' && panel.hidden) ta.focus(); }, 60);
+        if (panel.hidden) focusEditor();
       } else diagnostics.pause();
     }
 
@@ -640,7 +644,7 @@
         if (file === name) leaveWorkspace(removeTab);
         else removeTab();
       } else if ((act === 'undo' || act === 'redo') && mode === 'edit' && !composing) {
-        ta.focus();
+        focusEditor();
         if (typeof document.execCommand === 'function') document.execCommand(act);
       } else if (act === 'diagnostic') {
         jumpToIssue();
