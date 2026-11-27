@@ -62,13 +62,13 @@ def compare(browser, scheme):
     expect(page.locator('body')).to_have_css('color', expected_text)
     dark = scheme == 'dark'
     expect(page.locator('.home-view')).to_have_css('background-color', 'rgb(0, 0, 0)' if dark else 'rgb(255, 255, 255)')
-    expect(tabs).to_have_css('height', '49px' if dark else '52px')
-    expect(tabs).to_have_css('backdrop-filter', 'blur(20px) saturate(1.8)')
+    expect(tabs).to_have_css('height', '64px')
+    expect(tabs).to_have_css('backdrop-filter', 'blur(16px)')
     entries = page.locator('.entries').get_by_role('button')
-    expect(entries).to_have_text(['书架', '小镇', '后院', '小宿店'], use_inner_text=True)
+    assert entries.locator('strong').all_text_contents() == ['书架', '小镇', '后院', '小宿店']
     expect(entries.first).to_have_css('background-color', 'rgb(18, 18, 18)' if dark else 'rgb(255, 255, 255)')
-    expect(entries.first).to_have_css('min-height', '53px' if dark else '58px')
-    expect(page.locator('.entries')).to_have_css('gap', '9px' if dark else '10px')
+    expect(entries.first).to_have_css('min-height', '76px')
+    expect(page.locator('.entries')).to_have_css('gap', '12px')
     bounds = [entry.bounding_box() for entry in entries.all()]
     assert all(box['x'] == bounds[0]['x'] and box['width'] == bounds[0]['width'] for box in bounds)
     assert all(a['y'] + a['height'] < b['y'] for a, b in zip(bounds, bounds[1:]))
@@ -76,18 +76,28 @@ def compare(browser, scheme):
     toggle = page.get_by_role('button', name='切换到浅色模式' if dark else '切换到深色模式')
     expect(toggle).to_be_visible()
     expect(toggle).to_have_attribute('aria-pressed', 'true' if dark else 'false')
+    expect(toggle.locator('svg')).to_have_attribute('data-icon', 'sun' if dark else 'moon')
+    expect(toggle).to_have_css('border-radius', '50%')
+    expect(tabs.get_by_role('button')).to_have_text(['主页', '书架', '鸽屋', '小家'])
+    expect(tabs.locator('[aria-current=page] svg')).to_have_attribute('data-icon', 'home-active')
+    assert entries.locator('.entry-main svg').evaluate_all('items => items.map(icon => icon.dataset.icon)') == [
+        'bookshelf', 'town', 'leaf', 'inn']
+    expect(entries.first.locator('.entry-main svg')).to_have_css('stroke-width', '1.8px')
+    expect(entries.first.locator('.entry-main svg')).to_have_css('stroke', 'rgb(245, 245, 245)' if dark else 'rgb(23, 23, 23)')
     button = toggle.bounding_box()
     assert button['x'] > page.viewport_size['width'] / 2 and button['y'] < bounds[0]['y']
     snapshot(page, 'home-' + scheme)
 
     entries.first.click()
     expect(page.locator('#shelfBar .t-title')).to_have_text('书架')
-    page.get_by_role('button', name='返回', exact=True).click()
+    expect(tabs.locator('[aria-current=page] svg')).to_have_attribute('data-icon', 'bookshelf-active')
+    tabs.get_by_role('button', name='主页').click()
     for label in ('小镇', '后院', '小宿店'):
         page.locator('.entries').get_by_role('button', name=label, exact=True).click()
         expect(page.locator('.topbar .t-title')).to_have_text(label)
         page.get_by_role('button', name='返回', exact=True).click()
-    tabs.get_by_role('button', name='新建').click()
+    tabs.get_by_role('button', name='书架').click()
+    page.locator('.workspace-shortcuts [data-act=create]').click()
     summary = page.get_by_role('button', name='文件格式')
     expect(summary).to_contain_text('TXT')
     expect(page.locator('.topbar')).to_have_css('height', '44px')
@@ -104,10 +114,10 @@ def compare(browser, scheme):
     expect(dialog).to_have_count(0)
 
     page.evaluate('__xjKeyboardViewport(600, true)')
-    expect(tabs).to_have_css('opacity', '0')
-    expect(tabs).to_have_css('pointer-events', 'none')
+    expect(tabs).to_be_hidden()
     assert page.locator('.create-submit').bounding_box()['y'] < 600
     page.evaluate('__xjKeyboardViewport(844, false)')
+    page.get_by_role('button', name='返回', exact=True).click()
 
     tabs.get_by_role('button', name='小家').click()
     expect(page.locator('.rows button').first).to_have_css('min-height', '44px')
@@ -129,13 +139,57 @@ def compare(browser, scheme):
       Nav.reset('shelf');
     }""")
     expect(page.locator('.book')).to_have_count(4)
+    search = page.get_by_role('searchbox', name='搜索文件')
+    search.fill('main')
+    expect(page.locator('.book')).to_have_count(1)
+    search.fill('')
+    search.blur()
     snapshot(page, 'shelf-' + scheme)
     page.locator('.book').filter(has_text='Main.java').click()
     expect(page.locator('#ta')).to_have_css('font-size', '14px')
     expect(page.locator('#gin')).to_have_css('font-size', '12px')
     page.get_by_role('button', name='在线运行', exact=True).click()
     expect(page.locator('.run-panel')).to_be_visible()
+    snapshot(page, 'config-' + scheme)
+    page.locator('[data-act=closeRun]').click()
+    page.get_by_role('button', name='打开书架文件').click()
+    page.get_by_role('button', name='sample.py', exact=True).click()
+    expect(page.get_by_role('button', name='sample.py', exact=True)).to_have_attribute('aria-pressed', 'true')
+    expect(page.locator('.ide-language')).to_have_text('Python 3')
+    page.locator('[data-act=edit]').click()
+    expect(page.locator('#ta')).to_have_value('print(2 + 3)')
+    page.locator('#ta').fill('print(0)')
+    page.get_by_role('button', name='Main.java', exact=True).click()
+    expect(page.locator('#ta')).to_have_value('class Main {}')
+    page.get_by_role('button', name='sample.py', exact=True).click()
+    expect(page.locator('#ta')).to_have_value('print(0)')
+    area = page.locator('#ta')
+    area.press('End')
+    page.keyboard.type(' ')
+    expect(area).to_have_value('print(0) ')
+    page.get_by_role('button', name='撤销').click()
+    expect(area).to_have_value('print(0)')
+    page.get_by_role('button', name='重做').click()
+    expect(area).to_have_value('print(0) ')
+    disabled = page.get_by_role('button', name='停止', exact=True)
+    expect(disabled).to_be_disabled()
     snapshot(page, 'editor-' + scheme)
+    page.get_by_role('button', name='关闭 Main.java', exact=True).click()
+    expect(page.get_by_role('button', name='Main.java', exact=True)).to_have_count(0)
+    page.evaluate("Bridge.create('console.js', 'console.log(2 + 3);')")
+    page.get_by_role('button', name='打开书架文件').click()
+    page.get_by_role('button', name='console.js', exact=True).click()
+    page.get_by_role('button', name='运行', exact=True).click()
+    expect(page.locator('.run-body pre')).to_contain_text('5')
+    expect(page.locator('.run-status')).to_have_text('运行完成')
+    page.get_by_role('button', name='放大结果区').click()
+    expect(page.locator('.ide-output-expanded')).to_have_count(1)
+    page.get_by_role('button', name='还原结果区').click()
+    snapshot(page, 'editor-output-' + scheme)
+    page.get_by_role('button', name='清空终端').click()
+    expect(page.locator('.run-body pre')).to_have_text('')
+    tabs.get_by_role('button', name='书架').click()
+    expect(page.locator('.shelf-recent-list button').first).to_contain_text('console.js')
 
     page.evaluate("""() => {
       const session = Pigeon.create('阿晚');
@@ -143,8 +197,20 @@ def compare(browser, scheme):
       Pigeon.add(session.id, '你试了新的信笺吗？', 'in', {t:t-390000});
       Pigeon.add(session.id, '书架比之前清爽。', 'in', {t:t-370000});
       Pigeon.add(session.id, '试过了，代码也可以双指缩放。', 'out', {t:t-20000});
-      Nav.reset('chat', {sid:session.id});
+      Nav.reset('pigeon');
     }""")
+    expect(tabs.locator('[aria-current=page] svg')).to_have_attribute('data-icon', 'pigeon-active')
+    expect(page.locator('.pg-item')).to_have_count(2)
+    search = page.get_by_role('searchbox', name='搜索会话或消息')
+    search.fill('书架比之前清爽')
+    expect(page.locator('.pg-item')).to_have_count(1)
+    search.fill('没有匹配')
+    expect(page.locator('.pg-item')).to_have_count(0)
+    search.fill('')
+    search.blur()
+    snapshot(page, 'pigeon-' + scheme)
+    page.locator('.pg-item').filter(has_text='阿晚').click()
+    expect(tabs).to_be_hidden()
     expect(page.locator('.msg-time')).to_have_count(2)
     expect(page.locator('.msg.is-continuation')).to_have_count(1)
     expect(page.locator('.msg-st')).to_have_count(0)
@@ -162,9 +228,12 @@ def appearance_and_motion(browser):
     page.goto('https://xj.test/index.html')
     page.evaluate("""() => {
       window.tabFrames = [];
+      window.capsuleFrames = [];
+      window.capsule = document.querySelector('.tab-capsule');
       const oldAnimate = Element.prototype.animate;
       Element.prototype.animate = function(frames, options) {
         if (this.classList.contains('view')) tabFrames.push({frames, options});
+        if (this.classList.contains('tab-capsule')) capsuleFrames.push({frames, options});
         return oldAnimate.call(this, frames, options);
       };
     }""")
@@ -173,13 +242,34 @@ def appearance_and_motion(browser):
     frames = page.evaluate('tabFrames')
     assert len(frames) == 2 and all(x['options']['duration'] == 120 for x in frames)
     assert all('transform' not in f for x in frames for f in x['frames'])
+    first_slide = page.evaluate('capsuleFrames[0]')
+    assert first_slide['options']['duration'] == 420
+    assert any('scaleX(1.12)' in f['transform'] for f in first_slide['frames'])
+    page.evaluate("""() => {
+      for (const tab of ['pigeon','home','shelf','me']) document.querySelector('[data-tab='+tab+']').click();
+    }""")
+    assert page.evaluate("window.capsule === document.querySelector('.tab-capsule')")
+    expect(page.locator('[aria-current=page] svg')).to_have_attribute('data-icon', 'profile-active')
+    page.wait_for_function("!document.querySelector('.tab-capsule').getAnimations().length")
+    tabs = page.get_by_role('navigation', name='主导航')
+    before = tabs.get_by_role('button', name='小家').bounding_box()
+    target = tabs.get_by_role('button', name='书架').bounding_box()
+    y = target['y'] + target['height'] / 2
+    page.mouse.move(before['x'] + before['width'] / 2, y)
+    page.mouse.down()
+    page.mouse.move(target['x'] + target['width'] / 2, y, steps=6)
+    page.mouse.up()
+    expect(tabs.locator('[aria-current=page] svg')).to_have_attribute('data-icon', 'bookshelf-active')
+    page.set_viewport_size({'width':844,'height':390})
+    page.wait_for_function("Math.abs(document.querySelector('.tab-capsule').getBoundingClientRect().left - document.querySelector('.tab.active').getBoundingClientRect().left) < 1")
+    page.set_viewport_size({'width':390,'height':844})
     page.get_by_role('button', name='主页', exact=True).click()
     expect(page.locator('.home-view')).to_be_visible()
     page.wait_for_function("document.querySelectorAll('#app .view').length === 1")
     page.emulate_media(color_scheme='dark')
     expect(page.locator('html')).to_have_class('dark')
     entries = page.locator('.entries').get_by_role('button')
-    expect(entries).to_have_text(['书架', '小镇', '后院', '小宿店'], use_inner_text=True)
+    assert entries.locator('strong').all_text_contents() == ['书架', '小镇', '后院', '小宿店']
     toggle = page.get_by_role('button', name='切换到浅色模式')
     expect(toggle).to_have_attribute('aria-pressed', 'true')
     toggle.click()
@@ -191,7 +281,7 @@ def appearance_and_motion(browser):
     expect(page.locator('.home-view')).to_have_css('background-color', 'rgb(0, 0, 0)')
     page.emulate_media(color_scheme='light')
     expect(page.locator('.home-view')).to_have_css('background-color', 'rgb(0, 0, 0)')
-    expect(entries).to_have_text(['书架', '小镇', '后院', '小宿店'], use_inner_text=True)
+    assert entries.locator('strong').all_text_contents() == ['书架', '小镇', '后院', '小宿店']
     page.close()
 
     # A read-only native preference is enough for Android appearance without browser theme detection.

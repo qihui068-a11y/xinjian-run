@@ -48,10 +48,15 @@ var CodeRunner = (function () {
     return frame;
   }
 
-  function attach(panel, onVisibility) {
+  function attach(panel, onVisibility, stopButton) {
     var status = panel.querySelector('.run-status');
     var body = panel.querySelector('.run-body');
-    var stopButton = panel.querySelector('[data-act="stop"]');
+    var stopLabel = stopButton.querySelector('span');
+
+    function setStop(label) {
+      stopLabel.textContent = label || '停止';
+      stopButton.disabled = !label;
+    }
     var worker, url, timer, terminal, outputView, generation = 0;
     var request, interactive, repeat, disposeWorker;
     var lastInput = '';
@@ -175,8 +180,7 @@ var CodeRunner = (function () {
               }
             } catch (e) { result('服务响应异常', e.message); }
           };
-          stopButton.textContent = '取消等待';
-          stopButton.hidden = false;
+          setStop('取消等待');
           status.textContent = '正在等待编译结果…';
           xhr.send(JSON.stringify(data));
         } catch (e) { result('无法提交', e.message); }
@@ -319,8 +323,7 @@ var CodeRunner = (function () {
       delete panel.dataset.stdinMode;
       var current = generation;
       status.textContent = '正在连接…';
-      stopButton.textContent = '取消等待';
-      stopButton.hidden = false;
+      setStop('取消等待');
       function finish(label, text) {
         if (text) outputView.emit({ kind: 'stderr', text: text });
         stop();
@@ -390,7 +393,7 @@ var CodeRunner = (function () {
       worker = url = null;
       if (terminal) terminal.remove();
       terminal = null;
-      stopButton.hidden = true;
+      setStop('');
       rerun.disabled = false;
     }
     function close() {
@@ -422,9 +425,8 @@ var CodeRunner = (function () {
     }
 
     function startWorker(spawn, job, startupMs, activeMs, sendInput) {
-      stopButton.textContent = '停止';
+      setStop('停止');
       status.textContent = '运行中…';
-      stopButton.hidden = false;
       delete panel.dataset.stdinMode;
       showOutput();
       var current = generation;

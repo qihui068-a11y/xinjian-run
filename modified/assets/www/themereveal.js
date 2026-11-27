@@ -21,7 +21,7 @@
 'use strict';
 
 var ThemeReveal = (function () {
-  var DURATION = 320;   /* 规范：圆形揭示 320ms */
+  var DURATION = 450;
   var MIN_DURATION = 200;
   var MAX_DURATION = 700;
   var FADE_DURATION = 120;
@@ -29,16 +29,6 @@ var ThemeReveal = (function () {
   var EASE = 'cubic-bezier(.45,.05,.35,1)';   /* --e-inout */
 
   /* 两枚图标与 React 版一致（太阳 / 月亮），24 网格、1.8 描边 */
-  var ICON = {
-    sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"' +
-      ' stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/>' +
-      '<path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4' +
-      'M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></svg>',
-    moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"' +
-      ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      '<path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1Z"/></svg>'
-  };
-
   function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
 
   /* 当前主题：只看 html 上的类，它由 applyTheme() 维护 */
@@ -52,7 +42,7 @@ var ThemeReveal = (function () {
   }
 
   function iconFor(theme) {
-    return theme === 'dark' ? ICON.sun : ICON.moon;
+    return svg(theme === 'dark' ? 'sun' : 'moon');
   }
 
   /* 画布就是整页：左上角 (0,0)、尺寸取视口 */
@@ -110,7 +100,9 @@ var ThemeReveal = (function () {
       var t = pending || current();
       btn.dataset.themeState = t;
       btn.setAttribute('aria-pressed', t === 'dark' ? 'true' : 'false');
-      btn.innerHTML = iconFor(t);
+      if (!btn.firstElementChild || btn.firstElementChild.dataset.icon !== (t === 'dark' ? 'sun' : 'moon')) {
+        btn.innerHTML = iconFor(t);
+      }
       btn.setAttribute('aria-label', t === 'dark' ? '切换到浅色模式' : '切换到深色模式');
       btn.title = btn.getAttribute('aria-label');
     }
@@ -169,6 +161,13 @@ var ThemeReveal = (function () {
       /* 先记意图：过渡途中再点，是从目标翻回去，不是从旧 DOM 翻 */
       pending = next;
       paint();
+      if (!reduced() && btn.firstElementChild.animate) {
+        btn.firstElementChild.animate([
+          { transform: 'scale(.79) rotate(-26deg)', opacity: .55 },
+          { transform: 'scale(1.1) rotate(5deg)', opacity: 1, offset: .72 },
+          { transform: 'none', opacity: 1 }
+        ], { duration: duration, easing: EASE });
+      }
 
       var s = surface();
       var click = null;

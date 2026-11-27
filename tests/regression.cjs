@@ -8,7 +8,7 @@ const { JSDOM, VirtualConsole } = require('jsdom');
 const root = path.resolve(__dirname, '..');
 const www = path.join(root, 'modified/assets/www');
 const html = fs.readFileSync(path.join(www, 'index.html'), 'utf8');
-const css = ['tokens.css', 'style.css', 'ui.css'].map(name => fs.readFileSync(path.join(www, name), 'utf8')).join('\n');
+const css = ['tokens.css', 'style.css', 'ui.css', 'workspace-ui.css'].map(name => fs.readFileSync(path.join(www, name), 'utf8')).join('\n');
 const results = [];
 const languages = [
   ['py', 'Python', 'def greet(name):\n    # 注释\n    return print("你好", name)\n'],

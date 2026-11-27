@@ -3,9 +3,11 @@
 
 
 
+  var openEditorFiles = [];
+
   /* ================= 视图：编辑器 ================= */
   VIEWS.editor = function (el, p) {
-    el.classList.add('editor-view');
+    el.classList.add('editor-view', 'ide-view');
     var name = p.name;
     var mode = p.mode || 'read';
     var ext = Bridge.extOf(name);
@@ -14,34 +16,48 @@
     var dirty = false;
     var timer = null;
     var showGutter = true;
+    var loaded = false;
+    var leaving = false;
+    var disposed = false;
+    var expanded = false;
 
     el.innerHTML =
-      '<div class="topbar editor-bar" id="edBar"></div>' +
-      '<div class="editor-workspace"><div class="editor-wrap">' +
+      '<header class="workspace-heading ide-heading"><h1>信笺</h1><div class="workspace-actions">' +
+      '<button type="button" class="icon-btn" data-act="find" aria-label="在文件中查找">' + svg('search') + '</button>' +
+      '<button type="button" class="icon-btn" data-act="newFile" aria-label="新建文件">' + svg('plus') + '</button>' +
+      '<button type="button" class="icon-btn" data-act="openFile" aria-label="打开书架文件">' + svg('more') + '</button></div></header>' +
+      '<div class="ide-tabs" role="group" aria-label="已打开的文件"></div>' +
+      '<div class="editor-workspace"><div class="editor-code-card">' +
+      '<div class="topbar editor-bar" id="edBar"></div><div class="editor-wrap">' +
       '<div class="gutter"><div class="gutter-inner" id="gin"></div></div>' +
       '<div class="code-area' + (plain ? ' plain' : '') + '" id="ca">' +
       '<pre id="pre" aria-hidden="true"></pre><textarea id="ta" aria-label="文本编辑区" ' +
       'spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" ' +
       'wrap="' + (plain ? 'soft' : 'off') + '"></textarea>' +
-      '</div></div>' +
-      '<div class="md-view hidden" id="mdView"></div>' +
-      '<section class="run-panel" hidden>' +
-      '<div class="run-resize" tabindex="0" role="separator" aria-orientation="horizontal" aria-label="调整运行面板高度" aria-valuemin="20" aria-valuemax="82" aria-valuenow="45"></div>' +
-      '<div class="run-bar">' +
-      '<strong class="run-status" role="status"></strong>' +
-      '<button data-act="stop" hidden>停止</button><button data-act="closeRun">关闭</button>' +
-      '</div><div class="run-body"></div><div class="run-actions" hidden>' +
-      '<button type="button" class="run-copy">复制结果</button><button type="button" class="run-clear">清空终端</button>' +
-      '<button type="button" class="run-repeat" hidden>重新运行</button></div></section></div>' +
-      '<div class="statusbar">' +
-      '<span id="stPos">1:1</span>' +
-      '<span id="stWords">0 字</span>' +
-      '<span class="sp" id="stEnc">' + esc(p.enc || 'UTF-8') + '</span>' +
-      '<span id="stSyn">' + esc(languageLabel()) + '</span>' +
-      '</div>' +
+      '</div></div><div class="md-view hidden" id="mdView"></div>' +
       '<div class="editor-symbols" role="group" aria-label="常用符号" hidden>' +
       '<div class="editor-symbol-list"></div>' +
-      '<button type="button" data-act="manageSymbols" aria-label="添加或管理符号" title="添加或管理符号">＋</button></div>';
+      '<button type="button" class="indent-key" data-act="indent" aria-label="插入缩进">Tab</button>' +
+      '<button type="button" data-act="manageSymbols" aria-label="添加或管理符号" title="添加或管理符号">' +
+      svg('more') + '</button></div></div>' +
+      '<div class="ide-run-tools" hidden>' +
+      '<button type="button" class="ide-run" data-act="run">' + svg('play') + '<span>运行</span></button>' +
+      '<button type="button" data-act="stop" disabled>' + svg('stop') + '<span>停止</span></button>' +
+      '<button type="button" data-act="runConfig">' + svg('terminal') + '<span>运行配置</span></button></div>' +
+      '<section class="ide-output-idle" aria-label="运行结果"><strong>' + svg('terminal') + '运行结果</strong><p>等待运行</p></section>' +
+      '<section class="run-panel" hidden>' +
+      '<div class="run-resize" tabindex="0" role="separator" aria-orientation="horizontal" aria-label="调整运行面板高度" aria-valuemin="20" aria-valuemax="82" aria-valuenow="45"></div>' +
+      '<div class="run-bar"><strong class="ide-output-title">' + svg('terminal') + '运行结果</strong>' +
+      '<span class="run-status" role="status"></span>' +
+      '<button type="button" data-act="closeRun">关闭</button></div>' +
+      '<div class="run-body"></div><div class="run-actions" hidden>' +
+      '<button type="button" class="run-clear" aria-label="清空终端">' + svg('trash') + '</button>' +
+      '<button type="button" class="run-copy" aria-label="复制结果">' + svg('copy') + '</button>' +
+      '<button type="button" data-act="expandRun" aria-label="放大结果区">' + svg('expand') + '</button>' +
+      '<button type="button" class="run-repeat" hidden>重新运行</button></div></section></div>' +
+      '<div class="statusbar"><span id="stPos">1:1</span><span id="stWords">0 字</span>' +
+      '<span class="sp" id="stEnc">' + esc(p.enc || 'UTF-8') + '</span><span id="stSyn">' +
+      esc(languageLabel()) + '</span></div>';
 
     var bar = el.querySelector('#edBar');
     var ta = el.querySelector('#ta');
@@ -56,11 +72,23 @@
     var composing = false;
     var isMd = (ext === 'md');
 
+    var tabList = el.querySelector('.ide-tabs');
+    var runTools = el.querySelector('.ide-run-tools');
+    var runControl = el.querySelector('[data-act="run"]');
+    var stopControl = el.querySelector('[data-act="stop"]');
+    var configControl = el.querySelector('[data-act="runConfig"]');
     var panel = el.querySelector('.run-panel');
+    var outputIdle = el.querySelector('.ide-output-idle');
     var runner = CodeRunner.attach(panel, function (visible) {
       el.classList.toggle('editor-run-open', visible);
+      outputIdle.hidden = visible || !RunFormats.label(ext);
+      if (!visible) {
+        expanded = false;
+        el.classList.remove('ide-output-expanded');
+        panel.querySelector('[data-act="expandRun"]').setAttribute('aria-label', '放大结果区');
+      }
       paintSymbols();
-    });
+    }, stopControl);
     var grip = panel.querySelector('.run-resize');
     var workspace = panel.parentElement;
     var drag;
@@ -138,20 +166,78 @@
     }, { passive: false });
     function paintBar() {
       var label = RunFormats.label(ext);
-      var runButton = label ? '<button class="t-text" data-act="run">' + label + '</button>' : '';
-      var formatButton = EditorTools.canFormat(ext) ? '<button class="t-text" data-act="format">格式化</button>' : '';
-      if (mode === 'read') {
-        bar.innerHTML =
-          '<button class="icon-btn" data-act="leave">' + svg('back') + '</button>' +
-          '<div class="t-title">' + esc(name) + '</div>' +
-          runButton + '<button class="icon-btn" data-act="edit">' + svg('pencil') + '</button>' +
-          '<button class="icon-btn" data-act="menu">' + svg('menu') + '</button>';
-      } else {
-        bar.innerHTML =
-          '<button class="icon-btn" data-act="leave">' + svg('back') + '</button>' +
-          '<div class="t-title" data-act="rename">' + esc(name) + '</div>' +
-          formatButton + runButton + '<button class="t-text" data-act="done" style="font-weight:600">完成</button>';
-      }
+      var format = mode === 'edit' && EditorTools.canFormat(ext)
+        ? '<button type="button" class="t-text" data-act="format">格式化</button>' : '';
+      runTools.hidden = !label;
+      outputIdle.hidden = !label || !panel.hidden;
+      runControl.setAttribute('aria-label', label || '运行');
+      configControl.hidden = !label;
+      var version = languageLabel() + (languageLabel() === 'Python' ? ' 3' : '');
+      var title = mode === 'edit'
+        ? '<button type="button" class="t-title" data-act="rename" aria-label="重命名文件">' + esc(name) + '</button>'
+        : '<div class="t-title">' + esc(name) + '</div>';
+      var editing = mode === 'edit'
+        ? '<button type="button" class="icon-btn ide-history" data-act="undo" aria-label="撤销">' + svg('undo') + '</button>' +
+          '<button type="button" class="icon-btn ide-history" data-act="redo" aria-label="重做">' + svg('redo') + '</button>' +
+          '<button type="button" class="t-text" data-act="done">完成</button>'
+        : '<button type="button" class="icon-btn" data-act="edit" aria-label="编辑">' + svg('pencil') + '</button>';
+      bar.innerHTML = '<button type="button" class="icon-btn" data-act="leave" aria-label="返回">' + svg('back') +
+        '</button>' + title + '<span class="ide-language">' + esc(version) + '</span>' +
+        format + editing + '<button type="button" class="icon-btn" data-act="menu" aria-label="文件操作">' + svg('more') + '</button>';
+    }
+
+    function paintTabs() {
+      tabList.innerHTML = openEditorFiles.map(function (file) {
+        return '<div class="ide-tab' + (file === name ? ' current' : '') + '">' +
+          '<button type="button" data-act="fileTab" data-file="' + esc(file) + '" aria-pressed="' + (file === name) + '">' +
+          esc(file) + '</button><button type="button" data-act="closeFileTab" data-file="' + esc(file) +
+          '" aria-label="关闭 ' + esc(file) + '">×</button></div>';
+      }).join('');
+    }
+
+    function leaveWorkspace(continuation) {
+      if (!loaded || leaving) return;
+      if (!stopControl.disabled) return toast('请先停止当前运行');
+      leaving = true;
+      (dirty ? save(true) : Promise.resolve(true)).then(function (ok) {
+        leaving = false;
+        if (ok && !dirty && !disposed) continuation();
+      });
+    }
+
+    el.__leaveForTab = leaveWorkspace;
+
+    function switchFile(file) {
+      var entry = Nav.stack[Nav.stack.length - 1];
+      entry.params = { name: file, mode: mode };
+      Nav.render();
+    }
+
+    function chooseFile() {
+      Bridge.list().then(function (files) {
+        var choices = files.filter(function (file) { return file.name !== name; }).map(function (file) {
+          return { label: file.name, value: file.name };
+        });
+        if (!choices.length) return toast('书架没有其他文件');
+        sheet('打开书架文件', choices).then(function (file) {
+          if (file) leaveWorkspace(function () { switchFile(file); });
+        });
+      });
+    }
+
+    function findText() {
+      inputBox('在文件中查找', '', '输入要查找的内容').then(function (query) {
+        if (!query || disposed) return;
+        var start = ta.value.indexOf(query, ta.selectionEnd);
+        if (start < 0) start = ta.value.indexOf(query);
+        if (start < 0) return toast('未找到匹配内容');
+        ta.focus();
+        ta.setSelectionRange(start, start + query.length);
+        var line = ta.value.slice(0, start).split('\n').length - 1;
+        ta.scrollTop = Math.max(0, (line - 2) * (parseFloat(getComputedStyle(ta).lineHeight) || 21));
+        syncScroll();
+        updateStatus();
+      });
     }
 
     function paintSymbols(refresh) {
@@ -392,15 +478,48 @@
 
     /* 事件 */
     el.addEventListener('mousedown', function (e) {
-      if (e.target.closest('[data-act="symbol"], [data-act="format"]')) e.preventDefault();
+      if (e.target.closest('[data-act="symbol"], [data-act="indent"], [data-act="format"], .ide-history')) e.preventDefault();
     });
     el.addEventListener('click', function (e) {
       var t = e.target.closest('[data-act]');
       if (!t) return;
       var act = t.dataset.act;
-      if (act === 'run') {
+      if (act === 'run' || act === 'runConfig') {
+        if (!loaded) return;
         ta.blur();
-        runner.start(function () { return ta.value; }, name, ext);
+        function run() { runner.start(function () { return ta.value; }, name, ext); }
+        if (act === 'runConfig' && !RunFormats.compilers[ext]) {
+          sheet('运行配置', [{ title: languageLabel() + ' · ' + RunFormats.label(ext) },
+            { label: RunFormats.label(ext), value: 'run' }]).then(function (v) { if (v && !disposed) run(); });
+        } else run();
+
+      } else if (act === 'expandRun') {
+        expanded = !expanded;
+        el.classList.toggle('ide-output-expanded', expanded);
+        t.setAttribute('aria-label', expanded ? '还原结果区' : '放大结果区');
+      } else if (act === 'newFile') {
+        leaveWorkspace(function () { Nav.go('create'); });
+      } else if (act === 'openFile') {
+        chooseFile();
+      } else if (act === 'find') {
+        findText();
+      } else if (act === 'fileTab' && t.dataset.file !== name) {
+        leaveWorkspace(function () { switchFile(t.dataset.file); });
+      } else if (act === 'closeFileTab') {
+        var file = t.dataset.file;
+        function removeTab() {
+          openEditorFiles = openEditorFiles.filter(function (other) { return other !== file; });
+          if (file !== name) paintTabs();
+          else if (openEditorFiles.length) switchFile(openEditorFiles[openEditorFiles.length - 1]);
+          else Nav.tab('shelf');
+        }
+        if (file === name) leaveWorkspace(removeTab);
+        else removeTab();
+      } else if ((act === 'undo' || act === 'redo') && mode === 'edit' && !composing) {
+        ta.focus();
+        if (typeof document.execCommand === 'function') document.execCommand(act);
+      } else if (act === 'indent' && mode === 'edit' && !composing) {
+        insertSymbol('    ');
       } else if (act === 'format' && mode === 'edit' && !composing) {
         formatText();
       } else if (act === 'symbol' && mode === 'edit' && !composing) {
@@ -432,8 +551,11 @@
           Bridge.rename(name, nv).then(function (ok) {
             if (!ok) return toast('该名称已存在');
             runner.close();
+            openEditorFiles = openEditorFiles.map(function (file) { return file === name ? nv : file; });
+            ShelfRecent.record(nv, name);
             name = nv;
             p.name = name;
+            paintTabs();
             ext = Bridge.extOf(name);
             refreshLanguage();
             setMode(mode);
@@ -512,8 +634,11 @@
     };
 
     el.__cleanup = function () {
+      disposed = true;
       runner.close();
       clearInterval(timer);
+      clearTimeout(statusTimer);
+      clearTimeout(gutterTimer);
       cancelAnimationFrame(hlFrame);
       hlFrame = 0;
       document.removeEventListener('visibilitychange', onVis);
@@ -522,6 +647,11 @@
 
     /* 载入 */
     Bridge.read(name).then(function (t) {
+      if (disposed) return;
+      loaded = true;
+      if (openEditorFiles.indexOf(name) === -1) openEditorFiles.push(name);
+      ShelfRecent.record(name);
+      paintTabs();
       text = t || '';
       ta.value = text;
       gin.__n = -1;
@@ -530,7 +660,9 @@
       setMode(mode);
       syncScroll();
     }).catch(function () {
-      toast('读取失败');
-      Nav.back();
+      if (!disposed) {
+        toast('读取失败');
+        Nav.back();
+      }
     });
   };

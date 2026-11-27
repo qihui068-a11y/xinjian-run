@@ -28,8 +28,7 @@
       rowHtml('about', 'info', '关于', '') +
       rowHtml('sponsor', 'cup', '赞助', '') +
       '</div>' +
-      '</div>' +
-      tabbar('me');
+      '</div>';
 
     var themeBtn = ThemeReveal.attach(el.querySelector('[data-theme-btn]'));
     el.__cleanup = function () {
@@ -38,10 +37,6 @@
     };
 
     el.addEventListener('click', function (e) {
-      var t = e.target.closest('[data-tab]');
-      if (t) {
-        return Nav.tab(t.dataset.tab);
-      }
       var a = e.target.closest('[data-act]');
       if (!a) return;
       var act = a.dataset.act;

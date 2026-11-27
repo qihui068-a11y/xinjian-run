@@ -31,7 +31,7 @@
     var niEnc;
 
     el.innerHTML =
-      '<div class="topbar" id="shelfBar"><div class="t-gap"></div>' +
+      '<div class="topbar" id="shelfBar"><button type="button" class="icon-btn" data-act="back" aria-label="返回">' + svg('back') + '</button>' +
       '<div class="t-title">新建</div><div class="t-gap"></div></div>' +
       '<div class="scroll create-scroll"><div class="form">' +
       '<div class="rows">' +
@@ -41,8 +41,7 @@
       '</div><div><div class="section-label" id="encLabel">文件编码</div>' +
       '<div class="chips seg" data-cols="3" id="encChips" role="group" aria-labelledby="encLabel"></div></div>' +
       '</div></div>' +
-      '<button class="submit create-submit" data-act="ok">创建并编辑</button>' +
-      tabbar('create');
+      '<button class="submit create-submit" data-act="ok">创建并编辑</button>';
 
     var encChips = el.querySelector('#encChips');
     var fmtSum = el.querySelector('#fmtSum');
@@ -83,8 +82,7 @@
     el.__cleanup = function () { if (niEnc) niEnc.destroy(); };
 
     el.addEventListener('click', function (e) {
-      var tab = e.target.closest('[data-tab]');
-      if (tab) return Nav.tab(tab.dataset.tab);
+      if (e.target.closest('[data-act=back]')) return Nav.back();
       if (e.target.closest('[data-act=fmt]')) return chooseFormat();
       var ec = e.target.closest('[data-enc]');
       if (ec) { enc = ec.dataset.enc; paintEncoding(); return; }
@@ -122,7 +120,9 @@
 
     function doCreate(name) {
       function enter() {
-        Nav.stack[Nav.stack.length - 1] = { name: 'editor', params: { name: name, mode: 'edit', enc: enc } };
+        var current = Nav.stack[Nav.stack.length - 1];
+        current.name = 'editor';
+        current.params = { name: name, mode: 'edit', enc: enc };
         Nav.render();
       }
       function failed() {

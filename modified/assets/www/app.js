@@ -39,6 +39,9 @@
     check: '<path d="M5 12l5 5L20 7"/>',
     trash: '<path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/>',
     share: '<path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/>',
+    undo: '<path d="M9 6l-5 5 5 5M4 11h11a4 4 0 0 1 0 8h-3"/>',
+    redo: '<path d="M15 6l5 5-5 5m5-5H9a4 4 0 0 0 0 8h3"/>',
+    expand: '<path d="M14 4h6v6M20 4l-6 6M10 20H4v-6m0 6l6-6"/>',
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
     bird: '<path d="M21 4l-9 8-3-1-5 3 1-5 4-2h4z"/><path d="M12 12l1 8"/>',
     gear: '<circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.2M12 18.8V21M4.6 7.6l1.9 1.1M17.5 15.3l1.9 1.1M4.6 16.4l1.9-1.1M17.5 8.7l1.9-1.1"/>',
@@ -59,7 +62,42 @@
     folder: '<path d="M3 7a1 1 0 0 1 1-1h5l2 2h8a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>'
   };
 
+  /* 图形来自 design/icons/adaptive，内联以继承按钮的 currentColor。 */
+  var adaptiveIcons = {
+    'home': '<path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3Z"/>',
+    'home-active': '<path fill="currentColor" stroke="none" d="M2.5 10.2 12 2l9.5 8.2V20a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2Z"/>',
+    'bookshelf': '<path d="m12 3 10 5-10 5L2 8 12 3ZM2 12l10 5 10-5M2 16l10 5 10-5"/>',
+    'bookshelf-active': '<path fill="currentColor" stroke="none" d="m12 2 11 5.5L12 13 1 7.5Z"/><path d="m2 12 10 5 10-5M2 16.5 12 22l10-5.5"/>',
+    'pigeon': '<path d="M3 11c3.5 2.7 6.5 2.6 9.2-.5C14.8 7.6 15 4 18.4 4c1.8 0 3 1 3.6 2.5L23 8l-2.3 1.2c.1 6.9-4.6 12.1-11 11.1C5.7 19.7 2.9 16.3 2 12Z"/><circle cx="18.8" cy="6.8" r=".65" fill="currentColor" stroke="none"/>',
+    'pigeon-active': '<path fill="currentColor" stroke="none" d="M2 10c4 3 7 3 10-.5C14.6 6.5 15 3.5 18.5 3.5c2.2 0 3.8 1.4 4.1 3.1L24 8l-2.5 1.5c0 7.3-5 12.4-12 11.4C5.2 20.2 1.8 16.4 1 11Z"/><circle cx="18.9" cy="6.6" r=".8" fill="var(--icon-cutout, #fff)" stroke="none"/>',
+    'profile': '<circle cx="12" cy="7.2" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',
+    'profile-active': '<circle cx="12" cy="7" r="4.5" fill="currentColor" stroke="none"/><path fill="currentColor" stroke="none" d="M3 22v-2a9 9 0 0 1 18 0v2Z"/>',
+    'town': '<circle cx="9" cy="7" r="3.8"/><path d="M2 21v-1.8a7 7 0 0 1 14 0V21M16.5 3.5a3.8 3.8 0 0 1 0 7.2M18.5 14c2.2 1.1 3.5 3 3.5 5.2V21"/>',
+    'leaf': '<path d="M3 21c5-8 9-10 15-13M5 17C1 7 10 4 21 3c-1 11-5 18-14 15"/>',
+    'inn': '<path d="M4 3h16l2 6v1a3.4 3.4 0 0 1-6 2.1 4.3 4.3 0 0 1-8 0A3.4 3.4 0 0 1 2 10V9ZM4 13v8h16v-8M10 21v-5h4v5"/>',
+    'moon': '<path d="M20.7 15.4A9.2 9.2 0 0 1 8.6 3.3 9.2 9.2 0 1 0 20.7 15.4Z"/>',
+    'sun': '<circle cx="12" cy="12" r="4.5"/><path d="M12 1v2.5m0 17V23M1 12h2.5m17 0H23M4.2 4.2 6 6m12 12 1.8 1.8M4.2 19.8 6 18M18 6l1.8-1.8"/>',
+    'chevron-right': '<path d="m9 5 7 7-7 7"/>',
+    'search': '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
+    'file-plus': '<path d="M5 2h9l5 5v15H5Z M14 2v6h5M12 11v7m-3.5-3.5h7"/>',
+    'file-code': '<path d="M5 2h9l5 5v15H5Z M14 2v6h5M10 11l-3 3 3 3m4-6 3 3-3 3"/>',
+    'download': '<path d="M12 2v13m-5-5 5 5 5-5M3 15v5h18v-5"/>',
+    'wifi': '<path d="M2 8a15.5 15.5 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 16a4.7 4.7 0 0 1 6 0"/><circle cx="12" cy="20" r="1" fill="currentColor" stroke="none"/>',
+    'radar': '<circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5"/><path d="m12 12 7-7"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>',
+    'plus-square': '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 7v10M7 12h10"/>',
+    'bell': '<path d="M5 9a7 7 0 0 1 14 0v5l2 3H3l2-3ZM9 21h6"/>',
+    'more': '<circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none"/>',
+    'play': '<path d="M6 3 21 12 6 21Z"/>',
+    'stop': '<rect x="5" y="5" width="14" height="14" rx="2"/>',
+    'terminal': '<path d="m3 5 7 7-7 7m10 0h9"/>',
+    'plus': '<path d="M12 4v16M4 12h16"/>',
+  };
+
   function svg(n) {
+    if (Object.prototype.hasOwnProperty.call(adaptiveIcons, n)) {
+      return '<svg class="ui-icon adaptive-icon" data-icon="' + n + '" viewBox="0 0 24 24"' +
+        ' aria-hidden="true" focusable="false">' + adaptiveIcons[n] + '</svg>';
+    }
     return '<svg class="ui-icon' + (/Fill$/.test(n) ? ' tab-fill' : '') +
       '" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + (SVG[n] || '') + '</svg>';
   }
@@ -541,7 +579,7 @@
       if (top && top.name === name) return;
       this.motion = 'tab';
       if (name === 'home') { this.reset('home'); return; }
-      if (this.stack.length > 1) {
+      while (this.stack.length > 1) {
         var e = this.stack.pop();
         if (e.layer) Back.done(e.layer);
       }
@@ -565,7 +603,7 @@
       var el = document.createElement('div');
       el.className = 'view' + (cur.name === 'home' ? '' : ' full');
       VIEWS[cur.name](el, cur.params);
-      if (el.querySelector('.tabbar')) el.classList.add('has-tabs');
+      el.classList.toggle('has-tabs', BottomNav.includes(cur.name));
       var topbar = el.querySelector('.topbar');
       var scrolling = el.querySelector('.scroll, .editor-wrap textarea, .chat-list');
       if (topbar) {
@@ -579,26 +617,12 @@
         }
       }
       $app.insertBefore(el, old);
+      BottomNav.update(cur.name === 'editor' ? 'shelf' : cur.name);
       if (!old) return;
       if (motion && Anim.swap) this.finishTransition = Anim.swap(old, el, motion);
       else old.remove();
     }
   };
-
-
-  /* ================= 视图：主页 ================= */
-  var WEATHER_STUB = { city: '定位中', temp: '--', desc: '待接入', aqi: '' };
-
-
-  function tabbar(active) {
-    var links = [['home', '主页', 'home', 'homeFill'], ['create', '新建', 'plus', 'createFill'], ['me', '小家', 'me', 'meFill']];
-    return '<nav class="tabbar glass" aria-label="主导航">' + links.map(function (item) {
-      var selected = active === item[0];
-      return '<button class="tab' + (selected ? ' active' : '') + '" data-tab="' + item[0] + '"' +
-        (selected ? ' aria-current="page"' : '') + '>' + svg(item[selected ? 3 : 2]) +
-        '<span>' + item[1] + '</span></button>';
-    }).join('') + '</nav>';
-  }
 
 
   var VIEWS = {};

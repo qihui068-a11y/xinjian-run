@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="ui.css">
+<link rel="stylesheet" href="workspace-ui.css">
 </head>
 <body>
 <div id="app"></div>
@@ -25,6 +26,7 @@
      app.js(核心工具) → data.js(数据层) → views/*(各视图) → boot.js(启动)
      app.js 必须最先（后面都用 esc/svg/toast/sheet），boot.js 必须最后（要 Nav.render()） -->
 <script src="app.js"></script>
+<script src="bottomnav.js"></script>
 <!-- 标志性动效：仅「验证通过」一处 Lottie，运行时不联网 -->
 <script src="lottie.min.js"></script>
 <script src="motion.js"></script>

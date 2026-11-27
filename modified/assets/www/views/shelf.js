@@ -6,15 +6,39 @@
 
 
 
+  var ShelfRecent = {
+    list: function () {
+      try {
+        var saved = JSON.parse(localStorage.getItem('xj:shelf:recent'));
+        return Array.isArray(saved) ? saved : [];
+      } catch (e) { return []; }
+    },
+    record: function (name, previous) {
+      var list = this.list().filter(function (file) { return file !== name && file !== previous; });
+      list.unshift(name);
+      try { localStorage.setItem('xj:shelf:recent', JSON.stringify(list.slice(0, 8))); } catch (e) {}
+    }
+  };
+
   /* ================= 视图：书架 ================= */
   VIEWS.shelf = function (el) {
+    el.classList.add('shelf-view');
     var sort = 'new';
+    var search = '';
     var selMode = false;
     var sel = {};
 
     el.innerHTML =
-      '<div class="topbar has-actions" id="shelfBar"></div>' +
-      '<div class="scroll" id="shelfScroll"><div class="grid" id="grid"></div></div>' +
+      '<header class="workspace-heading" id="shelfBar"></header>' +
+      '<div class="scroll workspace-content" id="shelfScroll">' +
+      '<label class="workspace-search">' + svg('search') +
+      '<input type="search" id="shelfSearch" placeholder="搜索文件" aria-label="搜索文件"></label>' +
+      '<div class="workspace-shortcuts">' +
+      '<button type="button" data-act="create">' + svg('file-plus') + '<span><strong>新建文件</strong><small>创建代码或文稿</small></span></button>' +
+      '<button type="button" data-act="import">' + svg('download') + '<span><strong>导入文件</strong><small>从设备选择文件</small></span></button></div>' +
+      '<section class="shelf-recent" hidden><h2>最近打开</h2><div class="shelf-recent-list"></div></section>' +
+      '<div class="workspace-section"><h2>全部文件</h2><button type="button" class="icon-btn" data-act="sort" aria-label="排序">' +
+      svg('sort') + '</button></div><div class="grid shelf-files" id="grid"></div></div>' +
       '<input type="file" id="importer" multiple ' +
       'style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0">';
 
@@ -23,6 +47,20 @@
     var scroll = el.querySelector('#shelfScroll');
     var importer = el.querySelector('#importer');
     var docs = [];
+    var recent = el.querySelector('.shelf-recent');
+    var recentList = recent.querySelector('.shelf-recent-list');
+    el.querySelector('#shelfSearch').addEventListener('input', function (event) {
+      search = event.target.value.trim().toLowerCase();
+      paintList();
+    });
+    scroll.addEventListener('click', function (event) {
+      var button = event.target.closest('[data-act], [data-recent]');
+      if (!button) return;
+      if (button.hasAttribute('data-recent')) return openFile(button.dataset.recent);
+      if (button.dataset.act !== 'new') perform(button.dataset.act);
+    });
+
+    function openFile(name) { Nav.go('editor', { name: name, mode: 'read' }); }
 
     /* 系统返回键：多选态先取消选择，不退页 */
     el.__onBack = function () {
@@ -44,36 +82,52 @@
           '<button class="icon-btn" data-act="del">' + svg('trash') + '</button>';
       } else {
         bar.innerHTML =
-          '<button class="icon-btn" data-act="back">' + svg('back') + '</button>' +
-          '<div class="t-title">书架</div>' +
-          '<button class="icon-btn" data-act="sort">' + svg('sort') + '</button>' +
-          '<button class="icon-btn" data-act="import">' + svg('plus') + '</button>';
+          '<div><h1 class="t-title">书架</h1><p>管理你的代码与工程</p></div>' +
+          '<div class="workspace-actions"><button type="button" class="icon-btn" data-act="create" aria-label="新建文件">' +
+          svg('file-plus') + '</button><button type="button" class="icon-btn" data-act="more" aria-label="书架操作">' +
+          svg('more') + '</button></div>';
       }
     }
 
     function paintList() {
-      if (!docs.length) {
+      var files = docs.filter(function (d) { return d.name.toLowerCase().indexOf(search) >= 0; });
+      var opened = !search && !selMode ? ShelfRecent.list().map(function (name) {
+        return docs.find(function (d) { return d.name === name; });
+      }).filter(Boolean).slice(0, 3) : [];
+      recent.hidden = !opened.length;
+      recentList.innerHTML = opened.map(function (d) {
+        return '<button type="button" class="shelf-row" data-recent="' + esc(d.name) + '">' + fileBody(d) + '</button>';
+      }).join('');
+      if (!files.length) {
         /* 空态必须画在 #grid 里面，不能覆盖 scroll.innerHTML：
            一旦把 #grid 换掉，闭包里的 grid 变量就指向一个脱离文档的节点，
            之后 reload() 往它写什么都看不见（导入成功后书架仍显示“还空着”）。
            而且 #grid 上挂了 3 个监听，换节点等于监听全丢。 */
         grid.classList.add('is-empty');
         grid.innerHTML =
-          '<div class="empty"><p>书架还空着</p>' +
-          '<button data-act="new">新建一篇</button></div>';
-        grid.querySelector('[data-act=new]').onclick = function () { Nav.go('create'); };
+          '<div class="empty"><p>' + (search ? '未找到文件' : '书架还空着') + '</p>' +
+          (search ? '' : '<button data-act="new">新建一篇</button>') + '</div>';
+        var add = grid.querySelector('[data-act=new]');
+        if (add) add.onclick = function () { Nav.go('create'); };
         return;
       }
       grid.classList.remove('is-empty');
       var html = '';
-      docs.forEach(function (d) {
+      files.forEach(function (d) {
         var on = selMode && sel[d.name] ? ' selected' : '';
-        html += '<div class="book' + on + '" data-name="' + esc(d.name) + '">' +
-          '<div class="b-name">' + esc(d.name) + '</div>' +
-          '<div class="b-excerpt">' + esc(d.excerpt || '') + '</div>' +
-          '<div class="b-check"></div></div>';
+        html += '<button type="button" class="book shelf-row' + on + '" data-name="' + esc(d.name) + '">' +
+          fileBody(d) + '<span class="b-check"></span></button>';
       });
       grid.innerHTML = html;
+    }
+
+    function fileBody(d) {
+      var format = FORMATS.find(function (f) { return f.ext === Bridge.extOf(d.name); });
+      var desc = format ? format.label : Bridge.extOf(d.name).toUpperCase() || '文件';
+      if (typeof d.size === 'number') desc += ' · ' + (d.size < 1024 ? d.size + ' B' : (d.size / 1024).toFixed(1) + ' KB');
+      return svg('file-code') + '<span class="shelf-file-info"><strong class="b-name">' + esc(d.name) + '</strong>' +
+        '<small class="b-excerpt">' + esc(desc) + '</small></span>' +
+        '<time>' + (d.mtime ? fmtTime(d.mtime) : '') + '</time>';
     }
 
     function sortDocs(list) {
@@ -187,14 +241,25 @@
       if (longFired) { longFired = false; return; }
       var name = b.dataset.name;
       if (selMode) return toggleSel(name);
-      Nav.go('editor', { name: name, mode: 'read' });
+      openFile(name);
     });
 
     /* --- 顶栏动作 --- */
     bar.addEventListener('click', function (e) {
       var t = e.target.closest('[data-act]');
       if (!t) return;
-      var act = t.dataset.act;
+      perform(t.dataset.act, t);
+    });
+
+    function perform(act, anchor) {
+      if (act === 'create') return Nav.go('create');
+      if (act === 'more') {
+        return popover([
+          { ico: 'file-plus', label: '新建文件', value: 'create' },
+          { ico: 'download', label: '导入文件', value: 'import' },
+          { ico: 'sort', label: '排序', value: 'sort' }
+        ], anchor).then(function (choice) { if (choice) perform(choice); });
+      }
       if (act === 'back') { if (selMode) { selMode = false; sel = {}; paintBar(); paintList(); } else Nav.back(); }
       else if (act === 'cancel') { selMode = false; sel = {}; paintBar(); paintList(); }
       else if (act === 'sort') {
@@ -242,7 +307,7 @@
           });
         });
       }
-    });
+    }
 
     /* --- 导入 --- */
     importer.addEventListener('change', function () {
