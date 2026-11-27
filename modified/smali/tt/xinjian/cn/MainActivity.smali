@@ -1347,6 +1347,15 @@
     :cond_5
     move-object v6, p1
 
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/MainActivity;->serveDev(Ljava/lang/String;)Landroid/webkit/WebResourceResponse;
+
+    move-result-object v5
+
+    if-eqz v5, :serve_asset_only
+
+    return-object v5
+
+    :serve_asset_only
     new-instance v0, Ljava/lang/StringBuilder;
 
     const-string v1, "www"
@@ -1428,6 +1437,129 @@
 
     :cond_6
     :goto_0
+    return-object v0
+.end method
+
+.method private devEnabled()Z
+    .locals 4
+
+    const/4 v0, 0x0
+
+    :try_start_dev_enabled
+    const/4 v1, 0x0
+
+    invoke-virtual {p0, v1}, Ltt/xinjian/cn/MainActivity;->getExternalFilesDir(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object v1
+
+    if-eqz v1, :dev_enabled_end
+
+    new-instance v2, Ljava/io/File;
+
+    const-string v3, "dev.flag"
+
+    invoke-direct {v2, v1, v3}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    invoke-virtual {v2}, Ljava/io/File;->isFile()Z
+
+    move-result v3
+
+    move v0, v3
+
+    :dev_enabled_end
+    :try_end_dev_enabled
+    .catch Ljava/lang/Exception; {:try_start_dev_enabled .. :try_end_dev_enabled} :dev_enabled_catch
+
+    return v0
+
+    :dev_enabled_catch
+    const/4 v0, 0x0
+
+    return v0
+.end method
+
+.method private serveDev(Ljava/lang/String;)Landroid/webkit/WebResourceResponse;
+    .locals 7
+
+    const/4 v0, 0x0
+
+    invoke-direct {p0}, Ltt/xinjian/cn/MainActivity;->devEnabled()Z
+
+    move-result v1
+
+    if-eqz v1, :dev_null
+
+    :try_start_dev_serve
+    const/4 v2, 0x0
+
+    invoke-virtual {p0, v2}, Ltt/xinjian/cn/MainActivity;->getExternalFilesDir(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object v1
+
+    if-eqz v1, :dev_null
+
+    new-instance v2, Ljava/io/File;
+
+    const-string v3, "www"
+
+    invoke-direct {v2, v1, v3}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    new-instance v1, Ljava/io/File;
+
+    const/4 v3, 0x1
+
+    invoke-virtual {p1, v3}, Ljava/lang/String;->substring(I)Ljava/lang/String;
+
+    move-result-object v3
+
+    invoke-direct {v1, v2, v3}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    invoke-virtual {v1}, Ljava/io/File;->isFile()Z
+
+    move-result v2
+
+    if-eqz v2, :dev_null
+
+    new-instance v2, Landroid/webkit/WebResourceResponse;
+
+    invoke-static {p1}, Ltt/xinjian/cn/MainActivity;->mimeOf(Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object v3
+
+    new-instance v4, Ljava/io/FileInputStream;
+
+    invoke-direct {v4, v1}, Ljava/io/FileInputStream;-><init>(Ljava/io/File;)V
+
+    const-string v5, "UTF-8"
+
+    invoke-direct {v2, v3, v5, v4}, Landroid/webkit/WebResourceResponse;-><init>(Ljava/lang/String;Ljava/lang/String;Ljava/io/InputStream;)V
+
+    new-instance v3, Ljava/util/HashMap;
+
+    invoke-direct {v3}, Ljava/util/HashMap;-><init>()V
+
+    const-string v4, "Cache-Control"
+
+    const-string v5, "no-cache"
+
+    invoke-interface {v3, v4, v5}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+
+    # 本地 Python 要求 /python-worker.js 带 CSP、/index.html 带 COOP+COEP，
+    # 否则页面拿不到 SharedArrayBuffer，input() 只能退回预填输入。
+    invoke-static {p1, v3}, Ltt/xinjian/cn/MainActivity;->pythonRunnerHeaders(Ljava/lang/String;Ljava/util/Map;)V
+
+    invoke-virtual {v2, v3}, Landroid/webkit/WebResourceResponse;->setResponseHeaders(Ljava/util/Map;)V
+
+    move-object v0, v2
+    :dev_null
+    :try_end_dev_serve
+    .catch Ljava/lang/Exception; {:try_start_dev_serve .. :try_end_dev_serve} :dev_serve_catch
+
+    return-object v0
+
+    :dev_serve_catch
+    const/4 v0, 0x0
+
     return-object v0
 .end method
 
@@ -2530,6 +2662,17 @@
 
     iput-object v2, p0, Ltt/xinjian/cn/MainActivity;->web:Landroid/webkit/WebView;
 
+    invoke-direct {p0}, Ltt/xinjian/cn/MainActivity;->devEnabled()Z
+
+    move-result v3
+
+    if-eqz v3, :no_webview_debug
+
+    const/4 v3, 0x1
+
+    invoke-static {v3}, Landroid/webkit/WebView;->setWebContentsDebuggingEnabled(Z)V
+
+    :no_webview_debug
     .line 473
     new-instance v3, Landroid/view/ViewGroup$LayoutParams;
 
