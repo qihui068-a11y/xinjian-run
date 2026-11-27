@@ -63,12 +63,22 @@ def check_drag(browser):
     home_x, y = center('home')
     pigeon_x, _ = center('pigeon')
     shelf_x, _ = center('shelf')
-    touch('touchStart', home_x, y)
+    me_x, _ = center('me')
+    touch('touchStart', me_x, y)
+    page.wait_for_function("""([start, goal]) => {
+      const bar = document.querySelector('.tab-capsule').getBoundingClientRect();
+      const x = bar.left + bar.width / 2;
+      return x > start + 5 && x < goal - 5;
+    }""", arg=[home_x, me_x])
+    route('home', [])
+    capsule_at(me_x)
+    expect(button('me')).to_have_class('tab tab-preview')
+    route('home', [])
     page.wait_for_function("""() => {
       const pose = new DOMMatrix(getComputedStyle(document.querySelector('.tab-capsule')).transform);
-      return pose.a >= 1.038 && pose.d >= 1.038;
+      return pose.a >= 1.023 && pose.a <= 1.026 && pose.d >= 1.023 && pose.d <= 1.026;
     }""")
-    for x in [home_x + 24, home_x + 43, shelf_x, pigeon_x - 10]:
+    for x in [me_x - 16, me_x - 28, shelf_x, pigeon_x - 10]:
         touch('touchMove', x, y)
         capsule_at(x)
         route('home', [])
@@ -76,7 +86,7 @@ def check_drag(browser):
     expect(button('pigeon')).to_have_class('tab tab-preview')
     page.wait_for_function("""() => {
       const pose = new DOMMatrix(getComputedStyle(document.querySelector('.tab-capsule')).transform);
-      return pose.a > 1.017 && pose.a < 1.024 && pose.d > .997;
+      return pose.a > 1.023 && pose.a < 1.026 && pose.d > 1.023;
     }""")
     touch('touchEnd')
     route('pigeon', ['pigeon'])
@@ -85,17 +95,39 @@ def check_drag(browser):
       const animation = bar.getAnimations()[0];
       const frames = animation.effect.getKeyframes();
       const x = frame => new DOMMatrix(frame.transform).e;
-      return [animation.effect.getTiming().duration, x(frames[0]), x(frames[2])];
+      return [animation.effect.getTiming().duration, x(frames[0]), x(frames[1])];
     }""")
-    assert snap[0] == 300 and snap[1] < 0 < snap[2] <= -snap[1] * .02, snap
+    assert snap[0] == 280 and snap[1] < 0 < snap[2] < -snap[1] * .01, snap
     settled()
     capsule_at(pigeon_x)
     print('PASS real touch, continuous position, preview-only routing, capture and release snap')
 
-    me_x, _ = center('me')
+    # The touch crosses two targets and lifts before the first animation frame.
+    early = page.evaluate("""([start, end, y]) => {
+      const bar = document.querySelector('.main-tabs');
+      function pointer(type, x) {
+        bar.dispatchEvent(new PointerEvent(type, {pointerId: 1, isPrimary: true,
+          pointerType: 'touch', bubbles: true, clientX: x, clientY: y}));
+      }
+      pointer('pointerdown', start);
+      pointer('pointermove', end);
+      const rect = bar.firstElementChild.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const route = Nav.stack.at(-1).name;
+      pointer('pointerup', end);
+      return [x, route];
+    }""", [pigeon_x, home_x, y])
+    assert abs(early[0] - pigeon_x) < 2 and early[1] == 'pigeon'
+    route('home', ['pigeon', 'home'])
+    settled()
+    page.evaluate("Nav.reset('pigeon'); switches.length = 1")
+
     touch('touchStart', pigeon_x, y)
     touch('touchMove', me_x, y)
-    capsule_at(me_x)
+    page.wait_for_function("""x => {
+      const r = document.querySelector('.tab-capsule').getBoundingClientRect();
+      return r.left + r.width / 2 >= x;
+    }""", arg=me_x - 2)
     touch('touchCancel')
     settled()
     capsule_at(pigeon_x)
@@ -159,6 +191,7 @@ def check_drag(browser):
     route('me', ['pigeon', 'me', 'shelf', 'home', 'me'])
     print('PASS landscape, reduced-motion dragging and ordinary touch tap')
 
+    page.set_viewport_size({'width': 390, 'height': 800})
     page.evaluate("""async () => {
       await Bridge.create('nav-drag.js', 'let value = 1;');
       Nav.go('editor', { name: 'nav-drag.js', mode: 'edit' });
@@ -181,6 +214,22 @@ def check_drag(browser):
     route('home', ['pigeon', 'me', 'shelf', 'home', 'me', 'home'])
     assert page.evaluate("Bridge.read('nav-drag.js')") == 'let value = 2;'
     print('PASS same-module gesture preserves editor and switching saves through the existing route guard')
+
+    page.emulate_media(reduced_motion='no-preference')
+    home_x, y = center('home')
+    me_x, _ = center('me')
+    touch('touchStart', me_x, y)
+    capsule_at(me_x)
+    page.evaluate("""() => {
+      Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+      delete document.hidden;
+    }""")
+    touch('touchCancel')
+    settled()
+    capsule_at(home_x)
+    route('home', ['pigeon', 'me', 'shelf', 'home', 'me', 'home'])
+    print('PASS finger-based early release and cleanup on backgrounding')
     page.close()
 
 

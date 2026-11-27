@@ -11,7 +11,7 @@ var Motion = (function () {
   }
 
   function verify() {
-    if (reduced() || typeof lottie === 'undefined' || !document.body) return false;
+    if (reduced() || document.hidden || typeof lottie === 'undefined' || !document.body) return false;
     if (document.querySelector('.verify-burst')) return true;
 
     var layer = document.createElement('div');
@@ -22,26 +22,47 @@ var Motion = (function () {
     layer.appendChild(box);
     document.body.appendChild(layer);
 
+    var anim, completion, deadline, removing;
     var closed = false;
-    function close() {
+    function remove() {
+      clearTimeout(removing);
+      document.removeEventListener('visibilitychange', finishIfInactive);
+      window.removeEventListener('xj:motionchange', finishIfInactive);
+      if (anim) anim.destroy();
+      anim = null;
+      layer.remove();
+    }
+    function close(immediate) {
       if (closed) return;
       closed = true;
+      clearTimeout(completion);
+      clearTimeout(deadline);
+      if (immediate) return remove();
       layer.classList.add('out');
-      setTimeout(function () { layer.remove(); }, 200);
+      removing = setTimeout(remove, 200);
     }
 
-    var anim = null;
+    function finishIfInactive() {
+      if (!document.hidden && !reduced()) return;
+      if (closed) remove();
+      else close(true);
+    }
+
     try {
       anim = lottie.loadAnimation({
         container: box, renderer: 'svg', loop: false, autoplay: true, path: DATA
       });
     } catch (error) {
-      close();
+      close(true);
       return false;
     }
-    anim.addEventListener('complete', function () { setTimeout(close, 280); });
-    setTimeout(close, 1800);        /* 兜底：JSON 加载失败也不会把遮罩留在屏幕上 */
-    layer.addEventListener('click', close);
+    anim.addEventListener('complete', function () {
+      if (!closed) completion = setTimeout(close, 280);
+    });
+    deadline = setTimeout(close, 1800);  /* JSON 加载失败时也回收遮罩。 */
+    layer.addEventListener('click', function () { close(); });
+    document.addEventListener('visibilitychange', finishIfInactive);
+    window.addEventListener('xj:motionchange', finishIfInactive);
     return true;
   }
 

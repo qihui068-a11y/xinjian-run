@@ -45,7 +45,11 @@ module.exports = async function ({ test, app, settle }) {
     try {
       const w = a.w;
       /* 运行时在 jsdom 里被跳过，这里补一个最小桩，验证的是「调用与不叠加」 */
-      w.lottie = { loadAnimation: () => ({ addEventListener: () => {} }) };
+      let destroyed = 0;
+      w.lottie = { loadAnimation: () => ({
+        addEventListener: () => {},
+        destroy: () => { destroyed++; }
+      }) };
       /* 关着动效：不插任何节点 */
       assert.equal(w.Anim.enabled(), false);
       assert.equal(w.Motion.verify(), false);
@@ -56,6 +60,16 @@ module.exports = async function ({ test, app, settle }) {
       assert.ok(w.document.querySelector('.verify-burst'));
       assert.equal(w.Motion.verify(), true);
       assert.equal(w.document.querySelectorAll('.verify-burst').length, 1);
+      w.Anim.setEnabled(false);
+      assert.equal(destroyed, 1);
+      assert.equal(w.document.querySelector('.verify-burst'), null);
+      w.Anim.setEnabled(true);
+      assert.equal(w.Motion.verify(), true);
+      Object.defineProperty(w.document, 'hidden', { value: true, configurable: true });
+      w.document.dispatchEvent(new w.Event('visibilitychange'));
+      assert.equal(destroyed, 2);
+      assert.equal(w.document.querySelector('.verify-burst'), null);
+      assert.equal(w.Motion.verify(), false);
     } finally { a.close(); }
   });
 

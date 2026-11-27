@@ -6,7 +6,7 @@ var BottomNav = (function () {
     ['home', '主页', 'home'], ['shelf', '书架', 'bookshelf'],
     ['pigeon', '鸽屋', 'pigeon'], ['me', '小家', 'profile']
   ];
-  var nav, buttons, indicator, badge, selected, animation, gesture;
+  var nav, buttons, indicator, badge, selected, animation, iconAnimation, gesture;
   var swallowClick = false;
   var preview = -1;
   var DRAG_SLOP = 8;
@@ -53,6 +53,12 @@ var BottomNav = (function () {
     });
     window.addEventListener('blur', resetMotion);
     window.addEventListener('resize', resetMotion);
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) resetMotion();
+    });
+    window.addEventListener('xj:motionchange', function () {
+      if (!Anim.enabled()) resetMotion();
+    });
     Lan.observe(paintBadge);
     $app.appendChild(nav);
   }
@@ -67,7 +73,9 @@ var BottomNav = (function () {
 
   function cancel() {
     if (animation) animation.cancel();
+    if (iconAnimation) iconAnimation.cancel();
     animation = null;
+    iconAnimation = null;
   }
 
   function clamp(value, low, high) { return Math.max(low, Math.min(value, high)); }
@@ -129,11 +137,13 @@ var BottomNav = (function () {
       var rect = button.getBoundingClientRect();
       return rect.left + rect.width / 2 - layout.origin;
     });
+    var now = performance.now();
     gesture = {
       id: event.pointerId, startX: event.clientX, startY: event.clientY,
       button: event.target.closest('[data-tab]'),
-      lastX: event.clientX, lastMove: performance.now(), speed: 0,
-      layout: layout, centers: centers, startCenter: pose.x, pose: pose, frame: 0,
+      lastX: event.clientX, lastMove: now, lastDraw: now, speed: 0,
+      targetX: event.clientX - layout.origin,
+      layout: layout, centers: centers, pose: pose, frame: 0,
       animated: Anim.enabled()
     };
     nav.classList.add('tab-pressing');
@@ -149,17 +159,29 @@ var BottomNav = (function () {
     var press = gesture;
     if (!press) return;
     press.frame = 0;
-    var dt = now - (press.lastDraw || now - 16);
+    if (!press.animated) {
+      press.pose.x = boundedX(press.targetX, 1, press.layout);
+      press.pose.sx = press.pose.sy = 1;
+      indicator.style.transform = poseTransform(press.pose, press.layout);
+      showPreview(nearest(press.pose.x, press.centers));
+      return;
+    }
+    var dt = Math.max(0, now - press.lastDraw);
     press.lastDraw = now;
-    var recent = press.dragging ? clamp(1 - (now - press.lastMove - 34) / 116, 0, 1) : 0;
-    var sx = press.dragging ? 1.02 + (.04 + .06 * press.speed) * recent : 1.04;
-    var sy = press.dragging ? 1 - (.02 + .04 * press.speed) * recent : 1.04;
-    var blend = 1 - Math.exp(-Math.max(0, dt) / 38);
-    press.pose.sx = press.animated ? press.pose.sx + (sx - press.pose.sx) * blend : 1;
-    press.pose.sy = press.animated ? press.pose.sy + (sy - press.pose.sy) * blend : 1;
+    var recent = press.dragging ? clamp(1 - (now - press.lastMove - 34) / 105, 0, 1) : 0;
+    var sx = 1.025 + (.02 + .02 * press.speed - .025) * recent;
+    var sy = 1.025 - (.025 + .018 * press.speed) * recent;
+    var shapeBlend = 1 - Math.exp(-dt / 34);
+    press.pose.sx += (sx - press.pose.sx) * shapeBlend;
+    press.pose.sy += (sy - press.pose.sy) * shapeBlend;
+    var target = boundedX(press.targetX, press.pose.sx, press.layout);
+    // Exponential damping reaches about 98% of a stationary target in 220ms.
+    var remaining = (target - press.pose.x) * Math.exp(-dt / 55);
+    press.pose.x = Math.abs(remaining) < .15 ? target : target - remaining;
     indicator.style.transform = poseTransform(press.pose, press.layout);
-    if (press.dragging) showPreview(nearest(boundedX(press.pose.x, press.pose.sx, press.layout), press.centers));
-    if (press.animated && (recent || Math.abs(sx - press.pose.sx) > .001 || Math.abs(sy - press.pose.sy) > .001)) {
+    showPreview(nearest(press.pose.x, press.centers));
+    if (recent || Math.abs(remaining) >= .15 ||
+        Math.abs(sx - press.pose.sx) > .001 || Math.abs(sy - press.pose.sy) > .001) {
       queueDraw();
     }
   }
@@ -171,10 +193,11 @@ var BottomNav = (function () {
     var dy = Math.abs(event.clientY - press.startY);
     if (!press.dragging) {
       if (dy > DRAG_SLOP && dy > Math.abs(dx)) return restorePress(true);
-      if (Math.abs(dx) <= DRAG_SLOP || Math.abs(dx) <= dy) return;
-      press.dragging = true;
-      // Capture only after the threshold so a tap still goes to its original button.
-      try { nav.setPointerCapture(press.id); } catch (e) {}
+      if (Math.abs(dx) > DRAG_SLOP && Math.abs(dx) > dy) {
+        press.dragging = true;
+        // Capture only after the threshold so a tap still goes to its original button.
+        try { nav.setPointerCapture(press.id); } catch (e) {}
+      }
     }
     var now = performance.now();
     if (event.clientX !== press.lastX) {
@@ -182,8 +205,7 @@ var BottomNav = (function () {
       press.lastX = event.clientX;
       press.lastMove = now;
     }
-    // Keep the grab offset. The center moves by the same distance as the finger.
-    press.pose.x = clamp(press.startCenter + dx, press.centers[0], press.centers[press.centers.length - 1]);
+    press.targetX = event.clientX - press.layout.origin;
     queueDraw();
   }
 
@@ -214,11 +236,9 @@ var BottomNav = (function () {
       button.contains(document.elementFromPoint(event.clientX, event.clientY));
     var press = stopPress(gesture.dragging || tap);
     var destination = tap ? button.dataset.tab : null;
-    if (press.dragging) {
-      // The final pointer position may arrive between animation frames.
-      indicator.style.transform = poseTransform(press.pose, press.layout);
-      var center = boundedX(press.pose.x, press.pose.sx, press.layout);
-      var target = nearest(center, press.centers);
+    if (press.dragging || !button) {
+      // Route from the finger's final position, even while the capsule is catching up.
+      var target = nearest(press.targetX, press.centers);
       if (target !== selected) destination = destinations[target][0];
     }
     var from = visiblePose(press.layout);
@@ -245,19 +265,20 @@ var BottomNav = (function () {
     if (!layout) return;
     var delta = layout.center - from.x;
     if (Math.abs(delta) < .5 && Math.abs(from.sx - 1) < .002 && Math.abs(from.sy - 1) < .002) return;
-    var duration = parseFloat(getComputedStyle(nav).getPropertyValue('--tab-slide-duration')) || 300;
-    var easeOut = 'cubic-bezier(.16,.8,.28,1)';
+    var duration = parseFloat(getComputedStyle(nav).getPropertyValue('--tab-slide-duration')) || 280;
+    var easeOut = 'cubic-bezier(.16,.85,.28,1)';
     animation = indicator.animate([
       { transform: poseTransform(from, layout), easing: easeOut },
-      { transform: poseTransform({ x: layout.center - delta * .06, sx: 1, sy: 1 }, layout), offset: .62, easing: 'ease-out' },
-      { transform: poseTransform({ x: layout.center + delta * .015, sx: 1, sy: 1 }, layout), offset: .84, easing: 'ease-in-out' },
+      { transform: poseTransform({ x: layout.center + delta * .008, sx: 1, sy: 1 }, layout), offset: .86, easing: 'ease-out' },
       { transform: 'none' }
     ], { duration: duration });
     animation.onfinish = function () { animation = null; };
     var icon = buttons[selected].querySelector('svg');
     if (icon.animate && previous >= 0 && previous !== selected) {
-      icon.animate([{ transform: 'scale(.84)' }, { transform: 'scale(1.12)', offset: .67 }, { transform: 'none' }],
+      iconAnimation = icon.animate(
+        [{ transform: 'scale(.98)' }, { transform: 'scale(1.01)', offset: .75 }, { transform: 'none' }],
         { duration: 200, easing: easeOut });
+      iconAnimation.onfinish = function () { iconAnimation = null; };
     }
   }
 

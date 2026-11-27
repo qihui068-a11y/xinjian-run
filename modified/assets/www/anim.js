@@ -27,7 +27,11 @@
 
   /* html.anim-off 是 CSS 侧的开关：关掉时全站 transition/animation 直接归零 */
   function syncClass() {
-    try { global.document.documentElement.classList.toggle('anim-off', !enabled()); } catch (e) {}
+    var root = global.document.documentElement;
+    var off = !enabled();
+    if (root.classList.contains('anim-off') === off) return;
+    root.classList.toggle('anim-off', off);
+    global.dispatchEvent(new Event('xj:motionchange'));
   }
 
   function setEnabled(on) {
@@ -72,6 +76,8 @@
   }
 
   syncClass();
+  var motionPreference = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)');
+  if (motionPreference && motionPreference.addEventListener) motionPreference.addEventListener('change', syncClass);
 
   function swap(oldEl, newEl, mode) {
     if (!enabled() || typeof newEl.animate !== 'function') {
@@ -109,47 +115,39 @@
     }
   }
 
-  function popover(panel, content, opening, previous, done) {
-    if (!enabled() || typeof panel.animate !== 'function') {
+  function popover(panel, opening, previous, done) {
+    if (!enabled() || document.hidden || typeof panel.animate !== 'function') {
       if (previous) previous.cancel();
       done();
       return null;
     }
 
-    var scale = .15, opacity = 0, textOpacity = 0;
+    var scale = .15, opacity = 0;
     if (previous || !opening) {
       var current = getComputedStyle(panel);
       var matrix = /^matrix\(([^,]+)/.exec(current.transform);
       scale = matrix ? Number(matrix[1]) : 1;
       opacity = Number(current.opacity);
-      textOpacity = Number(getComputedStyle(content).opacity);
     }
     if (previous) previous.cancel();
 
-    var easeOut = 'cubic-bezier(.16,.8,.3,1)';
+    var easeOut = 'cubic-bezier(.16,.85,.28,1)';
     function frame(size, alpha, offset, easing) {
       return { transform: 'scale(' + size + ')', opacity: alpha, offset: offset, easing: easing };
     }
-    // A reopened menu starts from its visible frame instead of jumping back to .15.
-    function approach(size) {
-      return scale + (Math.max(1, scale) - scale) * ((size - .15) / .85);
-    }
+    // The panel, content and pointer share one transform and fade.
     var frames = opening ? [
       frame(scale, opacity, 0, easeOut),
-      frame(approach(.65), Math.max(.9, opacity), .2, 'ease-out'),
-      frame(approach(.90), 1, .45, 'ease-out'),
-      frame(approach(.995), 1, .70, 'ease-out'),
-      frame(1.01, 1, .85, 'ease-in-out'),
+      frame(1.008, 1, .86, 'ease-out'),
       frame(1, 1, 1, 'linear')
     ] : [frame(scale, opacity, 0, easeOut), frame(.15, 0, 1, 'linear')];
 
-    var panelAnimation, contentAnimation, timer, stopped = false;
+    var panelAnimation, timer, stopped = false;
     function cancel() {
       if (stopped) return;
       stopped = true;
       clearTimeout(timer);
       if (panelAnimation) panelAnimation.cancel();
-      if (contentAnimation) contentAnimation.cancel();
     }
     function finish() {
       if (stopped) return;
@@ -157,17 +155,8 @@
       done();
     }
     try {
-      var duration = opening ? 340 : 190;
+      var duration = opening ? 260 : 170;
       panelAnimation = panel.animate(frames, { duration: duration, fill: 'both' });
-      if (opening) {
-        contentAnimation = content.animate([{ opacity: textOpacity }, { opacity: 1 }], {
-          delay: previous ? 0 : 50, duration: 130, easing: 'ease-out', fill: 'both'
-        });
-      } else if (textOpacity < 1) {
-        contentAnimation = content.animate([{ opacity: textOpacity }, { opacity: textOpacity }], {
-          duration: duration, fill: 'both'
-        });
-      }
       panelAnimation.onfinish = finish;
       timer = setTimeout(finish, duration + 60);
       return { cancel: cancel, finish: finish };

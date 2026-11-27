@@ -266,10 +266,10 @@ def appearance_and_motion(browser):
     assert len(frames) == 2 and all(x['options']['duration'] == 200 for x in frames)
     assert all('transform' not in f for x in frames for f in x['frames'])
     first_slide = page.evaluate('capsuleFrames[0]')
-    assert first_slide['options']['duration'] == 300
-    start_x, rebound_x = page.evaluate("""() => [0, 2].map(index =>
+    assert first_slide['options']['duration'] == 280
+    start_x, rebound_x = page.evaluate("""() => [0, 1].map(index =>
         new DOMMatrix(capsuleFrames[0].frames[index].transform).e)""")
-    assert start_x < 0 < rebound_x <= -start_x * .02
+    assert start_x < 0 < rebound_x < -start_x * .01
     page.evaluate("""() => {
       for (const tab of ['pigeon','home','shelf','me']) document.querySelector('[data-tab='+tab+']').click();
     }""")

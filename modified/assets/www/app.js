@@ -268,7 +268,6 @@
       var menu = mask.firstChild;
       var content = menu.querySelector('.pop-content');
       var viewport = window.visualViewport;
-      var motionPreference = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
       var layer, resolve, motion, items;
       var entry = { anchor: anchor, isOpen: function () { return !!resolve; }, open: open, close: close, remove: remove };
 
@@ -296,7 +295,7 @@
       }
 
       function motionChanged() {
-        if (motion && !Anim.enabled()) motion.finish();
+        if (motion && (document.hidden || !Anim.enabled())) motion.finish();
       }
       function remove() {
         if (resolve) close(null, true);
@@ -306,7 +305,8 @@
           viewport.removeEventListener('resize', position);
           viewport.removeEventListener('scroll', position);
         }
-        if (motionPreference && motionPreference.removeEventListener) motionPreference.removeEventListener('change', motionChanged);
+        window.removeEventListener('xj:motionchange', motionChanged);
+        document.removeEventListener('visibilitychange', motionChanged);
         mask.remove();
         if (active === entry) active = null;
       }
@@ -331,7 +331,7 @@
           position();
           var first = content.querySelector('button');
           if (first) first.focus({ preventScroll: true });
-          motion = Anim.popover(menu, content, true, motion, function () { motion = null; });
+          motion = Anim.popover(menu, true, motion, function () { motion = null; });
         });
       }
 
@@ -347,7 +347,7 @@
         mask.classList.add('pop-closing');
         mask.setAttribute('aria-hidden', 'true');
         content.querySelectorAll('button').forEach(function (button) { button.disabled = true; });
-        if (!immediate) motion = Anim.popover(menu, content, false, motion, remove);
+        if (!immediate) motion = Anim.popover(menu, false, motion, remove);
         done(value);
       }
 
@@ -364,7 +364,8 @@
         viewport.addEventListener('resize', position);
         viewport.addEventListener('scroll', position);
       }
-      if (motionPreference && motionPreference.addEventListener) motionPreference.addEventListener('change', motionChanged);
+      window.addEventListener('xj:motionchange', motionChanged);
+      document.addEventListener('visibilitychange', motionChanged);
       return entry;
     }
 

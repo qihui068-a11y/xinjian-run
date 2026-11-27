@@ -12,7 +12,7 @@
   --workspace-gap: 16px;
   --workspace-radius: 16px;
   --workspace-icon: 23px;
-  --tab-slide-duration: 300ms;
+  --tab-slide-duration: 280ms;
   --workspace-tab-height: 64px;
 }
 html.dark {
@@ -99,7 +99,7 @@ html.dark {
 .tabbar.main-tabs .tab.tab-preview { color: var(--workspace-fg); }
 @media (prefers-reduced-motion: no-preference) {
   html:not(.anim-off) .main-tabs .tab-icon { transition: transform var(--m-1) var(--e-out); }
-  html:not(.anim-off) .main-tabs .tab-preview .tab-icon { transform: scale(1.07); }
+  html:not(.anim-off) .main-tabs .tab-preview .tab-icon { transform: scale(1.025); }
 }
 .tabbar.main-tabs .tab .adaptive-icon { display: block; width: var(--workspace-icon); height: var(--workspace-icon); transform: none; }
 .tab-icon { display: block; position: relative; }
