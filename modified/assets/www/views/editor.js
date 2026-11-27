@@ -381,6 +381,9 @@
       var selected = parts[1] ? ta.value.slice(start, end) : '';
       var inside = start + parts[0].length;
       replaceRange(parts[0] + selected + parts[1], start, end, inside, inside + selected.length, direction);
+      if (!selected && /^(?:html|htm|xhtml)$/.test(ext) && /^<\/?$/.test(parts[0]) && canComplete()) {
+        completion.request(false);
+      }
     }
 
     function mapOffset(source, formatted, offset) {

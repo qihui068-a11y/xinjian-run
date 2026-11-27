@@ -2,6 +2,45 @@
 const assert = require('node:assert/strict');
 
 module.exports = async function ({ test, app, settle }) {
+  await test('HTML offers case-insensitive tags, matching close tags and contextual attributes', () => {
+    const a = app();
+    try {
+      const { w } = a;
+      function complete(source, ext = 'html') {
+        const cursor = source.indexOf('|');
+        const code = source.replace('|', '');
+        const pre = w.document.createElement('pre');
+        pre.innerHTML = w.HL.highlight(code, ext);
+        const result = w.EditorCompletion.suggestions(code, cursor, ext, pre, false);
+        return { code, result, items: result ? Array.from(result.items) : [] };
+      }
+      function insert(source, name, ext) {
+        const { code, result, items } = complete(source, ext);
+        const item = items.find(choice => choice.name === name);
+        assert(item, source + ' -> ' + name);
+        return [code.slice(0, result.start) + item.text + code.slice(result.end), result.start + item.caret];
+      }
+
+      assert.deepEqual(insert('<|>', 'div'), ['<div>', 4]);
+      assert.deepEqual(insert('<DI|', 'div', 'htm'), ['<div', 4]);
+      assert.deepEqual(insert('<my|\n<my-widget>ok</my-widget>', 'my-widget'), [
+        '<my-widget\n<my-widget>ok</my-widget>', 10
+      ]);
+      const closed = '<main><img src="a.png"></main>';
+      assert.deepEqual(insert('<main><img src="a.png"></|', 'main'), [closed, closed.length]);
+      assert.equal(complete('<main><section><p></|>').items[0].name, 'p');
+      assert.equal(complete('<main><p></p></|>').items[0].name, 'main');
+      assert.deepEqual(insert('<img sr|>', 'src', 'xhtml'), ['<img src="">', 10]);
+      assert.deepEqual(insert('<img sr| ="keep">', 'src'), ['<img src ="keep">', 8]);
+      assert.deepEqual(insert('<input dis|>', 'disabled'), ['<input disabled>', 15]);
+      assert.deepEqual(insert('<div da|>', 'data-'), ['<div data->', 10]);
+      for (const source of [
+        '<div cl|ass="old">', '<div class="old" cl|>', '<div cl| id="x" class="old">', '<img alt="demo cl|',
+        '<img alt= cl|>', '<!-- <di|', '<script>a < di|', '<textarea><di|'
+      ]) assert.equal(complete(source).result, null, source);
+    } finally { a.close(); }
+  });
+
   await test('Completion covers supported source families, members, and names from the file', () => {
     const a = app();
     try {

@@ -26,7 +26,30 @@ var EditorCompletion = (function () {
   };
   var types = { js: 'console', c: 'size_t FILE', cpp: 'std string vector', java: 'Scanner', cs: 'Console String List Dictionary Task' };
   var keywords = { cs: 'abstract async await base byte checked decimal delegate foreach in interface internal is lock namespace object out override params ref sealed string this throw try unchecked var virtual', json: 'true false null' };
-  var htmlTags = 'a article aside audio body br button code div em footer form h1 h2 h3 head header html img input label li link main meta nav ol option p pre section select small span strong style table tbody td textarea th thead tr ul video';
+  var htmlTags = 'div span p a img input button section article aside audio body br canvas code details dialog em fieldset figure footer form h1 h2 h3 h4 h5 h6 head header hr html iframe label li link main meta nav ol option picture pre script select small source strong style summary table tbody td template textarea th thead title tr ul video'.split(' ');
+  var voidTags = new Set('area base br col embed hr img input link meta param source track wbr'.split(' '));
+  var htmlGlobals = 'class id style title lang hidden tabindex role dir data- aria-label aria-hidden aria-describedby aria-labelledby contenteditable draggable';
+  var htmlAttributes = {
+    a: 'href target rel download hreflang',
+    audio: 'src controls autoplay loop muted preload',
+    button: 'type name value disabled form',
+    form: 'action method enctype autocomplete novalidate target',
+    iframe: 'src title width height loading sandbox allow',
+    img: 'src alt srcset sizes width height loading decoding',
+    input: 'type name value placeholder required disabled checked readonly autocomplete autofocus min max step minlength maxlength pattern multiple accept',
+    label: 'for',
+    link: 'rel href media type crossorigin',
+    meta: 'charset name content http-equiv',
+    option: 'value selected disabled label',
+    script: 'src type defer async crossorigin',
+    select: 'name multiple required disabled autofocus size',
+    source: 'src srcset sizes type media',
+    td: 'colspan rowspan headers',
+    textarea: 'name placeholder rows cols required disabled readonly maxlength autofocus wrap',
+    th: 'scope colspan rowspan headers',
+    video: 'src poster width height controls autoplay loop muted playsinline preload'
+  };
+  var booleanAttributes = new Set('hidden controls autoplay loop muted disabled novalidate required checked readonly autofocus multiple selected defer async playsinline'.split(' '));
   var cssProperties = 'align-items animation background background-color border border-color border-radius box-shadow color display flex flex-direction font-family font-size font-weight gap grid grid-template-columns height justify-content line-height margin max-height max-width min-height min-width opacity overflow padding position text-align transform transition width z-index';
   var members = {
     js: { console: 'log info warn error debug', Math: 'abs ceil floor max min pow random round sqrt trunc', JSON: 'parse stringify',
@@ -38,7 +61,7 @@ var EditorCompletion = (function () {
 
   function context(source, cursor, kind, manual) {
     if (!kind || source.length > limit) return null;
-    var markup = kind === 'html' || kind === 'xml';
+    var markup = kind === 'xml';
     var pattern = markup ? markupName : kind === 'css' ? property : identifier;
     var at = cursor;
     var tail = markup ? /[\p{ID_Continue}:.-]/u : kind === 'css' ? /[\p{ID_Continue}-]/u : /[\p{ID_Continue}$]/u;
@@ -56,8 +79,98 @@ var EditorCompletion = (function () {
       prefix: prefix, cursor: cursor, receiver: receiver && receiver[1], member: member, pattern: pattern, markup: markup };
   }
 
+  function htmlSuggestions(source, cursor, pre) {
+    var offset = 0, tag = null, opaque = false;
+    var open = [], earlier = new Set();
+    for (var i = 0; i < pre.childNodes.length && offset <= cursor; i++) {
+      var node = pre.childNodes[i], word = node.textContent, end = offset + word.length;
+      var classes = node.classList;
+      if (classes && node.hasAttribute('data-markup-edge') && offset < cursor) {
+        if (word === '<' || word === '</') {
+          tag = { closing: word === '</', start: end, end: end, name: '', attrs: new Map() };
+        } else if (tag) {
+          if (tag.name && tag.closing) {
+            var match = open.lastIndexOf(tag.name);
+            if (match >= 0) open.length = match;
+          } else if (tag.name) {
+            earlier.add(tag.name);
+            if (word !== '/>' && !voidTags.has(tag.name)) open.push(tag.name);
+          }
+          tag = null;
+        }
+      } else if (classes && tag) {
+        if (offset === tag.start && classes.contains('tk-k')) {
+          tag.name = word.toLowerCase();
+          tag.end = end;
+        } else if (classes.contains('tk-v')) {
+          tag.attrs.set(word.toLowerCase(), offset);
+        } else if (cursor > offset && cursor <= end) {
+          opaque = classes.contains('tk-s') || classes.contains('tk-m');
+        }
+      }
+      offset = end;
+    }
+    if (!tag || cursor < tag.start || opaque) return null;
+
+    var later = new Set(), inTag = true;
+    var wantNames = cursor <= tag.end && !tag.closing;
+    for (; i < pre.childNodes.length; i++) {
+      var following = pre.childNodes[i];
+      if (!following.classList) continue;
+      if (following.hasAttribute('data-markup-edge')) {
+        if (!wantNames) break;
+        inTag = false;
+        var nameNode = following.nextSibling;
+        if (following.textContent === '<' && nameNode && nameNode.classList && nameNode.classList.contains('tk-k')) {
+          later.add(nameNode.textContent.toLowerCase());
+        }
+      } else if (inTag && following.classList.contains('tk-v')) {
+        var attribute = following.textContent.toLowerCase();
+        if (!tag.attrs.has(attribute)) tag.attrs.set(attribute, -1);
+      }
+    }
+
+    var start = tag.start, end = tag.end, values, label;
+    if (cursor <= tag.end) {
+      values = tag.closing ? open.slice().reverse().concat(htmlTags) : Array.from(earlier).concat(htmlTags, Array.from(later));
+      label = '标签';
+    } else {
+      if (!tag.name || tag.closing) return null;
+      start = cursor;
+      while (start > tag.end && /[\p{ID_Continue}:.-]/u.test(source[start - 1])) start--;
+      if (!/\s/.test(source[start - 1]) || /=\s*$/.test(source.slice(tag.end, start))) return null;
+      markupName.lastIndex = 0;
+      var stem = markupName.exec(source.slice(start, start + 128));
+      if (start < cursor && (!stem || stem.index !== 0)) return null;
+      end = stem && stem.index === 0 ? start + stem[0].length : cursor;
+      var specific = Object.prototype.hasOwnProperty.call(htmlAttributes, tag.name) ? htmlAttributes[tag.name] : '';
+      values = (specific ? specific + ' ' + htmlGlobals : htmlGlobals).split(' ');
+      label = '属性';
+    }
+    var prefix = source.slice(start, cursor).toLowerCase();
+    if (prefix.length > 80) return null;
+    var next = source.slice(end);
+    var existing = source.slice(start, end);
+    var items = [];
+    new Set(values).forEach(function (name) {
+      if (items.length >= 8 || !name.startsWith(prefix) || name.length > 80) return;
+      if (tag.closing && voidTags.has(name)) return;
+      var suffix = '';
+      if (label === '属性') {
+        if (tag.attrs.has(name) && tag.attrs.get(name) !== start) return;
+        if (!booleanAttributes.has(name) && name !== 'data-' && !/^\s*=/.test(next)) suffix = '=""';
+      } else if (tag.closing && !/^\s*>/.test(next)) suffix = '>';
+      var text = name + suffix;
+      if (text === existing) return;
+      items.push({ name: name, label: label, text: text,
+        caret: suffix === '=""' ? text.length - 1 : text.length });
+    });
+    return items.length ? { start: start, end: end, cursor: cursor, items: items } : null;
+  }
+
   function suggestions(source, cursor, ext, pre, manual) {
     var kind = aliases[ext];
+    if (kind === 'html') return source.length <= limit ? htmlSuggestions(source, cursor, pre) : null;
     var info = context(source, cursor, kind, manual);
     if (!info) return null;
     var candidates = new Map();
@@ -115,7 +228,6 @@ var EditorCompletion = (function () {
       words(types[kind], '类型', false, 3);
       words(vocabulary.keywords, '关键字', false, 3);
       words(keywords[kind], '关键字', false, 3);
-      if (kind === 'html') words(htmlTags, '标签', false, 2);
       if (kind === 'css') words(cssProperties, '属性', false, 2);
     }
     var items = Array.from(candidates.values()).sort(function (a, b) {
@@ -156,8 +268,8 @@ var EditorCompletion = (function () {
       var item = current.items[index];
       if (!item) return;
       var start = current.start, end = current.end;
-      var text = item.name + (item.call ? '()' : '');
-      var cursor = start + item.name.length + (item.call ? 1 : 0);
+      var text = item.text || item.name + (item.call ? '()' : '');
+      var cursor = start + (item.caret === undefined ? item.name.length + (item.call ? 1 : 0) : item.caret);
       hide();
       insert(text, start, end, cursor);
     }

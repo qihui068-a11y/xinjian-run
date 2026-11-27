@@ -163,6 +163,28 @@ def check_code_completion(browser):
         area.press('Enter')
         expect(area).to_have_value('def example():\n    ')
         print('PASS completion touch, keyboard selection, undo, and dock above Android keyboard')
+
+        page.evaluate("""async () => {
+          await Bridge.create('completion.html', '');
+          Nav.reset('editor', {name:'completion.html', mode:'edit'});
+        }""")
+        area.focus()
+        page.get_by_role('button', name='插入 <>', exact=True).tap()
+        candidates.get_by_role('option', name='div 标签', exact=True).tap()
+        expect(area).to_have_value('<div>')
+        assert area.evaluate('el => el.selectionStart') == 4
+        page.keyboard.type(' cl')
+        candidates.get_by_role('option', name='class 属性', exact=True).tap()
+        expect(area).to_have_value('<div class="">')
+        assert area.evaluate('el => el.value[el.selectionStart]') == '"'
+        page.keyboard.press('Control+z')
+        expect(area).to_have_value('<div cl>')
+        area.fill('<main><section>内容')
+        area.press('Control+End')
+        page.get_by_role('button', name='插入 </', exact=True).tap()
+        candidates.get_by_role('option', name='section 标签', exact=True).tap()
+        expect(area).to_have_value('<main><section>内容</section>')
+        print('PASS HTML touch completion inserts tags and editable attribute values')
     finally:
         page.close()
 
@@ -253,9 +275,17 @@ with sync_playwright() as pw:
  area.fill('{\n  "active": , // invalid\n  "url": "https://a"\n}')
  issue=p.locator('.editor-diagnostic')
  expect(issue).to_have_attribute('data-line','2')
+ line=p.locator('.editor-error-line')
+ for dark in (False, True):
+  p.evaluate('dark => applyTheme(dark)', dark)
+  expect(line).to_have_css('border-inline-start-width', '1px')
+  alpha=line.evaluate("el => parseFloat(getComputedStyle(el).backgroundColor.split(',').at(-1))")
+  assert 0 < alpha < .065
+ issue.click()
+ assert area.evaluate("el => el.value.slice(0, el.selectionStart).split('\\n').length") == 2
  area.fill('{\n  "active": true, // valid\n  "url": "https://a"\n}')
  expect(issue).to_be_hidden()
- print('PASS runtime source marking and live JSONC syntax diagnostics')
+ print('PASS runtime source marking and subtle, clickable JSONC diagnostics in both themes')
  openfile('style.css')
  run('.card{color:red}')
  expect(p.frame_locator('.run-body iframe').locator('.card')).to_have_css('color','rgb(255, 0, 0)')

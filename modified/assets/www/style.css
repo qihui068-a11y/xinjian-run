@@ -379,11 +379,14 @@ html.dark,body.dark{
 .editor-completion button[aria-selected="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg);}
 .editor-error-line{
   position:absolute;top:0;inset-inline:0;pointer-events:none;
-  background:rgba(200,43,68,.14);border-inline-start:3px solid var(--syn-literal);
+  background:rgba(200,43,68,.045);border-inline-start:1px solid rgba(180,35,69,.35);
+}
+.dark .editor-error-line{
+  background:rgba(255,159,174,.055);border-inline-start-color:rgba(255,159,174,.4);
 }
 .editor-diagnostic{
   flex:none;min-height:30px;padding:4px 8px;text-align:left;
-  color:var(--syn-literal);font-size:var(--fs-caption1);
+  color:var(--fg-2);font-size:var(--fs-caption1);
   border-top:1px solid var(--sep);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .editor-diagnostic span{pointer-events:none;}
