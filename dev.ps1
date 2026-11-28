@@ -41,7 +41,11 @@ param(
     # 并存包用哪个后缀（tt.xinjian.cn.<Channel>）。应用内更新按这个后缀找
     # xinjian-run-<版本>-<Channel>.apk，所以要跟发布资产对上。
     [ValidatePattern('^[a-z][a-z0-9]{0,15}$')]
-    [string]$Channel = 'dshreader'
+    [string]$Channel = 'dshreader',
+
+    # 用正式密钥签名（默认在 -AsRelease 且 .local\tools\xinjian-run.p12 存在时自动启用）。
+    # 密钥和口令都只放 .local\tools\ 里，不进仓库。
+    [switch]$SignRelease
 )
 
 $ErrorActionPreference = 'Stop'
@@ -57,6 +61,26 @@ if ($AsRelease) {
 }
 $RemoteRoot = "/sdcard/Android/data/$Pkg/files"
 $DevKsPass = 'dev123456'
+
+# 正式签名密钥：.local\tools\xinjian-run.p12 + xinjian-run.pass（都不进仓库）。
+# 用一个跟已装正式版一致的密钥签名，应用内更新才能通过 UpdateBridge 的签名校验。
+$releaseKs = Join-Path (Join-Path $Root '.local\tools') 'xinjian-run.p12'
+$releasePassFile = Join-Path (Join-Path $Root '.local\tools') 'xinjian-run.pass'
+$useReleaseKey = $false
+if ($SignRelease -or $AsRelease) {
+    if (Test-Path $releaseKs) { $useReleaseKey = $true }
+    elseif ($SignRelease) { throw "找不到正式密钥：$releaseKs" }
+}
+if ($useReleaseKey) {
+    $ksPath = $releaseKs
+    $ksAlias = 'xinjian-run'
+    $ksPass = if (Test-Path $releasePassFile) { (Get-Content $releasePassFile -Raw).Trim() } else { '' }
+    if (-not $ksPass) { throw "找不到正式密钥口令：$releasePassFile" }
+} else {
+    $ksPath = Join-Path (Join-Path $Root '.local\tools') 'dev.jks'
+    $ksAlias = 'dev'
+    $ksPass = $DevKsPass
+}
 
 # ---------------------------------------------------------------- 工具探测
 
@@ -145,7 +169,11 @@ dev.ps1 — 信笺本地开发闭环
   .\dev.ps1 all        build + install + push
 
   加 -Serial <序列号> 指定设备。
-  加 -AsRelease 用正式包名（需要 xinjian.jks 才装得上）。
+  加 -AsRelease 用正式包名（tt.xinjian.cn.codeedit.run），
+    并且自动用 .local\tools\xinjian-run.p12 这把正式密钥签名
+    （口令在 .local\tools\xinjian-run.pass，都不进仓库）。
+    正式密钥签出来的包和已发布版本签名一致，应用内更新能直接装上去。
+  加 -Channel <后缀> 换并存包名（默认 dshreader），并存包仍用 dev.jks。
 
 默认打并存包 tt.xinjian.cn.dev：
   和手机上已装的正式版互不干扰，不用 xinjian.jks，也不碰正式版数据。
@@ -251,7 +279,7 @@ function Invoke-Build {
     $stamp = Join-Path $work 'signed'
     Remove-Item $stamp -Recurse -Force -ErrorAction SilentlyContinue
     $ErrorActionPreference = 'Continue'
-    & $java -jar $signerJar -a $unsigned --ks $devKs --ksAlias dev --ksPass $DevKsPass --ksKeyPass $DevKsPass -o $stamp
+    & $java -jar $signerJar -a $unsigned --ks $ksPath --ksAlias $ksAlias --ksPass $ksPass --ksKeyPass $ksPass -o $stamp
     $signExit = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
     if ($signExit -ne 0) { throw '签名失败，看上面日志。' }
@@ -268,8 +296,11 @@ function Invoke-Build {
     Write-Host "包名：$Pkg   活动：$Activity" -ForegroundColor DarkGray
     Write-Host ''
     if ($AsRelease) {
-        Write-Host '这是正式包名，用开发签名签的 —— 手机上已装正式版时签名对不上，装不了。' -ForegroundColor Yellow
-        Write-Host '要用 xinjian.jks 签：放仓库根后改用 D:\Android\sign.cmd，或把口令给我改脚本。' -ForegroundColor DarkGray
+        if ($useReleaseKey) {
+            Write-Host '用正式密钥 xinjian-run.p12 签的 —— 与已发布版本签名一致，可以覆盖安装、也能应用内更新。' -ForegroundColor Green
+        } else {
+            Write-Host '这是正式包名，但用开发签名签的 —— 手机上已装正式版时签名对不上，装不了。' -ForegroundColor Yellow
+        }
     } else {
         Write-Host '并存包，和正式版互不影响，直接 install 覆盖自己的旧 dev 包即可。' -ForegroundColor DarkGray
     }
