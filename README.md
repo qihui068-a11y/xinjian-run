@@ -96,3 +96,11 @@ Piston 公共 API 不提供交互接口。当前在线终端使用 Piston 的 st
 
 浏览器测试可运行 `python tests/run-c.py` 和 `python tests/run-online-interactive.py`。
 后者另外需要 Python `websockets`、JDK 和 C# 编译器，用本地测试服务运行两个固定样例。
+
+---
+
+## 许可证
+
+信笺以 **GNU General Public License v3.0 or later** 发布，全文见 [LICENSE](LICENSE)。
+
+随包的第三方组件各自保留原许可证，逐项声明见 [NOTICE.md](NOTICE.md)；授权核查记录与仍待确认的事项见 [LICENSE-AUDIT.md](LICENSE-AUDIT.md)。
