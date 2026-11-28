@@ -1347,6 +1347,8 @@
     :cond_5
     move-object v6, p1
 
+    # dev.flag 存在时优先从 /sdcard/Android/data/<包名>/files/www 读页面，
+    # 这样改 js/css/html 只需 adb push，不用重打包。
     invoke-direct {p0, p1}, Ltt/xinjian/cn/MainActivity;->serveDev(Ljava/lang/String;)Landroid/webkit/WebResourceResponse;
 
     move-result-object v5
@@ -1544,8 +1546,7 @@
 
     invoke-interface {v3, v4, v5}, Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
 
-    # 本地 Python 要求 /python-worker.js 带 CSP、/index.html 带 COOP+COEP，
-    # 否则页面拿不到 SharedArrayBuffer，input() 只能退回预填输入。
+    # 本地 Python 要求 /python-worker.js 带 CSP、/index.html 带 COOP+COEP
     invoke-static {p1, v3}, Ltt/xinjian/cn/MainActivity;->pythonRunnerHeaders(Ljava/lang/String;Ljava/util/Map;)V
 
     invoke-virtual {v2, v3}, Landroid/webkit/WebResourceResponse;->setResponseHeaders(Ljava/util/Map;)V
@@ -2662,6 +2663,7 @@
 
     iput-object v2, p0, Ltt/xinjian/cn/MainActivity;->web:Landroid/webkit/WebView;
 
+    # dev.flag 存在时开 WebView 远程调试（chrome://inspect / CDP 驱动）
     invoke-direct {p0}, Ltt/xinjian/cn/MainActivity;->devEnabled()Z
 
     move-result v3
@@ -2821,6 +2823,30 @@
     invoke-direct {v1, p0}, Ltt/xinjian/cn/XinJianBridge;-><init>(Landroid/content/Context;)V
 
     const-string v2, "XinJianBridge"
+
+    invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
+
+    new-instance v1, Ltt/xinjian/cn/LogBridge;
+
+    invoke-direct {v1, p0}, Ltt/xinjian/cn/LogBridge;-><init>(Landroid/content/Context;)V
+
+    const-string v2, "XinJianLog"
+
+    invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
+
+    new-instance v1, Ltt/xinjian/cn/AiBridge;
+
+    invoke-direct {v1, v0}, Ltt/xinjian/cn/AiBridge;-><init>(Landroid/webkit/WebView;)V
+
+    const-string v2, "XinJianAi"
+
+    invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
+
+    new-instance v1, Ltt/xinjian/cn/CropBridge;
+
+    invoke-direct {v1, v0}, Ltt/xinjian/cn/CropBridge;-><init>(Landroid/webkit/WebView;)V
+
+    const-string v2, "XinJianCrop"
 
     invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
 

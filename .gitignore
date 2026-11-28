@@ -5,6 +5,14 @@ __pycache__/
 /modified/build/
 /modified/dist/
 /modified/assets/www/python-runtime/
+
+# 发布产物、参考资料与本地目录不入库
+/docs/
+/z/
+/README-目录.md
+/release/
+/legacy-0.4/android/build/
+
 *.apk
 *.apks
 *.aab
@@ -13,7 +21,4 @@ __pycache__/
 *.p12
 *.pfx
 *.dpapi
-# 发布产物与参考工程不进库
-/release/
-/legacy-0.4/android/build/
 *.zip

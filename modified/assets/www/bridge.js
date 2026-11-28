@@ -5,6 +5,8 @@
   'use strict';
 
   var KEY = 'xj:docs:v1';
+  var LOG_KEY = 'xj:logs:files';
+  var LOG_MODE_KEY = 'xj:logs:mode';
   var hasNative = !!(global.XinJianBridge && global.XinJianBridge.list);
 
   function memStore() {
@@ -27,6 +29,31 @@
     var m = /\.([^.\\/]+)$/.exec(name);
     return m ? m[1].toLowerCase() : '';
   }
+  function logModeFallback() {
+    try {
+      var mode = localStorage.getItem(LOG_MODE_KEY);
+      if (mode === 'full' || mode === 'error' || mode === 'off') return mode;
+    } catch (e) {}
+    return 'error';
+  }
+  function logFiles() {
+    try {
+      var data = JSON.parse(localStorage.getItem(LOG_KEY) || '{}');
+      return data && typeof data === 'object' ? data : {};
+    } catch (e) { return {}; }
+  }
+  function logSaveFiles(data) {
+    try { localStorage.setItem(LOG_KEY, JSON.stringify(data)); } catch (e) {}
+  }
+  function logListFallback() {
+    var data = logFiles(), out = [];
+    Object.keys(data).forEach(function (name) {
+      out.push({ name: name, size: String(data[name].text || '').length, mtime: data[name].mtime || 0 });
+    });
+    out.sort(function (a, b) { return b.mtime - a.mtime; });
+    return out;
+  }
+
   function excerptOf(text) {
     var lines = String(text || '').split(/\r?\n/);
     for (var i = 0; i < lines.length; i++) {
@@ -77,6 +104,26 @@
     openAppSettings: function () {
       if (!hasNative) return false;
       try { window.XinJianBridge.openAppSettings(); return true; } catch (e) { return false; }
+    },
+    /* 安装未知应用（应用内更新用）。26 以下没有逐应用开关，返回 null 表示不显示这一行。 */
+    installStatus: function () {
+      if (!hasNative || typeof window.XinJianBridge.installStatus !== 'function') return null;
+      try { return window.XinJianBridge.installStatus() === true; } catch (e) { return null; }
+    },
+    openInstallSettings: function () {
+      if (!hasNative) return false;
+      try {
+        if (typeof window.XinJianBridge.openInstallSettings === 'function') {
+          window.XinJianBridge.openInstallSettings();
+          return true;
+        }
+      } catch (e) { return false; }
+      return Bridge.openAppSettings();
+    },
+    /* 拉起 QQ：WebView 会拦掉 mqqwpa://，只能交给原生 Intent */
+    openQQ: function (qq) {
+      if (!hasNative || typeof window.XinJianBridge.openQQ !== 'function') return false;
+      try { window.XinJianBridge.openQQ(String(qq)); return true; } catch (e) { return false; }
     },
     /* 某个原生命中是否存在（演示模式下四个媒体功能都没有） */
     can: function (fn) {
@@ -186,6 +233,108 @@
     exists: function (name) {
       if (hasNative) return callNative('exists', name);
       return Promise.resolve(!!store.get()[name]);
+    },
+
+    /* 背景图：调系统裁剪页，裁完回 __xjCrop({ok,name})。 */
+    pickBackground: function () {
+      if (!hasNative || !global.XinJianCrop || typeof global.XinJianCrop.pick !== 'function') return false;
+      try { global.XinJianCrop.pick(); return true; } catch (e) { return false; }
+    },
+
+    /* 删掉原生 media/ 里的文件；鸽屋图片和会话背景都用它 */
+    deleteMedia: function (name) {
+      if (!hasNative || !global.XinJianLan || typeof global.XinJianLan.deleteMedia !== 'function') return false;
+      try { return global.XinJianLan.deleteMedia(String(name)) === true; } catch (e) { return false; }
+    },
+
+    /* AI 请求交给原生发：WebView 直接 fetch 会被 CORS 拦住。 */
+    aiRequest: function (id, url, headers, body) {
+      if (!hasNative || !global.XinJianAi || typeof global.XinJianAi.request !== 'function') return false;
+      try {
+        global.XinJianAi.request(String(id), String(url), String(headers), String(body));
+        return true;
+      } catch (e) { return false; }
+    },
+
+    /* ===== 日志（崩溃/报错记录） =====
+       原生用 XinJianLog 写 /0/xinjian/wrong；浏览器演示退回 localStorage。 */
+    logState: function () {
+      try {
+        if (hasNative && global.XinJianLog && typeof global.XinJianLog.state === 'function') {
+          return Promise.resolve(JSON.parse(global.XinJianLog.state()));
+        }
+      } catch (e) {}
+      return Promise.resolve({
+        demo: true, public: false, path: '浏览器演示模式（localStorage）', mode: logModeFallback()
+      });
+    },
+    logList: function () {
+      try {
+        if (hasNative && global.XinJianLog && typeof global.XinJianLog.list === 'function') {
+          return Promise.resolve(JSON.parse(global.XinJianLog.list()));
+        }
+      } catch (e) {}
+      return Promise.resolve(logListFallback());
+    },
+    logRead: function (name) {
+      try {
+        if (hasNative && global.XinJianLog && typeof global.XinJianLog.read === 'function') {
+          return Promise.resolve(global.XinJianLog.read(String(name)) || '');
+        }
+      } catch (e) {}
+      var data = logFiles();
+      return Promise.resolve(data[name] ? String(data[name].text || '') : '');
+    },
+    logWrite: function (name, text) {
+      try {
+        if (hasNative && global.XinJianLog && typeof global.XinJianLog.write === 'function') {
+          return global.XinJianLog.write(String(name), String(text == null ? '' : text)) === true;
+        }
+      } catch (e) { return false; }
+      var data = logFiles();
+      data[name] = { text: String(text == null ? '' : text), mtime: Date.now() };
+      var names = Object.keys(data).sort(function (a, b) { return data[a].mtime - data[b].mtime; });
+      while (names.length > 30) delete data[names.shift()];
+      logSaveFiles(data);
+      return true;
+    },
+    logRemove: function (name) {
+      try {
+        if (hasNative && global.XinJianLog && typeof global.XinJianLog.remove === 'function') {
+          return global.XinJianLog.remove(String(name)) === true;
+        }
+      } catch (e) { return false; }
+      var data = logFiles();
+      if (!data[name]) return false;
+      delete data[name];
+      logSaveFiles(data);
+      return true;
+    },
+    logClear: function () {
+      try {
+        if (hasNative && global.XinJianLog && typeof global.XinJianLog.clear === 'function') {
+          return global.XinJianLog.clear() === true;
+        }
+      } catch (e) { return false; }
+      logSaveFiles({});
+      return true;
+    },
+    logSetMode: function (mode) {
+      try { localStorage.setItem(LOG_MODE_KEY, mode); } catch (e) {}
+      try {
+        if (hasNative && global.XinJianLog && typeof global.XinJianLog.setMode === 'function') {
+          global.XinJianLog.setMode(String(mode));
+        }
+      } catch (e) {}
+      return true;
+    },
+    logRequestStorage: function () {
+      try {
+        if (hasNative && global.XinJianLog && typeof global.XinJianLog.requestStorage === 'function') {
+          return global.XinJianLog.requestStorage() === true;
+        }
+      } catch (e) {}
+      return false;
     },
 
     /* 导出：代码版写到系统「下载/信笺代码版/」，否则触发浏览器下载 */

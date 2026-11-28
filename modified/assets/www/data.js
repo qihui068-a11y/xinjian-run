@@ -35,7 +35,7 @@
   var Pigeon = (function () {
     var KEY = 'xj:pigeon:v1';
     var db = null;
-    /* 内置占位 NPC：本地对象，不联网。只会重复一句开场白。 */
+    /* 内置 FUO：本地对象；未配置 AI 时只回一句开场白。 */
     var NPC_LINE = '你好，我是FUO。';
 
     function load() {
@@ -158,6 +158,21 @@
         if (!message) return;
         message.delivery = ok === true ? 'delivered' : ok === false ? 'failed' : 'pending';
         save();
+      },
+      setBg: function (id, name) {
+        var d = load(), s = d.sessions[id];
+        if (!s) return false;
+        s.bg = name || '';
+        save();
+        return true;
+      },
+      clear: function (id) {
+        var d = load(), s = d.sessions[id];
+        if (!s) return false;
+        s.msgs = [];
+        s.mtime = Date.now();
+        save();
+        return true;
       },
       remove: function (id) {
         var d = load(), o = [];
@@ -429,11 +444,9 @@
             return;
           }
           var nm = list[i++].name;
-          Bridge.read(nm).then(function (txt) {
-            return Bridge.exportOne(nm, txt).then(function (r) {
-              if (r === false) badN++; else okN++;
-              setTimeout(next, 260);
-            }, function () { badN++; setTimeout(next, 260); });
+          Books.exportFile(nm).then(function (r) {
+            if (r === false) badN++; else okN++;
+            setTimeout(next, 260);
           }, function () { badN++; setTimeout(next, 260); });
         })();
       });

@@ -710,6 +710,7 @@
             runner.close();
             openEditorFiles = openEditorFiles.map(function (file) { return file === name ? nv : file; });
             ShelfRecent.record(nv, name);
+            Books.rename(name, nv);
             name = nv;
             p.name = name;
             paintTabs();

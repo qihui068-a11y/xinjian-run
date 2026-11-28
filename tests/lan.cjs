@@ -386,8 +386,13 @@ module.exports = async function ({ test, app, settle }) {
       w.Pigeon.addFriend(PEER, 'Peer');
       w.Nav.reset('chat', { sid: s.id });
       await settle(w);
-      assert.ok(find('[data-act="cset"]'), 'LAN chat should offer session settings');
-      find('[data-act="cset"]').click();
+      assert.ok(find('[data-act="chatMenu"]'), 'LAN chat should offer session menu');
+      find('[data-act="chatMenu"]').click();
+      await settle(w);
+      const csetItem = Array.from(w.document.querySelectorAll('.pop-item'))
+        .find(node => node.textContent.indexOf('会话设置') >= 0);
+      assert.ok(csetItem, 'LAN chat should offer session settings');
+      csetItem.click();
       await settle(w);
       assert.match(find('.t-title').textContent, /会话设置/);
       assert.equal(w.document.querySelectorAll('.row').length, 5);

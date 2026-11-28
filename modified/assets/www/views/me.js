@@ -1,6 +1,6 @@
-/* 信笺 · 视图：小家（我）/ 设置 / 关于 / 权限 / 备份
+/* 信笺 · 视图：小家 / 设置 / 关于 / 权限 / 备份 / 赞助 / 日志
 
-   这 5 个页面都挂在「我」这一层，公用一套功能行样式，所以放一个文件。 */
+   这些页面都挂在「我」这一层，公用一套功能行样式。 */
 'use strict';
 
 
@@ -8,7 +8,6 @@
   /* ================= 视图：小家（我页） ================= */
   VIEWS.me = function (el) {
     var p = Profile.get();
-    var n = Pigeon.list().length;
     el.innerHTML =
       '<div class="topbar"><div class="t-gap"></div>' +
       '<div class="t-title">小家</div>' +
@@ -22,7 +21,6 @@
       '<div class="me-sub">' + esc(p.sid) + '</div>' +
       '</div>' +
       '<div class="rows">' +
-      rowHtml('pigeon', 'bird', '鸽屋', n ? (n + ' 个') : '') +
       rowHtml('backup', 'download', '备份', '') +
       rowHtml('settings', 'gear', '设置', '') + '</div><div class="rows">' +
       rowHtml('about', 'info', '关于', '') +
@@ -41,16 +39,10 @@
       if (!a) return;
       var act = a.dataset.act;
 
-      if (act === 'pigeon') return Nav.go('pigeon');
       if (act === 'settings') return Nav.go('settings');
       if (act === 'backup') return Nav.go('backup');
       if (act === 'about') return Nav.go('about');
-      if (act === 'sponsor') {
-        return sheet('赞助', [
-          { title: '信笺是单机应用，没有付费内容。' },
-          { title: '如果它帮到你了，把备份文件发给朋友就好。' }
-        ]);
-      }
+      if (act === 'sponsor') return Nav.go('sponsor');
       if (act === 'avatar') {
         inputBox('昵称', Profile.get().nick, '例如：阿晚').then(function (v) {
           if (v === null) return;
@@ -87,13 +79,10 @@
       '<div class="form"><div class="field"><label>动效</label>' +
       '<div class="chips anim-settings" id="animChips"></div></div></div>' +
       '<div class="rows">' +
-      rowHtml('perm', 'lock', '权限设置', '') +
+      rowHtml('perm', null, '权限设置', '') +
       rowHtml('pigeonSet', null, '鸽屋设置', '') +
       rowHtml('update', null, '应用更新', '') +
-      '</div>' +
-      /* push-bottom：内容不满一屏时把「关于」压到最底；内容超出一屏时它自然落在最后 */
-      '<div class="rows push-bottom">' +
-      rowHtml('about', 'info', '关于', '') +
+      rowHtml('logs', null, '日志', '') +
       '</div>' +
       '</div>';
 
@@ -124,10 +113,10 @@
       var act = a.dataset.act;
       if (act === 'perm') return Nav.go('perm');
       if (act === 'update') return Nav.go('update');
+      if (act === 'logs') return Nav.go('logs');
       if (act === 'pigeonSet') {
         return Nav.go('stub', { title: '鸽屋设置', text: '鸽屋设置还没做，先占位。' });
       }
-      if (act === 'about') return Nav.go('about');
     });
   };
 
@@ -154,6 +143,76 @@
       if (e.target.closest('[data-act=back]')) return Nav.back(false);
     });
   };
+
+  /* ================= 视图：赞助（二级）/ 赞赏码（三级） =================
+     两位开发者的收款码随 APK 打包；点整行看码，点 QQ 号才问要不要拉起 QQ。 */
+  var SPONSOR_CODES = {
+    huiqi: { name: '烩气', qq: '1924744295', image: 'sponsor/huiqi.webp' },
+    zhangwanqiu: { name: '张晚秋', qq: '2729262309', image: 'sponsor/zhangwanqiu.webp' }
+  };
+
+  function sponsorRow(code, role, qq) {
+    return '<button type="button" class="row sponsor-row" data-code="' + code + '">' +
+      '<span class="row-t">' +
+      '<span class="sponsor-role">' + esc(role) + '</span>' +
+      '<span class="sponsor-meta">QQ：<span class="sponsor-qq" data-qq="' + qq + '">' + qq +
+      '</span>　（赞助他！）</span></span>' +
+      '<span class="row-arrow">' + svg('chevron') + '</span></button>';
+  }
+
+  function askQQ(qq) {
+    sheet('打开 QQ', [
+      { title: '是否立即打开 QQ 联系 ' + qq + '？' },
+      { label: '同意', value: true },
+      'sep',
+      { label: '拒绝', value: false }
+    ]).then(function (ok) {
+      if (ok !== true) return;
+      if (!Bridge.openQQ(qq)) toast('当前环境无法打开 QQ');
+    });
+  }
+
+  VIEWS.sponsor = function (el) {
+    el.innerHTML =
+      '<div class="topbar"><button class="icon-btn" data-act="back">' + svg('back') + '</button>' +
+      '<div class="t-title">赞助</div><div class="t-gap"></div></div>' +
+      '<div class="scroll"><div class="form sponsor-form">' +
+      '<p class="sponsor-intro">感谢您赞助支持我们的独立产品，希望它给您带来新的体验！</p>' +
+      '<div class="field"><label>开发者名单</label>' +
+      '<div class="rows sponsor-list">' +
+      sponsorRow('huiqi', '技术支持：烩气', '1924744295') +
+      sponsorRow('zhangwanqiu', '产品构建及主持：张晚秋', '2729262309') +
+      '</div></div>' +
+      '</div></div>';
+
+    el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-act=back]')) return Nav.back(false);
+      var qq = e.target.closest('[data-qq]');
+      if (qq) {
+        e.preventDefault();
+        askQQ(qq.dataset.qq);
+        return;
+      }
+      var row = e.target.closest('[data-code]');
+      if (row) return Nav.go('sponsorCode', { code: row.dataset.code });
+    });
+  };
+
+  VIEWS.sponsorCode = function (el, p) {
+    var person = SPONSOR_CODES[p.code] || SPONSOR_CODES.huiqi;
+    el.innerHTML =
+      '<div class="topbar"><button class="icon-btn" data-act="back">' + svg('back') + '</button>' +
+      '<div class="t-title">' + esc(person.name) + ' 的赞赏码</div><div class="t-gap"></div></div>' +
+      '<div class="scroll sponsor-code-page">' +
+      '<img class="sponsor-code" src="' + person.image + '" alt="' + esc(person.name) + ' 的赞赏码">' +
+      '<p class="sponsor-hint">长按图片保存</p>' +
+      '</div>';
+
+    el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-act=back]')) return Nav.back(false);
+    });
+  };
+
 
   VIEWS.update = function (el) {
     el.innerHTML =
@@ -208,16 +267,18 @@
 
     var listEl = el.querySelector('#permList');
 
-    function iconOf(key) {
-      if (key === 'net') return 'server';
-      if (key === 'camera') return 'scan';
-      if (key === 'loc' || key === 'locFine') return 'pin';
-      return 'lock';
-    }
-
     function render() {
       Bridge.permStatus().then(function (st) {
-        var items = (st && st.items) ? st.items : [];
+        var items = (st && st.items) ? st.items.slice() : [];
+        /* 安装未知应用不是运行时权限，系统只给「按应用开关」，单独补一行 */
+        if (st && st.sdk >= 26) {
+          var install = Bridge.installStatus();
+          if (install !== null) items.push({
+            key: 'install', label: '安装未知应用',
+            note: '应用内更新安装 APK 时需要手动允许，安装完成后可以再关掉。',
+            granted: install, canAsk: true, revocable: true
+          });
+        }
         if (!items.length) {
           listEl.innerHTML = '<div class="empty"><p>' +
             (st && st.demo ? '演示模式读不到系统权限' : '拿不到权限状态') + '</p></div>';
@@ -227,7 +288,6 @@
         for (var i = 0; i < items.length; i++) {
           var it = items[i];
           h += '<div class="row perm-row">' +
-            '<span class="row-ico">' + svg(iconOf(it.key)) + '</span>' +
             '<span class="row-t">' +
             '<span class="perm-name">' + esc(it.label) + '</span>' +
             '<span class="perm-note">' + esc(it.note) + '</span>' +
@@ -244,7 +304,7 @@
         listEl.innerHTML = h + '</div>' +
           '<div class="set-note" style="padding:.5rem 1.25rem 1.5rem">' +
           '不授权也不影响用：相册和文件走系统选择器，不需要存储权限。' +
-          '「关闭」会跳到系统的本应用权限页——' +
+          '「关闭」会跳到系统的本应用权限页或安装设置——' +
           '系统不允许应用自己撤销已给的权限，只能由你在那里点掉。</div>';
       });
     }
@@ -266,12 +326,159 @@
     el.addEventListener('click', function (e) {
       if (e.target.closest('[data-act=back]')) return Nav.back(false);
       var b = e.target.closest('[data-ask]');
-      if (b) { Bridge.askPerm(b.dataset.ask); return; }
+      if (b) {
+        if (b.dataset.ask === 'install') return Bridge.openInstallSettings();
+        Bridge.askPerm(b.dataset.ask);
+        return;
+      }
       var c = e.target.closest('[data-close]');
       if (c) {
         /* 真实撤销只能在系统页面完成，我们只负责把你送过去，回来自动刷新 */
+        if (c.dataset.close === 'install') return Bridge.openInstallSettings();
         if (!Bridge.openAppSettings()) return toast('演示模式打不开系统设置');
         toast('在系统页面里关掉这个权限');
+      }
+    });
+  };
+
+
+  /* ================= 视图：日志（三级）/ 日志详情（四级） ================= */
+
+  function logModeRow() {
+    return '<button type="button" class="row log-mode-row" data-act="logMode">' +
+      '<span class="row-t">当前模式</span>' +
+      '<span class="row-v" data-log-mode-label>' + esc(Logs.label(Logs.mode())) + '</span>' +
+      '<span class="row-arrow">' + svg('chevron') + '</span></button>';
+  }
+
+  function paintLogMode() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-log-mode-label]'), function (node) {
+      node.textContent = Logs.label(Logs.mode());
+    });
+  }
+
+  function applyLogMode(value) {
+    Logs.setMode(value);
+    paintLogMode();
+    toast('已切换为' + Logs.label(value));
+  }
+
+  function chooseLogMode() {
+    var current = Logs.mode();
+    sheet('记录行为', [
+      { label: '完整记录', value: 'full' },
+      { label: '仅记录错误', value: 'error' },
+      { label: '完全不记录', value: 'off' }
+    ]).then(function (value) {
+      if (!value || value === current) return;
+      if (value === 'full') {
+        return confirmBox('完整记录会记录页面切换、点击等行为；在低端机上可能拖慢运行速度，也会暴露应用隐私。确认选择吗？', '确认')
+          .then(function (ok) { if (ok) applyLogMode('full'); });
+      }
+      if (value === 'off') {
+        return confirmBox('完全不记录后，应用不会记录任何行为，包括报错。遇到问题可能无法向开发者求助。确认选择吗？', '确认')
+          .then(function (ok) { if (ok) applyLogMode('off'); });
+      }
+      applyLogMode('error');
+    });
+  }
+
+  function logPathLabel(path) {
+    return String(path || '').replace(/^\/storage\/emulated\/0/, '/0');
+  }
+
+  VIEWS.logs = function (el) {
+    el.innerHTML =
+      '<div class="topbar"><button class="icon-btn" data-act="back">' + svg('back') + '</button>' +
+      '<div class="t-title">日志</div><div class="t-gap"></div></div>' +
+      '<div class="scroll"><div class="form">' +
+      '<div class="field"><label>记录行为</label>' + logModeRow() +
+      '<div class="set-note" data-log-path>读取中…</div>' +
+      '<div class="chips"><button type="button" class="chip" data-act="logStorage" hidden>授权写入 /0/xinjian/wrong</button></div>' +
+      '</div>' +
+      '<div class="field"><label>日志文件</label>' +
+      '<div class="rows" data-log-list><div class="empty"><p>读取中…</p></div></div>' +
+      '</div></div></div>';
+
+    var path = el.querySelector('[data-log-path]');
+    var storage = el.querySelector('[data-act=logStorage]');
+    var listEl = el.querySelector('[data-log-list]');
+
+    function renderPath() {
+      Logs.state().then(function (state) {
+        var note = '';
+        if (!state.demo && !state.public) {
+          note = state.sdk === 29 ? '（Android 10 无法授权公共目录，暂存应用私有目录）' : '（公共目录未授权，暂存应用私有目录）';
+        }
+        path.textContent = '位置：' + logPathLabel(state.path) + note;
+        var locked = state.demo || state.public || state.sdk === 29;
+        storage.hidden = locked;
+        storage.style.display = locked ? 'none' : '';
+      });
+    }
+
+    function renderList() {
+      Logs.list().then(function (list) {
+        if (!list.length) {
+          listEl.innerHTML = '<div class="empty"><p>还没有日志</p></div>';
+          return;
+        }
+        listEl.innerHTML = list.map(function (item) {
+          return '<button type="button" class="row log-row" data-log="' + esc(item.name) + '">' +
+            '<span class="row-t"><span class="log-name">' + esc(item.name) + '</span>' +
+            '<span class="log-meta">' + fmtSize(item.size) + ' · ' + fmtTime(item.mtime) + '</span></span>' +
+            '<span class="row-arrow">' + svg('chevron') + '</span></button>';
+        }).join('');
+      });
+    }
+
+    function render() { renderPath(); renderList(); }
+
+    function visible() { if (!document.hidden) render(); }
+
+    render();
+    document.addEventListener('visibilitychange', visible);
+    el.__cleanup = function () { document.removeEventListener('visibilitychange', visible); };
+
+    el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-act=back]')) return Nav.back(false);
+      if (e.target.closest('[data-act=logMode]')) return chooseLogMode();
+      if (e.target.closest('[data-act=logStorage]')) {
+        if (!Logs.requestStorage()) toast('当前系统不支持自动授权，请到系统设置里开启');
+        else toast('授权后返回这里，路径会自动更新');
+        return;
+      }
+      var row = e.target.closest('[data-log]');
+      if (row) return Nav.go('logDetail', { name: row.dataset.log });
+    });
+  };
+
+  VIEWS.logDetail = function (el, p) {
+    el.innerHTML =
+      '<div class="topbar"><button class="icon-btn" data-act="back">' + svg('back') + '</button>' +
+      '<div class="t-title">日志</div><div class="t-gap"></div></div>' +
+      '<div class="scroll"><div class="form">' +
+      '<div class="field"><label>记录行为</label>' + logModeRow() + '</div>' +
+      '<div class="field"><label>日志内容</label>' +
+      '<pre class="log-detail" data-log-body>读取中…</pre></div>' +
+      '<div class="chips"><button type="button" class="chip off" data-act="logDelete">删除这条日志</button></div>' +
+      '</div></div>';
+
+    var body = el.querySelector('[data-log-body]');
+    Logs.read(p.name).then(function (text) { body.textContent = text || '（空日志）'; });
+
+    el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-act=back]')) return Nav.back(false);
+      if (e.target.closest('[data-act=logMode]')) return chooseLogMode();
+      if (e.target.closest('[data-act=logDelete]')) {
+        confirmBox('删除这条日志？', '删除').then(function (ok) {
+          if (!ok) return;
+          Logs.remove(p.name).then(function (ok) {
+            if (ok === false) return toast('删除失败');
+            toast('已删除');
+            Nav.back(false);
+          });
+        });
       }
     });
   };

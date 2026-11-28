@@ -62,7 +62,8 @@ public final class UpdateBridge {
         if (!begin("checking", 0)) return;
         worker.execute(() -> {
             try {
-                UpdateRelease next = UpdateRelease.read(fetchLatest(), installed.versionName);
+                UpdateRelease next = UpdateRelease.read(fetchLatest(), installed.versionName,
+                        UpdateRelease.channel(activity.getPackageName()));
                 boolean cached = next != null && validCached(UpdateApkProvider.apk(activity, next), next);
                 synchronized (UpdateBridge.this) {
                     release = next;

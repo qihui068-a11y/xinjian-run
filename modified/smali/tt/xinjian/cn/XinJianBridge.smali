@@ -10,6 +10,150 @@
 
 
 # direct methods
+.method public bookSize(Ljava/lang/String;)J
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1}, Ltt/xinjian/cn/BookFiles;->size(Ljava/io/File;)J
+
+    move-result-wide v0
+
+    return-wide v0
+.end method
+
+.method public bookChunk(Ljava/lang/String;II)Ljava/lang/String;
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1, p2, p3}, Ltt/xinjian/cn/BookFiles;->chunk(Ljava/io/File;II)Ljava/lang/String;
+
+    move-result-object v0
+
+    return-object v0
+.end method
+
+.method public bookBegin(Ljava/lang/String;I)Ljava/lang/String;
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1, p2}, Ltt/xinjian/cn/BookFiles;->begin(Ljava/io/File;I)Ljava/lang/String;
+
+    move-result-object v0
+
+    return-object v0
+.end method
+
+.method public bookAppend(Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;)Z
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1, p2, p3, p4}, Ltt/xinjian/cn/BookFiles;->append(Ljava/io/File;Ljava/lang/String;ILjava/lang/String;)Z
+
+    move-result v0
+
+    return v0
+.end method
+
+.method public bookFinish(Ljava/lang/String;Ljava/lang/String;I)Z
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1, p2, p3}, Ltt/xinjian/cn/BookFiles;->finish(Ljava/io/File;Ljava/lang/String;I)Z
+
+    move-result v0
+
+    return v0
+.end method
+
+.method public bookCancel(Ljava/lang/String;Ljava/lang/String;)V
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1, p2}, Ltt/xinjian/cn/BookFiles;->cancel(Ljava/io/File;Ljava/lang/String;)V
+
+    return-void
+.end method
+
+.method public bookArchive(Ljava/lang/String;)Z
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1}, Ltt/xinjian/cn/BookFiles;->archive(Ljava/io/File;)Z
+
+    move-result v0
+
+    return v0
+.end method
+
+.method public bookEntry(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1, p2, p3}, Ltt/xinjian/cn/BookFiles;->entry(Ljava/io/File;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object v0
+
+    return-object v0
+.end method
+
+.method public bookExport(Ljava/lang/String;)Z
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    iget-object v0, p0, Ltt/xinjian/cn/XinJianBridge;->ctx:Landroid/content/Context;
+
+    invoke-static {v0, p1}, Ltt/xinjian/cn/BookFiles;->export(Landroid/content/Context;Ljava/io/File;)Z
+
+    move-result v0
+
+    return v0
+.end method
+
 .method public constructor <init>(Landroid/content/Context;)V
     .locals 2
 
@@ -1988,6 +2132,220 @@
     .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
 
     :catch_0
+    return-void
+.end method
+
+.method public installStatus()Z
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    sget v0, Landroid/os/Build$VERSION;->SDK_INT:I
+
+    const/16 v1, 0x1a
+
+    if-ge v0, v1, :cond_0
+
+    const/4 v0, 0x1
+
+    return v0
+
+    :cond_0
+    :try_start_0
+    iget-object v0, p0, Ltt/xinjian/cn/XinJianBridge;->ctx:Landroid/content/Context;
+
+    invoke-virtual {v0}, Landroid/content/Context;->getPackageManager()Landroid/content/pm/PackageManager;
+
+    move-result-object v0
+
+    invoke-virtual {v0}, Landroid/content/pm/PackageManager;->canRequestPackageInstalls()Z
+
+    move-result v0
+    :try_end_0
+    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
+
+    return v0
+
+    :catch_0
+    const/4 v0, 0x1
+
+    return v0
+.end method
+
+.method public openInstallSettings()V
+    .locals 4
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    sget v0, Landroid/os/Build$VERSION;->SDK_INT:I
+
+    const/16 v1, 0x1a
+
+    if-ge v0, v1, :cond_0
+
+    invoke-virtual {p0}, Ltt/xinjian/cn/XinJianBridge;->openAppSettings()V
+
+    return-void
+
+    :cond_0
+    :try_start_0
+    new-instance v0, Landroid/content/Intent;
+
+    const-string v1, "android.settings.MANAGE_UNKNOWN_APP_SOURCES"
+
+    invoke-direct {v0, v1}, Landroid/content/Intent;-><init>(Ljava/lang/String;)V
+
+    new-instance v1, Ljava/lang/StringBuilder;
+
+    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v2, "package:"
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    iget-object v2, p0, Ltt/xinjian/cn/XinJianBridge;->ctx:Landroid/content/Context;
+
+    invoke-virtual {v2}, Landroid/content/Context;->getPackageName()Ljava/lang/String;
+
+    move-result-object v2
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v1
+
+    invoke-static {v1}, Landroid/net/Uri;->parse(Ljava/lang/String;)Landroid/net/Uri;
+
+    move-result-object v1
+
+    invoke-virtual {v0, v1}, Landroid/content/Intent;->setData(Landroid/net/Uri;)Landroid/content/Intent;
+
+    const/high16 v1, 0x10000000
+
+    invoke-virtual {v0, v1}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
+
+    iget-object v1, p0, Ltt/xinjian/cn/XinJianBridge;->ctx:Landroid/content/Context;
+
+    invoke-virtual {v1, v0}, Landroid/content/Context;->startActivity(Landroid/content/Intent;)V
+    :try_end_0
+    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
+
+    return-void
+
+    :catch_0
+    return-void
+.end method
+
+.method public openQQ(Ljava/lang/String;)V
+    .locals 5
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    if-nez p1, :cond_0
+
+    return-void
+
+    :cond_0
+    :try_start_0
+    const-string v0, "^[0-9]{5,12}$"
+
+    invoke-virtual {p1, v0}, Ljava/lang/String;->matches(Ljava/lang/String;)Z
+
+    move-result v0
+
+    if-nez v0, :cond_1
+
+    return-void
+
+    :cond_1
+    new-instance v0, Landroid/content/Intent;
+
+    const-string v1, "android.intent.action.VIEW"
+
+    invoke-direct {v0, v1}, Landroid/content/Intent;-><init>(Ljava/lang/String;)V
+
+    new-instance v1, Ljava/lang/StringBuilder;
+
+    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v2, "mqqwpa://im/chat?chat_type=wpa&uin="
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v1, p1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    const-string v2, "&version=1&src_type=web"
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v1
+
+    invoke-static {v1}, Landroid/net/Uri;->parse(Ljava/lang/String;)Landroid/net/Uri;
+
+    move-result-object v1
+
+    invoke-virtual {v0, v1}, Landroid/content/Intent;->setData(Landroid/net/Uri;)Landroid/content/Intent;
+
+    const/high16 v1, 0x10000000
+
+    invoke-virtual {v0, v1}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
+
+    iget-object v1, p0, Ltt/xinjian/cn/XinJianBridge;->ctx:Landroid/content/Context;
+
+    invoke-virtual {v1, v0}, Landroid/content/Context;->startActivity(Landroid/content/Intent;)V
+    :try_end_0
+    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
+
+    return-void
+
+    :catch_0
+    :try_start_1
+    new-instance v0, Landroid/content/Intent;
+
+    const-string v1, "android.intent.action.VIEW"
+
+    invoke-direct {v0, v1}, Landroid/content/Intent;-><init>(Ljava/lang/String;)V
+
+    new-instance v1, Ljava/lang/StringBuilder;
+
+    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v2, "https://wpa.qq.com/msgrd?v=3&uin="
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v1, p1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    const-string v2, "&site=qq&menu=yes"
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v1
+
+    invoke-static {v1}, Landroid/net/Uri;->parse(Ljava/lang/String;)Landroid/net/Uri;
+
+    move-result-object v1
+
+    invoke-virtual {v0, v1}, Landroid/content/Intent;->setData(Landroid/net/Uri;)Landroid/content/Intent;
+
+    const/high16 v1, 0x10000000
+
+    invoke-virtual {v0, v1}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
+
+    iget-object v1, p0, Ltt/xinjian/cn/XinJianBridge;->ctx:Landroid/content/Context;
+
+    invoke-virtual {v1, v0}, Landroid/content/Context;->startActivity(Landroid/content/Intent;)V
+    :try_end_1
+    .catch Ljava/lang/Exception; {:try_start_1 .. :try_end_1} :catch_1
+
+    return-void
+
+    :catch_1
     return-void
 .end method
 
