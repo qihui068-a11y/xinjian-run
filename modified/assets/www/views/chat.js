@@ -46,7 +46,7 @@
       paintLan();
       var count = Lan.running() ? Lan.peers().length : 0;
       scanStatus.textContent = count ? '发现 ' + count + ' 台设备' :
-        Lan.running() ? '查看局域网设备' : '开启局域网后搜索';
+        Lan.running() ? '查看局域网设备' : '开启局域网后查看';
       var term = search.value.trim().toLowerCase();
       var pending = Pigeon.requestCount();
       requests.textContent = pending ? '好友申请 · ' + pending : '好友申请';

@@ -14,8 +14,8 @@ module.exports = async function ({ test, app, settle }) {
       await w.Bridge.create('故事.txt', '第一章 开始\n第二章 归途\n');
       await w.Bridge.create('笔记.md', '# 只是笔记\n');
       await w.Bridge.create('漫画.epub', 'PK\u0003\u0004占位');
-      /* 42% + 固定时间戳：让「故事.txt」稳定排在第一位 */
-      w.Books.save('故事.txt', { percent: 42, openedAt: 1700000000000, index: 1 });
+      /* 长书里的位置可能仍显示 0%，但选择后也应恢复到已读的位置。 */
+      w.Books.save('故事.txt', { percent: 0, openedAt: 1700000000000, index: 1 });
 
       w.Nav.reset('shelf');
       await settle(w);

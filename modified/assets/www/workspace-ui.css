@@ -121,19 +121,20 @@
   font-size: var(--fs-footnote); padding: 0;
 }
 .workspace-search:focus-within { border-color: var(--workspace-muted); box-shadow: 0 0 0 1px var(--workspace-muted); }
-.workspace-shortcuts { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-top: 12px; }
+.workspace-shortcuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
 .workspace-shortcuts button {
-  display: flex; align-items: center; gap: 7px; padding: 8px 9px; min-height: 56px; text-align: left;
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; min-height: 56px; text-align: left;
   border-radius: var(--workspace-radius); border: 1px solid var(--workspace-border); background: var(--workspace-surface);
 }
 .workspace-shortcuts button strong { font-size: var(--fs-footnote); }
 .workspace-shortcuts button svg { flex: none; }
-/* 三列后每格只有约 115px：图标 18px + 6px 间距，说明文字压到 10px 才能整行放下（「从设备选择文件」7 字） */
-.workspace-shortcuts button { gap: 6px; }
-.workspace-shortcuts button svg { width: 18px; height: 18px; }
 .workspace-shortcuts button span { min-width: 0; }
-.workspace-shortcuts button strong, .workspace-shortcuts button small { white-space: nowrap; }
-.workspace-shortcuts button small { font-size: 10px; line-height: 12px; letter-spacing: -.2px; }
+/* 书架的三个快捷入口需要更紧凑的横排。 */
+.shelf-view .workspace-shortcuts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.shelf-view .workspace-shortcuts button { gap: 6px; padding-inline: 9px; }
+.shelf-view .workspace-shortcuts button svg { width: 18px; height: 18px; }
+.shelf-view .workspace-shortcuts button strong, .shelf-view .workspace-shortcuts button small { white-space: nowrap; }
+.shelf-view .workspace-shortcuts button small { font-size: 10px; line-height: 12px; letter-spacing: -.2px; }
 .workspace-shortcuts button:active, .shelf-row:active { background: var(--workspace-selected); }
 .home-view .entry, .workspace-shortcuts button, .shelf-row, .workspace-actions .icon-btn {
   transition: transform var(--m-press) var(--e-out), background-color var(--m-press) var(--e-out);

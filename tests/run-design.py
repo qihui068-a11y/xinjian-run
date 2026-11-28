@@ -232,6 +232,19 @@ def compare(browser, scheme):
     pigeon_actions = page.locator('.pigeon-view .workspace-actions').get_by_role('button')
     assert pigeon_actions.evaluate_all("buttons => buttons.map(button => button.getAttribute('aria-label'))") == [
         '添加朋友', '鸽屋选项']
+    shortcuts = page.locator('.pigeon-view .workspace-shortcuts')
+    expect(shortcuts.locator('strong')).to_have_text(['局域网已关闭', '附近设备'])
+    expect(shortcuts.locator('#pgNearby small')).to_have_text('开启局域网后查看')
+    for width in (320, 390):
+        page.set_viewport_size({'width': width, 'height': 844})
+        bounds = shortcuts.bounding_box()
+        left, right = [button.bounding_box() for button in shortcuts.locator('button').all()]
+        assert abs(left['x'] - bounds['x']) <= 1
+        assert abs(right['x'] + right['width'] - bounds['x'] - bounds['width']) <= 1
+        assert abs(left['width'] - right['width']) <= 1
+        assert left['y'] == right['y'] and left['height'] == right['height']
+        assert all(shortcuts.locator('button span').evaluate_all(
+            'labels => labels.map(label => label.scrollWidth <= label.clientWidth + 1)'))
     expect(page.locator('.pg-item')).to_have_count(2)
     search = page.get_by_role('searchbox', name='搜索会话或消息')
     search.fill('书架比之前清爽')

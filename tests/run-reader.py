@@ -175,6 +175,25 @@ def test_text(page):
     assert max(centers) - min(centers) <= 1
     assert len(body.text_content()) <= 12000
     expect(page.locator('.reader-progress')).to_contain_text('段')
+    scroll = page.locator('.reader-scroll')
+    bar = page.locator('.reader-bar')
+    footer = page.locator('.reader-controls')
+    visible_height = scroll.evaluate('(el) => el.clientHeight')
+    scroll.evaluate('''el => {
+      el.dispatchEvent(new WheelEvent('wheel'));
+      el.scrollTop = el.scrollHeight;
+    }''')
+    end = scroll.evaluate('(el) => el.scrollTop')
+    scroll.tap()
+    expect(bar).to_be_hidden()
+    expect(footer).to_be_hidden()
+    assert scroll.evaluate('(el) => el.clientHeight') > visible_height
+    assert scroll.evaluate('(el) => el.scrollTop') < end
+    scroll.tap()
+    expect(bar).to_be_visible()
+    expect(footer).to_be_visible()
+    assert abs(scroll.evaluate('(el) => el.scrollTop') - end) < 2
+    scroll.evaluate('(el) => el.scrollTop = 0')
     choose(page, '字号', '24 px')
     expect(body).to_have_css('font-size', '24px')
     choose(page, '行距', '宽松')
@@ -184,18 +203,26 @@ def test_text(page):
     choose(page, '阅读主题', '深色')
     expect(page.locator('.reader-view')).to_have_css('background-color', 'rgb(18, 18, 18)')
     choose(page, '阅读模式', '分页')
-    scroll = page.locator('.reader-scroll')
     page.get_by_role('button', name='下一页', exact=True).click()
     page.wait_for_function("document.querySelector('.reader-scroll').scrollTop > 0")
     before = scroll.evaluate('(el) => el.scrollTop')
+    scroll.tap()
+    expect(bar).to_be_hidden()
+    expect(footer).to_be_hidden()
+    assert abs(scroll.evaluate('(el) => el.scrollTop') - before) < 2
     scroll.tap(position={'x': 350, 'y': 245})
     assert scroll.evaluate('(el) => el.scrollTop') > before
+    expect(bar).to_be_hidden()
     before = scroll.evaluate('(el) => el.scrollTop')
     cdp = page.context.new_cdp_session(page)
     cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': 290, 'y': 260}]})
     cdp.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': [{'x': 125, 'y': 260}]})
     cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
     assert scroll.evaluate('(el) => el.scrollTop') > before
+    expect(footer).to_be_hidden()
+    scroll.press('Enter')
+    expect(bar).to_be_visible()
+    expect(footer).to_be_visible()
     options(page, '添加书签')
     expect(page.locator('.toast')).to_contain_text('已添加书签')
     page.get_by_role('button', name='目录', exact=True).click()
@@ -219,7 +246,7 @@ def test_text(page):
     close_reader(page)
     page.locator('.shelf-reading').get_by_role('button', name='清理', exact=True).click()
     expect(page.locator('.shelf-reading')).to_be_hidden()
-    print('PASS TXT segmentation, TOC, settings, page taps/swipes, bookmarks and restore')
+    print('PASS TXT, center taps/keyboard, hidden controls, paging, bookmarks and restore')
 
     for name, content in [('UTF16LE.txt', '小行星'), ('UTF16BE.TXT', '新内容。')]:
         open_file(page, name)

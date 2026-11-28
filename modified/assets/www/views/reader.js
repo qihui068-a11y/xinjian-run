@@ -7,6 +7,7 @@ VIEWS.reader = function (el, params) {
   var preferences = Books.settings();
   var book, index = 0, loadId = 0, disposed = false, ready = false;
   var saveTimer, urls = [], motion = null, gesture = null, layoutPosition = null;
+  var chromeHidden = false, heldPosition = null;
   var settingsLabels = { system: '跟随应用', light: '浅色', dark: '深色', warm: '暖色' };
   el.classList.add('reader-view');
   el.innerHTML =
@@ -15,12 +16,13 @@ VIEWS.reader = function (el, params) {
       '<button type="button" class="t-text" data-act="toc">目录</button>' +
       '<button type="button" class="t-text" data-act="settings">设置</button>' +
       '<button type="button" class="icon-btn" data-act="more" aria-label="阅读操作">' + svg('more') + '</button></header>' +
-    '<div class="scroll reader-scroll" tabindex="0" aria-label="正文">' +
+    '<div class="scroll reader-scroll" tabindex="0" aria-label="正文" aria-keyshortcuts="Enter">' +
       '<div class="reader-frame"><p class="reader-status" role="status"></p><article class="reader-content"></article></div></div>' +
     '<footer class="reader-controls" hidden><button type="button" class="t-text" data-act="previous"></button>' +
       '<div class="reader-progress"><span></span><progress max="100" value="0" aria-label="阅读进度"></progress></div>' +
       '<button type="button" class="t-text" data-act="next"></button></footer>';
 
+  var bar = el.querySelector('.reader-bar');
   var title = el.querySelector('.t-title'), author = el.querySelector('.reader-book-title small');
   var scroll = el.querySelector('.reader-scroll'), frame = el.querySelector('.reader-frame');
   var status = el.querySelector('.reader-status'), content = el.querySelector('.reader-content');
@@ -41,6 +43,7 @@ VIEWS.reader = function (el, params) {
   function pageStep() { return Math.max(48, scroll.clientHeight - 32); }
   function ratio() { return maxScroll() ? Math.max(0, Math.min(1, scroll.scrollTop / maxScroll())) : 0; }
   function position() {
+    if (heldPosition) return heldPosition.pin;
     if (layoutPosition) return layoutPosition;
     return { index: index, fraction: ratio() };
   }
@@ -70,7 +73,8 @@ VIEWS.reader = function (el, params) {
     if (!book || !ready) return;
     var pin = position();
     var section = book.sections[index];
-    var percent = (index + (index === book.sections.length - 1 && !maxScroll() ? 1 : pin.fraction)) / book.sections.length;
+    var fits = heldPosition ? heldPosition.fits : !maxScroll();
+    var percent = (index + (index === book.sections.length - 1 && fits ? 1 : pin.fraction)) / book.sections.length;
     Books.save(name, {
       index: index, fraction: pin.fraction, anchor: pin.anchor || '', path: section.path || '',
       mode: preferences.mode, percent: Math.round(percent * 100), openedAt: Date.now()
@@ -124,7 +128,8 @@ VIEWS.reader = function (el, params) {
       }
     }
     ready = true;
-    controls.hidden = false;
+    controls.hidden = chromeHidden;
+    heldPosition = null;
     layoutPosition = { index: index, fraction: Number(pin.fraction) || 0, anchor: pin.anchor || '' };
     scroll.scrollTop = 0;
     updateLayout();
@@ -173,7 +178,20 @@ VIEWS.reader = function (el, params) {
     }
   }
 
-  function userPosition() { layoutPosition = null; }
+  function userPosition() { layoutPosition = null; heldPosition = null; }
+
+  function toggleChrome() {
+    if (!ready) return;
+    // A taller viewport can clamp scrollTop near the end of a section.
+    // Keep the original offset until the reader scrolls or turns a page.
+    var saved = heldPosition || { top: scroll.scrollTop, pin: position(), fits: !maxScroll() };
+    chromeHidden = !chromeHidden;
+    layoutPosition = null;
+    heldPosition = chromeHidden ? saved : null;
+    bar.hidden = controls.hidden = chromeHidden;
+    scroll.scrollTop = saved.top;
+    updateControls();
+  }
 
   function turn(direction) {
     if (!ready) return;
@@ -332,6 +350,11 @@ VIEWS.reader = function (el, params) {
   scroll.addEventListener('wheel', userPosition, { passive: true });
   scroll.addEventListener('keydown', function (event) {
     if (event.target !== scroll) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (!event.repeat) toggleChrome();
+      return;
+    }
     userPosition();
     if (preferences.mode !== 'page') return;
     if (['ArrowLeft', 'PageUp', 'ArrowRight', 'PageDown', ' '].indexOf(event.key) < 0) return;
@@ -339,24 +362,36 @@ VIEWS.reader = function (el, params) {
     turn(event.key === 'ArrowLeft' || event.key === 'PageUp' || event.shiftKey ? -1 : 1);
   });
   scroll.addEventListener('pointerdown', function (event) {
-    if (!event.isPrimary || event.target.closest('button')) return;
+    if (!event.isPrimary || event.button !== 0 || event.target.closest('button, a')) return;
+    gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, time: event.timeStamp, moved: false };
+  });
+  scroll.addEventListener('pointermove', function (event) {
+    if (!gesture || gesture.id !== event.pointerId || gesture.moved) return;
+    if (Math.abs(event.clientX - gesture.x) <= 9 && Math.abs(event.clientY - gesture.y) <= 9) return;
+    gesture.moved = true;
     userPosition();
-    if (preferences.mode !== 'page' || event.clientX <= 24 || innerWidth - event.clientX <= 24) return;
-    gesture = { id: event.pointerId, x: event.clientX, y: event.clientY };
   });
   scroll.addEventListener('pointerup', function (event) {
     var start = gesture;
-    gesture = null;
     if (!start || start.id !== event.pointerId) return;
+    gesture = null;
+    if (event.target.closest('button, a')) return;
     var dx = event.clientX - start.x, dy = event.clientY - start.y;
-    if (Math.abs(dx) >= 55 && Math.abs(dx) > Math.abs(dy) * 1.25) return turn(dx < 0 ? 1 : -1);
+    var canTurn = preferences.mode === 'page' && start.x > 24 && innerWidth - start.x > 24;
+    if (canTurn && Math.abs(dx) >= 55 && Math.abs(dx) > Math.abs(dy) * 1.25) return turn(dx < 0 ? 1 : -1);
     var selection = window.getSelection();
-    if (Math.abs(dx) > 9 || Math.abs(dy) > 9 || selection && !selection.isCollapsed) return;
+    if (start.moved || Math.abs(dx) > 9 || Math.abs(dy) > 9 || event.timeStamp - start.time > 450 ||
+        selection && !selection.isCollapsed) return;
     var area = scroll.getBoundingClientRect(), point = event.clientX - area.left;
-    if (point < area.width * .28) turn(-1);
-    else if (point > area.width * .72) turn(1);
+    if (point < area.width * .28) { if (canTurn) turn(-1); }
+    else if (point > area.width * .72) { if (canTurn) turn(1); }
+    else if (event.clientY > area.top + area.height * .25 && event.clientY < area.bottom - area.height * .25) toggleChrome();
   });
-  scroll.addEventListener('pointercancel', function () { gesture = null; });
+  scroll.addEventListener('pointercancel', function (event) {
+    if (!gesture || gesture.id !== event.pointerId) return;
+    gesture = null;
+    userPosition();
+  });
 
   function background() { if (document.hidden) persist(); }
   document.addEventListener('visibilitychange', background);

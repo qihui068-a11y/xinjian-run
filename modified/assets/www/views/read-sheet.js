@@ -29,14 +29,13 @@ var ReadSheet = (function () {
     mask.className = 'mask workspace-sheet-mask read-mask';
     var rows = books.map(function (book) {
       var format = Books.format(book.name).toUpperCase();
-      var record = Books.record(book.name) || {};
-      var percent = record.percent || 0;
+      var hasPosition = Number.isInteger(Books.record(book.name).index);
       var meta = format + ' · ' + size(book.size);
       return '<button type="button" class="read-book" data-book="' + esc(book.name) + '">' +
         (format === 'EPUB' ? BOOK_ICON : FILE_ICON) +
         '<span class="read-book-text"><strong>' + esc(book.name) + '</strong>' +
         '<small>' + esc(meta) + '</small></span>' +
-        '<span class="read-book-go">' + (percent > 0 ? '继续阅读' : '开始阅读') + ARROW + '</span>' +
+        '<span class="read-book-go">' + (hasPosition ? '继续阅读' : '开始阅读') + ARROW + '</span>' +
         '</button>';
     }).join('');
     mask.innerHTML =

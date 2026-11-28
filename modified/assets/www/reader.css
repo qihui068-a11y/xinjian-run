@@ -38,6 +38,7 @@
   color: var(--reader-fg);
   border-color: var(--reader-sep);
 }
+.reader-view .reader-bar[hidden] { display: none; }
 .reader-view .reader-bar .icon-btn, .reader-view .reader-bar .t-text, .reader-controls .t-text {
   flex: none;
   color: inherit;
