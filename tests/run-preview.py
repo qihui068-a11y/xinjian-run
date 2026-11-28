@@ -7,14 +7,23 @@ def check_symbol_dock(browser):
                             device_scale_factor=2, has_touch=True, is_mobile=True)
     try:
         page.add_init_script("""window.testViewport = Object.assign(new EventTarget(), {height:800, offsetTop:0, scale:1});
-            Object.defineProperty(window, 'visualViewport', {value:testViewport});""")
+            Object.defineProperty(window, 'visualViewport', {value:testViewport});
+            window.editorFocusCalls = [];
+            const focus = HTMLElement.prototype.focus;
+            HTMLElement.prototype.focus = function(options) {
+              if (this.id === 'ta') editorFocusCalls.push(options?.preventScroll === true);
+              return focus.call(this, options);
+            };""")
         page.route('https://xj.test/**', lambda route: route.fulfill(path=root/route.request.url.split('https://xj.test/')[1]))
         page.goto('https://xj.test/index.html')
         page.evaluate("""async () => {
           await Bridge.create('symbols.py', '');
-          Nav.reset('editor', {name:'symbols.py', mode:'edit'});
+          Nav.reset('editor', {name:'symbols.py', mode:'read'});
         }""")
         symbols = page.locator('.editor-symbols')
+        page.get_by_role('button', name='编辑', exact=True).tap()
+        area = page.locator('#ta')
+        expect(area).to_be_focused()
         symbols.wait_for()
 
         def near(actual, expected):
@@ -24,20 +33,193 @@ def check_symbol_dock(browser):
             box = symbols.bounding_box()
             return box['y'] + box['height']
 
+        def fits_code_area():
+            field = area.bounding_box()
+            code = page.locator('.code-area').bounding_box()
+            near(field['y'], code['y'])
+            near(field['y'] + field['height'], code['y'] + code['height'])
+
         page.evaluate('__xjKeyboardViewport(1000, true)')
         near(bottom(), 500)
+        fits_code_area()
         page.set_viewport_size({'width': 390, 'height': 500})
         # Check immediately, before a new IME or visual viewport measurement.
         near(bottom(), 500)
-        page.set_viewport_size({'width': 390, 'height': 800})
+        fits_code_area()
         page.evaluate("Object.assign(testViewport,{height:500,offsetTop:20}); testViewport.dispatchEvent(new Event('scroll'))")
+        near(page.locator('.editor-bar').bounding_box()['y'], 0)
+        page.set_viewport_size({'width': 390, 'height': 800})
+        for height, offset in [(500,20), (472,8), (500,0)]:
+            area.tap(position={'x':35,'y':25})
+            page.evaluate("""([height,offsetTop]) => {
+              Object.assign(testViewport,{height,offsetTop});
+              testViewport.dispatchEvent(new Event('scroll'));
+            }""", [height, offset])
+            near(bottom(), 500)
+            near(page.locator('.editor-bar').bounding_box()['y'], offset)
+            fits_code_area()
+        assert page.evaluate('editorFocusCalls') == [True]
+
+        # Without the Android bridge, use the measured browser viewport.
+        page.evaluate("Object.assign(testViewport,{height:500,offsetTop:20}); __xjKeyboardViewport(0, false)")
         near(bottom(), 520)
         near(page.locator('.editor-bar').bounding_box()['y'], 20)
+        page.evaluate("Object.assign(testViewport,{height:800,offsetTop:0}); testViewport.dispatchEvent(new Event('resize'))")
+        expect(page.locator('html')).not_to_have_class(re.compile('editor-ime-visible'))
         assert page.locator('.editor-symbol-list').evaluate("el => getComputedStyle(el).touchAction") == 'pan-x'
-        print('PASS symbol bar tracks the keyboard through viewport resize and panning')
+        print('PASS repeated editor taps keep the input inside the code area and symbols at the keyboard edge')
     finally:
         page.close()
 
+
+
+def check_editor_viewport(browser):
+    page = browser.new_page(viewport={'width': 390, 'height': 800},
+                            device_scale_factor=2, has_touch=True, is_mobile=True)
+    try:
+        page.route('https://xj.test/**', lambda route: route.fulfill(path=root/route.request.url.split('https://xj.test/')[1]))
+        page.goto('https://xj.test/index.html')
+        page.evaluate("""async () => {
+          await Bridge.create('resize.java', Array.from({length: 120}, (_, i) => 'int value' + i + ' = ' + i + ';').join('\\n'));
+          Nav.go('editor', {name:'resize.java', mode:'edit'});
+        }""")
+        area = page.locator('#ta')
+        page.wait_for_function("document.querySelector('#ta').value.includes('value119')")
+        initial_text = area.input_value()
+        symbols = page.locator('.editor-symbols')
+        editor = page.locator('.editor-wrap')
+        panel = page.locator('.run-panel')
+        grip = page.get_by_role('separator', name='调整运行面板高度')
+        expect(symbols).to_be_visible()
+
+        def font_sizes():
+            return page.evaluate("""() => ['#ta', '#pre', '#gin'].map(selector =>
+                parseFloat(getComputedStyle(document.querySelector(selector)).fontSize))""")
+
+        def pinch(distance, next_distance):
+            session = page.context.new_cdp_session(page)
+            def positions(gap):
+                return [{'x': 185 - gap / 2, 'y': 190, 'id': 0},
+                        {'x': 185 + gap / 2, 'y': 190, 'id': 1}]
+            try:
+                session.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': positions(distance)})
+                session.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': positions(next_distance)})
+                session.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+            finally:
+                session.detach()
+
+        initial_size = font_sizes()[0]
+        pinch(60, 108)
+        enlarged = font_sizes()
+        assert enlarged[0] == enlarged[1] and enlarged[0] > initial_size * 1.5, enlarged
+        assert abs(enlarged[2] / enlarged[0] - 12 / 14) < .01, enlarged
+        assert area.input_value() == initial_text
+        pinch(108, 60)
+        assert abs(font_sizes()[0] - initial_size) < .5, font_sizes()
+
+        launch = page.locator('[data-act=run]')
+        launch.click()
+        expect(panel).to_be_visible()
+        expect(symbols).to_be_hidden()
+        expect(panel.locator('textarea')).to_be_visible()
+        before_editor, before_panel = editor.bounding_box()['height'], panel.bounding_box()['height']
+        handle = grip.bounding_box()
+        x, y = handle['x'] + handle['width'] / 2, handle['y'] + handle['height'] / 2
+        session = page.context.new_cdp_session(page)
+        try:
+            session.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': x, 'y': y}]})
+            session.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': [{'x': x, 'y': y - 85}]})
+            session.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+        finally:
+            session.detach()
+        assert panel.bounding_box()['height'] > before_panel + 60
+        assert editor.bounding_box()['height'] < before_editor - 60
+        grip.focus()
+        previous = panel.bounding_box()['height']
+        page.keyboard.press('ArrowDown')
+        assert panel.bounding_box()['height'] < previous
+
+        panel.locator('textarea').fill('测试输入')
+        expect(symbols).to_be_hidden()
+        page.locator('[data-act=closeRun]').click()
+        expect(symbols).to_be_visible()
+        launch.click()
+        assert page.evaluate('window.__xjBack()') == 'handled'
+        expect(panel).to_be_hidden()
+        expect(symbols).to_be_visible()
+        assert area.input_value() == initial_text
+        print('PASS editor pinch zoom, panel resizing and symbol visibility')
+    finally:
+        page.close()
+
+def check_code_completion(browser):
+    page = browser.new_page(viewport={'width': 390, 'height': 800},
+                            device_scale_factor=2, has_touch=True, is_mobile=True)
+    try:
+        page.route('https://xj.test/**', lambda route: route.fulfill(path=root/route.request.url.split('https://xj.test/')[1]))
+        page.goto('https://xj.test/index.html')
+        page.evaluate('''async () => {
+          await Bridge.create('completion.py', '');
+          Nav.reset('editor', {name:'completion.py', mode:'edit'});
+        }''')
+        area = page.locator('#ta')
+        area.focus()
+        page.evaluate('__xjKeyboardViewport(1000, true)')
+        page.keyboard.type('pr')
+        candidates = page.get_by_role('listbox', name='代码补全')
+        print_option = candidates.get_by_role('option').filter(has_text='print()')
+        expect(print_option).to_be_visible()
+        dock = candidates.bounding_box()
+        symbols = page.locator('.editor-symbols').bounding_box()
+        assert dock['y'] + dock['height'] <= symbols['y'] + 1
+        assert abs(symbols['y'] + symbols['height'] - 500) <= 1
+        print_option.tap()
+        expect(area).to_have_value('print()')
+        assert area.evaluate('el => el.selectionStart === 6 && document.activeElement === el')
+        expect(candidates).to_be_hidden()
+        page.keyboard.press('Control+z')
+        expect(area).to_have_value('pr')
+        page.evaluate('__xjKeyboardViewport(800, false)')
+
+        area.fill('local_answer = 42\nlocal_')
+        area.press('End')
+        page.keyboard.type('a')
+        item = candidates.get_by_role('option').filter(has_text='local_answer')
+        expect(item).to_be_visible()
+        area.press('ArrowDown')
+        expect(item).to_have_attribute('aria-selected', 'true')
+        area.press('Tab')
+        expect(area).to_have_value('local_answer = 42\nlocal_answer')
+        expect(candidates).to_be_hidden()
+        area.fill('def example():')
+        area.press('End')
+        area.press('Enter')
+        expect(area).to_have_value('def example():\n    ')
+        print('PASS completion touch, keyboard selection, undo, and dock above Android keyboard')
+
+        page.evaluate("""async () => {
+          await Bridge.create('completion.html', '');
+          Nav.reset('editor', {name:'completion.html', mode:'edit'});
+        }""")
+        area.focus()
+        page.get_by_role('button', name='插入 <>', exact=True).tap()
+        candidates.get_by_role('option', name='div 标签', exact=True).tap()
+        expect(area).to_have_value('<div>')
+        assert area.evaluate('el => el.selectionStart') == 4
+        page.keyboard.type(' cl')
+        candidates.get_by_role('option', name='class 属性', exact=True).tap()
+        expect(area).to_have_value('<div class="">')
+        assert area.evaluate('el => el.value[el.selectionStart]') == '"'
+        page.keyboard.press('Control+z')
+        expect(area).to_have_value('<div cl>')
+        area.fill('<main><section>内容')
+        area.press('Control+End')
+        page.get_by_role('button', name='插入 </', exact=True).tap()
+        candidates.get_by_role('option', name='section 标签', exact=True).tap()
+        expect(area).to_have_value('<main><section>内容</section>')
+        print('PASS HTML touch completion inserts tags and editable attribute values')
+    finally:
+        page.close()
 
 with sync_playwright() as pw:
  proxy=os.environ.get('HTTPS_PROXY') if os.environ.get('XJ_LIVE') else None
@@ -62,9 +244,10 @@ with sync_playwright() as pw:
  run('console.log(typeof XinJianBridge, typeof fetch, typeof document); Promise.resolve(7).then(x => console.log(x))')
  expect(status).to_have_text('运行完成')
  expect(out).to_have_text('undefined undefined undefined\n7')
- run('const a = ;')
+ run('const valid = 1;\nconst a = ;')
  expect(status).to_have_text('运行出错')
  expect(out).to_contain_text('SyntaxError')
+ expect(p.locator('.editor-diagnostic')).to_have_attribute('data-line','2')
  run('throw new Error("出错")')
  expect(out).to_contain_text('出错')
  run('for (;;) {}')
@@ -120,6 +303,22 @@ with sync_playwright() as pw:
   expect(status).to_contain_text('正确')
   run('{' if ext!='xml' else '<a><b></a>')
   expect(status).to_have_text('校验出错')
+ openfile('live.jsonc')
+ area=p.locator('#ta')
+ area.fill('{\n  "active": , // invalid\n  "url": "https://a"\n}')
+ issue=p.locator('.editor-diagnostic')
+ expect(issue).to_have_attribute('data-line','2')
+ line=p.locator('.editor-error-line')
+ for dark in (False, True):
+  p.evaluate('dark => applyTheme(dark)', dark)
+  expect(line).to_have_css('border-inline-start-width', '1px')
+  alpha=line.evaluate("el => parseFloat(getComputedStyle(el).backgroundColor.split(',').at(-1))")
+  assert 0 < alpha < .065
+ issue.click()
+ assert area.evaluate("el => el.value.slice(0, el.selectionStart).split('\\n').length") == 2
+ area.fill('{\n  "active": true, // valid\n  "url": "https://a"\n}')
+ expect(issue).to_be_hidden()
+ print('PASS runtime source marking and subtle, clickable JSONC diagnostics in both themes')
  openfile('style.css')
  run('.card{color:red}')
  expect(p.frame_locator('.run-body iframe').locator('.card')).to_have_css('color','rgb(255, 0, 0)')
@@ -154,6 +353,13 @@ with sync_playwright() as pw:
   if ext!='bfh':expect(out).to_have_text('5')
   assert len(calls)==before+1 and calls[-1].post_data_json['stdin']=='2'
   print('PASS',ext,flush=True)
+ if not os.environ.get('XJ_LIVE'):
+  p.route(api,lambda r:r.fulfill(json={'status':'1','compiler_error':'prog.c:2:3: error: expected expression'}),times=1)
+  openfile('bad.c')
+  run('int main(void) {\n  return +;\n}')
+  p.locator('.run-submit').click()
+  expect(p.locator('.editor-diagnostic')).to_have_attribute('data-line','2')
+  print('PASS compiler-located error on the current source')
  openfile('bad.bf')
  run('int main(){over!}')
  before=len(calls)
@@ -174,4 +380,6 @@ with sync_playwright() as pw:
  p.locator('.run-submit').click()
  expect(status).to_have_text('连接失败')
  print('PASS formats, runtime outputs and failure paths')
+ check_code_completion(b)
  check_symbol_dock(b)
+ check_editor_viewport(b)

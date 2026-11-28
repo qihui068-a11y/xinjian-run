@@ -6,31 +6,70 @@
 
 
 
+  var ShelfRecent = {
+    list: function () {
+      try {
+        var saved = JSON.parse(localStorage.getItem('xj:shelf:recent'));
+        return Array.isArray(saved) ? saved : [];
+      } catch (e) { return []; }
+    },
+    record: function (name, previous) {
+      var list = this.list().filter(function (file) { return file !== name && file !== previous; });
+      list.unshift(name);
+      try { localStorage.setItem('xj:shelf:recent', JSON.stringify(list.slice(0, 8))); } catch (e) {}
+    }
+  };
+
   /* ================= 视图：书架 ================= */
   VIEWS.shelf = function (el) {
+    el.classList.add('shelf-view');
     var sort = 'new';
+    var search = '';
     var selMode = false;
     var sel = {};
+    var disposed = false, deleting = false, refreshRequest = 0;
 
     el.innerHTML =
-      '<div class="topbar" id="shelfBar"></div>' +
-      '<div class="scroll" id="shelfScroll"><div class="grid" id="grid"></div></div>' +
+      '<header class="workspace-heading" id="shelfBar"></header>' +
+      '<div class="scroll workspace-content" id="shelfScroll"><div class="shelf-refresh" role="status" hidden></div>' +
+      '<div class="shelf-scroll-body">' +
+      '<label class="workspace-search">' + svg('search') +
+      '<input type="search" id="shelfSearch" placeholder="搜索文件" aria-label="搜索文件"></label>' +
+      '<div class="workspace-shortcuts">' +
+      '<button type="button" data-act="create">' + svg('file-plus') + '<span><strong>新建文件</strong><small>创建代码或文稿</small></span></button>' +
+      '<button type="button" data-act="import">' + svg('download') + '<span><strong>导入文件</strong><small>从设备选择文件</small></span></button></div>' +
+      '<section class="shelf-recent" hidden><h2>最近打开</h2><div class="shelf-recent-list"></div></section>' +
+      '<div class="workspace-section"><h2>全部文件</h2><button type="button" class="icon-btn" data-act="sort" aria-label="排序">' +
+      svg('sort') + '</button></div><div class="grid shelf-files" id="grid"></div></div></div>' +
       '<input type="file" id="importer" multiple ' +
       'style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0">';
 
     var bar = el.querySelector('#shelfBar');
     var grid = el.querySelector('#grid');
     var scroll = el.querySelector('#shelfScroll');
+    var scrollBody = scroll.querySelector('.shelf-scroll-body');
+    var refreshHint = scroll.querySelector('.shelf-refresh');
     var importer = el.querySelector('#importer');
     var docs = [];
+    var recent = el.querySelector('.shelf-recent');
+    var recentList = recent.querySelector('.shelf-recent-list');
+    el.querySelector('#shelfSearch').addEventListener('input', function (event) {
+      search = event.target.value.trim().toLowerCase();
+      paintList();
+    });
+    scroll.addEventListener('click', function (event) {
+      var button = event.target.closest('[data-act], [data-recent]');
+      if (!button) return;
+      if (button.hasAttribute('data-recent')) return openFile(button.dataset.recent);
+      if (button.dataset.act !== 'new') perform(button.dataset.act);
+    });
+
+    function openFile(name) { Nav.go('editor', { name: name, mode: 'read' }); }
 
     /* 系统返回键：多选态先取消选择，不退页 */
     el.__onBack = function () {
       if (!selMode) return false;
-      selMode = false;
-      sel = {};
-      paintBar();
-      paintList();
+      leaveSelection();
       return true;
     };
 
@@ -40,40 +79,57 @@
         bar.innerHTML =
           '<button class="t-text" data-act="cancel">取消</button>' +
           '<div class="t-title">已选 ' + n + ' 项</div>' +
-          '<button class="icon-btn" data-act="export">' + svg('share') + '</button>' +
-          '<button class="icon-btn" data-act="del">' + svg('trash') + '</button>';
+          '<button class="icon-btn" data-act="export" aria-label="导出选中的文件">' + svg('share') + '</button>' +
+          '<button class="icon-btn" data-act="del" aria-label="删除选中的文件">' + svg('trash') + '</button>';
       } else {
         bar.innerHTML =
-          '<button class="icon-btn" data-act="back">' + svg('back') + '</button>' +
-          '<div class="t-title">书架</div>' +
-          '<button class="icon-btn" data-act="sort">' + svg('sort') + '</button>' +
-          '<button class="icon-btn" data-act="import">' + svg('plus') + '</button>';
+          '<div><h1 class="t-title">书架</h1><p>管理你的代码与工程</p></div>' +
+          '<div class="workspace-actions"><button type="button" class="icon-btn" data-act="more" aria-label="书架操作">' +
+          svg('more') + '</button></div>';
       }
     }
 
     function paintList() {
-      if (!docs.length) {
+      grid.classList.toggle('shelf-selecting', selMode);
+      var files = docs.filter(function (d) { return d.name.toLowerCase().indexOf(search) >= 0; });
+      var opened = !search && !selMode ? ShelfRecent.list().map(function (name) {
+        return docs.find(function (d) { return d.name === name; });
+      }).filter(Boolean).slice(0, 3) : [];
+      recent.hidden = !opened.length;
+      recentList.innerHTML = opened.map(function (d) {
+        return '<button type="button" class="shelf-row" data-recent="' + esc(d.name) + '">' + fileBody(d) + '</button>';
+      }).join('');
+      if (!files.length) {
         /* 空态必须画在 #grid 里面，不能覆盖 scroll.innerHTML：
            一旦把 #grid 换掉，闭包里的 grid 变量就指向一个脱离文档的节点，
            之后 reload() 往它写什么都看不见（导入成功后书架仍显示“还空着”）。
            而且 #grid 上挂了 3 个监听，换节点等于监听全丢。 */
         grid.classList.add('is-empty');
         grid.innerHTML =
-          '<div class="empty"><p>书架还空着</p>' +
-          '<button data-act="new">新建一篇</button></div>';
-        grid.querySelector('[data-act=new]').onclick = function () { Nav.go('create'); };
+          '<div class="empty"><p>' + (search ? '未找到文件' : '书架还空着') + '</p>' +
+          (search ? '' : '<button data-act="new">新建一篇</button>') + '</div>';
+        var add = grid.querySelector('[data-act=new]');
+        if (add) add.onclick = function () { Nav.go('create'); };
         return;
       }
       grid.classList.remove('is-empty');
       var html = '';
-      docs.forEach(function (d) {
+      files.forEach(function (d) {
         var on = selMode && sel[d.name] ? ' selected' : '';
-        html += '<div class="book' + on + '" data-name="' + esc(d.name) + '">' +
-          '<div class="b-name">' + esc(d.name) + '</div>' +
-          '<div class="b-excerpt">' + esc(d.excerpt || '') + '</div>' +
-          '<div class="b-check"></div></div>';
+        html += '<button type="button" class="book shelf-row' + on + '" data-name="' + esc(d.name) + '"' +
+          (selMode ? ' aria-pressed="' + !!sel[d.name] + '"' : '') + '>' +
+          fileBody(d) + '<span class="b-check"></span></button>';
       });
       grid.innerHTML = html;
+    }
+
+    function fileBody(d) {
+      var format = FORMATS.find(function (f) { return f.ext === Bridge.extOf(d.name); });
+      var desc = format ? format.label : Bridge.extOf(d.name).toUpperCase() || '文件';
+      if (typeof d.size === 'number') desc += ' · ' + (d.size < 1024 ? d.size + ' B' : (d.size / 1024).toFixed(1) + ' KB');
+      return svg('file-code') + '<span class="shelf-file-info"><strong class="b-name">' + esc(d.name) + '</strong>' +
+        '<small class="b-excerpt">' + esc(desc) + '</small></span>' +
+        '<time>' + (d.mtime ? fmtTime(d.mtime) : '') + '</time>';
     }
 
     function sortDocs(list) {
@@ -85,30 +141,43 @@
     }
 
     function reload() {
-      Bridge.list().then(function (list) {
-        docs = sortDocs(list || []);
+      var requested = ++refreshRequest;
+      return Bridge.list().then(function (list) {
+        if (disposed || requested !== refreshRequest || !Array.isArray(list)) return false;
+        docs = sortDocs(list);
         paintList();
+        return true;
+      }, function () { return false; });
+    }
+
+    function paintSelection(previous, name) {
+      paintBar();
+      paintList();
+      if (previous !== selMode) {
+        Motion.play(bar, [{ transform: 'translateY(' + (selMode ? 5 : -5) + 'px)', opacity: .45 },
+          { transform: 'none', opacity: 1 }], 170);
+      }
+      if (!selMode) return;
+      grid.querySelectorAll('.book').forEach(function (row) {
+        if (!previous || row.dataset.name === name) {
+          Motion.play(row.querySelector('.b-check'), [{ opacity: 0, transform: 'scale(.92)' },
+            { opacity: 1, transform: 'none' }], 170);
+        }
       });
     }
 
-    /* 多选错峰：进入多选时所有格子从下往上逐个升起；
-       单选时只动被点的那一格（一格没法错峰）。 */
-    function staggerCells(onlyName) {
-      var cells = grid.querySelectorAll('.book');
-      if (!cells.length) return;
-      var list = onlyName
-        ? Array.prototype.filter.call(cells, function (c) { return c.dataset.name === onlyName; })
-        : cells;
-      /* 步长只在 anim.js 里写一次（默认 24ms），这里不再覆盖 */
-      Anim.stagger(list);
-    }
-
     function toggleSel(name) {
+      var previous = selMode;
       if (sel[name]) delete sel[name]; else sel[name] = 1;
       if (!Object.keys(sel).length) selMode = false;
-      paintBar();
-      paintList();
-      staggerCells(name);
+      paintSelection(previous, name);
+    }
+
+    function leaveSelection() {
+      var previous = selMode;
+      selMode = false;
+      sel = {};
+      paintSelection(previous);
     }
 
     paintBar();
@@ -144,14 +213,10 @@
         pressTimer = null;
         pressFrom = null;
         longFired = true;
-        var entering = !selMode;
-        if (!selMode) { selMode = true; }
+        var previous = selMode;
+        selMode = true;
         if (!sel[b.dataset.name]) sel[b.dataset.name] = 1;
-        paintBar();
-        paintList();
-        if (entering) staggerCells();
-        /* 长按成功的确认反馈原先是「从卡片中心起一圈波纹」，点击泛光已整体删除，
-           现在靠 .stg-run 的错峰升起 + 顶栏计数变化表达。 */
+        paintSelection(previous, b.dataset.name);
       }, PRESS_MS);
     });
 
@@ -187,16 +252,27 @@
       if (longFired) { longFired = false; return; }
       var name = b.dataset.name;
       if (selMode) return toggleSel(name);
-      Nav.go('editor', { name: name, mode: 'read' });
+      openFile(name);
     });
 
     /* --- 顶栏动作 --- */
     bar.addEventListener('click', function (e) {
       var t = e.target.closest('[data-act]');
       if (!t) return;
-      var act = t.dataset.act;
-      if (act === 'back') { if (selMode) { selMode = false; sel = {}; paintBar(); paintList(); } else Nav.back(); }
-      else if (act === 'cancel') { selMode = false; sel = {}; paintBar(); paintList(); }
+      perform(t.dataset.act, t);
+    });
+
+    function perform(act, anchor) {
+      if (act === 'create') return Nav.go('create');
+      if (act === 'more') {
+        return popover([
+          { ico: 'file-plus', label: '新建文件', value: 'create' },
+          { ico: 'download', label: '导入文件', value: 'import' },
+          { ico: 'sort', label: '排序', value: 'sort' }
+        ], anchor).then(function (choice) { if (choice) perform(choice); });
+      }
+      if (act === 'back') { if (selMode) leaveSelection(); else Nav.back(); }
+      else if (act === 'cancel') leaveSelection();
       else if (act === 'sort') {
         sheet('排序', [
           { label: '最新在前', value: 'new' },
@@ -231,18 +307,126 @@
         next();
       } else if (act === 'del') {
         var ns = Object.keys(sel);
-        if (!ns.length) return toast('还没选');
+        if (!ns.length || deleting) return;
         confirmBox('删除 ' + ns.length + ' 个文件？此操作不可恢复').then(function (ok) {
-          if (!ok) return;
-          Promise.all(ns.map(function (n) { return Bridge.remove(n); })).then(function () {
-            selMode = false; sel = {};
-            paintBar();
-            reload();
-            toast('已删除');
-          });
+          if (ok && !disposed) removeFiles(ns);
         });
       }
-    });
+    }
+
+    function removeFiles(names) {
+      deleting = true;
+      refreshRequest++;
+      Promise.allSettled(names.map(function (name) { return Bridge.remove(name); })).then(function (results) {
+        if (disposed) return;
+        var removed = new Set(names.filter(function (name, i) {
+          return results[i].status === 'fulfilled' && results[i].value !== false;
+        }));
+        var rows = grid.querySelectorAll('.book');
+        var exits = [];
+        rows.forEach(function (row) {
+          if (!removed.has(row.dataset.name)) return;
+          row.disabled = true;
+          var exit = Motion.play(row, [{ transform: 'none', opacity: 1 },
+            { transform: 'scale(.97)', opacity: 0 }], 220);
+          if (exit) exits.push(exit.finished.catch(function () {}));
+        });
+        return Promise.all(exits).then(function () {
+          if (disposed) return;
+          var before = new Map();
+          rows.forEach(function (row) { before.set(row.dataset.name, row.getBoundingClientRect().top); });
+          docs = docs.filter(function (doc) { return !removed.has(doc.name); });
+          removed.forEach(function (name) { delete sel[name]; });
+          selMode = Object.keys(sel).length > 0;
+          paintBar();
+          paintList();
+          grid.querySelectorAll('.book').forEach(function (row) {
+            if (!before.has(row.dataset.name)) return;
+            var shift = before.get(row.dataset.name) - row.getBoundingClientRect().top;
+            if (Math.abs(shift) > 1) Motion.play(row, [{ transform: 'translateY(' + shift + 'px)' },
+              { transform: 'none' }], 220);
+          });
+          deleting = false;
+          var failed = names.length - removed.size;
+          toast(!failed ? '已删除' : removed.size ? '已删除 ' + removed.size + ' 个，' + failed + ' 个失败' : '删除失败，请重试');
+        });
+      });
+    }
+
+    var pull, pullFrame, refreshing = false;
+    function paintPull(distance) {
+      var offset = Anim.enabled() ? Math.min(76, distance) : 0;
+      scrollBody.style.transform = offset ? 'translateY(' + offset + 'px)' : '';
+      refreshHint.classList.toggle('floating', !offset);
+    }
+    scroll.addEventListener('touchstart', function (event) {
+      if (pull) endPull(false);
+      if (event.touches.length !== 1 || scroll.scrollTop > 0 || deleting || refreshing ||
+          event.target.closest('input,textarea,[contenteditable]')) { pull = null; return; }
+      var touch = event.touches[0];
+      pull = { x: touch.clientX, y: touch.clientY, distance: 0, active: false };
+    }, { passive: true });
+    scroll.addEventListener('touchmove', function (event) {
+      if (!pull) return;
+      if (event.touches.length !== 1) { endPull(false); return; }
+      var touch = event.touches[0];
+      var dy = touch.clientY - pull.y;
+      if (!pull.active && (dy < -8 || scroll.scrollTop > 0 ||
+          Math.abs(touch.clientX - pull.x) > Math.max(10, dy))) { endPull(false); return; }
+      if (dy < 10 && !pull.active) return;
+      if (!event.cancelable) { endPull(false); return; }
+      event.preventDefault();
+      endPress();
+      pull.active = true;
+      pull.distance = Math.max(0, dy) * .47;
+      if (!pullFrame) pullFrame = requestAnimationFrame(function () {
+        pullFrame = 0;
+        if (!pull) return;
+        refreshHint.hidden = false;
+        var text = pull.distance >= 52 ? '松手刷新' : '下拉刷新';
+        if (refreshHint.textContent !== text) refreshHint.textContent = text;
+        paintPull(pull.distance);
+      });
+    }, { passive: false });
+    function endPull(release) {
+      if (!pull) return;
+      var trigger = release && pull.active && pull.distance >= 52;
+      var from = scrollBody.style.transform;
+      pull = null;
+      cancelAnimationFrame(pullFrame);
+      pullFrame = 0;
+      paintPull(trigger ? 38 : 0);
+      Motion.play(scrollBody, [{ transform: from || 'none' },
+        { transform: scrollBody.style.transform || 'none' }], 190);
+      if (!trigger) { refreshHint.hidden = true; return; }
+      refreshing = true;
+      refreshHint.hidden = false;
+      refreshHint.textContent = '正在刷新…';
+      reload().then(function (ok) {
+        if (disposed) return;
+        var before = scrollBody.style.transform;
+        refreshing = false;
+        paintPull(0);
+        Motion.play(scrollBody, [{ transform: before || 'none' }, { transform: 'none' }], 190);
+        refreshHint.hidden = true;
+        if (!ok) toast('刷新失败，请重试');
+      });
+    }
+    scroll.addEventListener('touchend', function () { endPull(true); }, { passive: true });
+    scroll.addEventListener('touchcancel', function () { endPull(false); }, { passive: true });
+    function onBackground() {
+      if (document.hidden) {
+        endPress();
+        endPull(false);
+      }
+    }
+    document.addEventListener('visibilitychange', onBackground);
+    el.__cleanup = function () {
+      disposed = true;
+      endPress();
+      endPull(false);
+      document.removeEventListener('visibilitychange', onBackground);
+    };
 
     /* --- 导入 --- */
     importer.addEventListener('change', function () {

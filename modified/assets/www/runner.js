@@ -48,16 +48,32 @@ var CodeRunner = (function () {
     return frame;
   }
 
-  function attach(panel) {
+  function attach(panel, onVisibility, stopButton, onIssue, onRunning) {
     var status = panel.querySelector('.run-status');
     var body = panel.querySelector('.run-body');
-    var stopButton = panel.querySelector('[data-act="stop"]');
+    var stopLabel = stopButton.querySelector('span');
+
+    function setStop(label) {
+      stopLabel.textContent = label || '停止';
+      stopButton.disabled = !label;
+      if (onRunning) onRunning(!!label);
+    }
+    function setStatus(label, stage) {
+      status.textContent = label;
+      status.dataset.stage = stage || '';
+    }
     var worker, url, timer, terminal, outputView, generation = 0;
     var request, interactive, repeat, disposeWorker;
     var lastInput = '';
     var actions = panel.querySelector('.run-actions');
     var copy = actions.querySelector('.run-copy');
     var rerun = actions.querySelector('.run-repeat');
+
+    function setVisible(visible) {
+      if (panel.hidden === !visible) return;
+      panel.hidden = !visible;
+      onVisibility(visible);
+    }
 
     function showOutput() {
       if (outputView) outputView.dispose();
@@ -98,7 +114,7 @@ var CodeRunner = (function () {
     rerun.onclick = function () { if (repeat) repeat(); };
     function remoteForm(readSource, ext) {
       var python = PythonRun.supported(ext);
-      status.textContent = RunFormats.compilers[ext].name;
+      setStatus(RunFormats.compilers[ext].name);
       body.innerHTML = '<div class="run-online">' +
         '<label>标准输入（可留空）<textarea rows="2" placeholder="每行一组输入"></textarea></label>' +
         '<div class="run-submit-row"><button type="button" class="run-submit run-option-button"></button>' +
@@ -116,19 +132,20 @@ var CodeRunner = (function () {
         var current = generation;
         lastInput = input.value;
         var data;
-        try { data = RunFormats.payload(ext, readSource(), RunIO.stdin(lastInput)); }
+        var source = readSource();
+        try { data = RunFormats.payload(ext, source, RunIO.stdin(lastInput)); }
         catch (e) {
           if (submitError) body.querySelector('pre').remove();
           submitError = RunIO.output(body);
           submitError.emit({ kind: 'stderr', text: e.message });
-          status.textContent = '无法提交';
+          setStatus('无法提交', 'failed');
           return;
         }
         showOutput();
-        function result(label, message) {
+        function result(label, message, ok) {
           if (generation !== current) return;
           stop();
-          status.textContent = label;
+          setStatus(label, ok ? 'success' : 'failed');
           if (message) outputView.emit({ kind: 'stderr', text: message });
         }
         try {
@@ -153,6 +170,15 @@ var CodeRunner = (function () {
               var r = JSON.parse(xhr.responseText);
               if (r.status == null && !r.signal) throw new Error('服务响应缺少退出状态');
               var ok = String(r.status) === '0' && !r.signal;
+              var filenames = data.codes ? data.codes.map(function (file) { return file.file; }) :
+                ext === 'java' ? ['prog.java'] : ext === 'cs' ? ['prog.cs'] : ext === 'c' ? ['prog.c'] :
+                /^(?:cpp|cxx|cc|c\+\+)$/.test(ext) ? ['prog.cc', 'prog.cpp', 'prog.cxx'] : [];
+              var issue = !ok && EditorDiagnostics.compilerIssue(r.compiler_error || r.compiler_message, filenames);
+              if (!ok && python) {
+                issue = EditorDiagnostics.runtimeIssue(r.program_error, 'prog.py') ||
+                  EditorDiagnostics.runtimeIssue(r.program_error, 'main.py');
+              }
+              if (onIssue) onIssue(issue || null, source);
               var logged = false;
               ['compiler', 'program'].forEach(function (stage) {
                 var normal = r[stage + '_output'];
@@ -165,15 +191,14 @@ var CodeRunner = (function () {
                 logged = true;
               });
               var detail = r.signal ? (logged ? '\n' : '') + r.signal : (!ok && !logged ? '退出状态 ' + r.status : '');
-              result(ok ? (ext === 'bfh' ? '头文件编译通过' : '运行完成') : '编译或运行出错', detail);
+              result(ok ? (ext === 'bfh' ? '头文件编译通过' : '运行完成') : '编译或运行出错', detail, ok);
               if (!ok && python && /EOFError/.test(xhr.responseText)) {
                 outputView.emit({ kind: 'stderr', text: '\n请补充标准输入，或选「本地运行」逐行输入。' });
               }
             } catch (e) { result('服务响应异常', e.message); }
           };
-          stopButton.textContent = '取消等待';
-          stopButton.hidden = false;
-          status.textContent = '正在等待编译结果…';
+          setStop('取消等待');
+          setStatus('正在等待编译结果…', 'compiling');
           xhr.send(JSON.stringify(data));
         } catch (e) { result('无法提交', e.message); }
       };
@@ -206,7 +231,7 @@ var CodeRunner = (function () {
         try {
           stdin = RunIO.stdin(input.value);
           files = PythonRun.readFiles(selected.files);
-        } catch (e) { status.textContent = e.message; return; }
+        } catch (e) { setStatus(e.message, 'failed'); return; }
         // 预填运行不接实时输入：标准输入空着又调 input()，跑起来只会 EOFError，先说一声（不拦，出错分支照样能测）
         if (!live && !stdin && /input\s*\(|readline\s*\(/.test(readSource())) {
           hint.textContent = '标准输入为空。现场输入请选择「本地运行」。';
@@ -223,7 +248,7 @@ var CodeRunner = (function () {
           repeat();
         }).catch(function () {
           if (generation !== current) return;
-          status.textContent = '读取输入文件失败';
+          setStatus('读取输入文件失败', 'failed');
           online.disabled = run.disabled = batch.disabled = false;
         });
       }
@@ -245,7 +270,7 @@ var CodeRunner = (function () {
         options.querySelector('button').onclick = function () {
           var stdin;
           try { stdin = RunIO.stdin(input.value); }
-          catch (error) { status.textContent = error.message; return; }
+          catch (error) { setStatus(error.message, 'failed'); return; }
           lastInput = stdin;
           repeat = function () {
             stop();
@@ -274,7 +299,7 @@ var CodeRunner = (function () {
             send(RunIO.stdin(input.value));
             input.value = '';
           }
-        } catch (error) { status.textContent = error.message; }
+        } catch (error) { setStatus(error.message, 'failed'); }
       }
       input.addEventListener('keydown', function (event) {
         if (event.key === 'Enter' && (event.isComposing || event.keyCode === 229)) event.preventDefault();
@@ -301,7 +326,7 @@ var CodeRunner = (function () {
         try {
           endpoint = InteractiveRun.endpoint(address.value);
           stdin = RunIO.stdin(input.value);
-        } catch (error) { status.textContent = error.message; return; }
+        } catch (error) { setStatus(error.message, 'failed'); return; }
         try { localStorage.setItem('xj-interactive-service', endpoint); } catch (_) {}
         lastInput = stdin;
         repeat = function () { startInteractive({ source: readSource(), ext: ext, endpoint: endpoint, stdin: stdin }); };
@@ -314,13 +339,12 @@ var CodeRunner = (function () {
       showOutput();
       delete panel.dataset.stdinMode;
       var current = generation;
-      status.textContent = '正在连接…';
-      stopButton.textContent = '取消等待';
-      stopButton.hidden = false;
-      function finish(label, text) {
+      setStatus('正在连接…', 'initializing');
+      setStop('取消等待');
+      function finish(label, text, ok) {
         if (text) outputView.emit({ kind: 'stderr', text: text });
         stop();
-        status.textContent = label;
+        setStatus(label, ok ? 'success' : 'failed');
       }
       function timeout(delay) {
         clearTimeout(timer);
@@ -330,15 +354,15 @@ var CodeRunner = (function () {
       try {
         interactive = InteractiveRun.connect(job, function (kind, value) {
           if (generation !== current) return;
-          if (kind === 'compile') status.textContent = '正在编译…';
+          if (kind === 'compile') setStatus('正在编译…', 'compiling');
           else if (kind === 'ready') {
-            status.textContent = '运行中，可输入';
+            setStatus('运行中，可输入', 'running');
             timeout(65000);
             terminalForm('输入一行并发送', function (text) {
               interactive.send(text);
-              status.textContent = '运行中，可输入';
+              setStatus('运行中，可输入', 'running');
             });
-          } else if (kind === 'exit') finish(value.ok ? '运行完成' : '运行出错', value.detail);
+          } else if (kind === 'exit') finish(value.ok ? '运行完成' : '运行出错', value.detail, value.ok);
           else if (kind === 'error') finish('运行出错', value.text);
           else outputView.emit({ kind: kind, text: value.text });
         });
@@ -349,8 +373,15 @@ var CodeRunner = (function () {
       var pre = document.createElement('pre');
       var label = RunFormats.label(ext);
       if (label === '校验') {
-        try { status.textContent = RunFormats.validate(ext, source); }
-        catch (e) { status.textContent = '校验出错'; pre.textContent = e.message; body.appendChild(pre); }
+        try {
+          status.textContent = RunFormats.validate(ext, source);
+          if (onIssue) onIssue(null, source);
+        } catch (e) {
+          status.textContent = '校验出错';
+          pre.textContent = e.message;
+          body.appendChild(pre);
+          if (onIssue) onIssue(EditorDiagnostics.validationIssue(e, source, ext), source);
+        }
         return;
       }
       if (ext === 'txt') {
@@ -386,7 +417,7 @@ var CodeRunner = (function () {
       worker = url = null;
       if (terminal) terminal.remove();
       terminal = null;
-      stopButton.hidden = true;
+      setStop('');
       rerun.disabled = false;
     }
     function close() {
@@ -396,11 +427,12 @@ var CodeRunner = (function () {
       actions.hidden = true;
       delete panel.dataset.stdinMode;
       body.textContent = '';
-      panel.hidden = true;
+      setVisible(false);
+      setStatus('');
     }
     function start(readSource, name, ext) {
       close();
-      panel.hidden = false;
+      setVisible(true);
       if (RunFormats.compilers[ext]) return remoteForm(readSource, ext);
       var source = readSource();
       if (RunFormats.label(ext) !== '运行') {
@@ -418,14 +450,14 @@ var CodeRunner = (function () {
     }
 
     function startWorker(spawn, job, startupMs, activeMs, sendInput) {
-      stopButton.textContent = '停止';
-      status.textContent = '运行中…';
-      stopButton.hidden = false;
+      setStop('停止');
+      setStatus('正在初始化环境…', 'initializing');
       delete panel.dataset.stdinMode;
       showOutput();
       var current = generation;
       var remaining = activeMs, deadline;
-      function finish(label) { stop(); status.textContent = label; }
+      var stderr = '', started = false;
+      function finish(label, stage) { stop(); setStatus(label, stage || 'failed'); }
       function timeout(delay, label) {
         clearTimeout(timer);
         timer = setTimeout(function () { finish(label); }, delay);
@@ -436,7 +468,7 @@ var CodeRunner = (function () {
       }
       function terminalInput(event) {
         if (terminal || !Number.isInteger(event.id) || event.id < 1) return;
-        status.textContent = '等待输入';
+        setStatus('等待输入', 'input');
         if (deadline !== undefined) remaining = Math.max(0, deadline - performance.now());
         clearTimeout(timer);
         function send(text) {
@@ -444,11 +476,11 @@ var CodeRunner = (function () {
           else worker.postMessage({ kind: 'stdin', id: event.id, text: text });
           terminal.remove();
           terminal = null;
-          status.textContent = '运行中…';
+          setStatus('运行中…', 'running');
           activeTimeout();
         }
         var prompt = typeof event.prompt === 'string' && event.prompt ? event.prompt.slice(0, 300) : '输入一行';
-        terminalForm(prompt, send, function () { send(null); }, function () { finish('已取消输入'); });
+        terminalForm(prompt, send, function () { send(null); }, function () { finish('已取消输入', 'cancelled'); });
       }
       timeout(startupMs, '运行超时，已停止');
       spawn(job, function () { return current === generation; }).then(function (instance) {
@@ -466,9 +498,24 @@ var CodeRunner = (function () {
           var event = e.data;
           if (event.kind === 'input') terminalInput(event);
           else if (event.kind === 'stdin-mode') panel.dataset.stdinMode = event.mode;
-          else if (event.kind === 'ready' && !terminal) activeTimeout();
-          else if (event.kind === 'exit') finish(event.ok ? '运行完成' : '运行出错');
-          else outputView.emit(event);
+          else if (event.kind === 'compiling') setStatus('正在编译…', 'compiling');
+          else if (event.kind === 'ready' && !terminal) {
+            started = true;
+            setStatus('运行中…', 'running');
+            activeTimeout();
+          }
+          else if (event.kind === 'exit') {
+            var issue = null;
+            if (!event.ok) {
+              if (job.language && !started) issue = EditorDiagnostics.compilerIssue(stderr, ['main.' + job.language]);
+              else issue = EditorDiagnostics.runtimeIssue(stderr, job.name);
+            }
+            if (onIssue) onIssue(issue, job.source);
+            finish(event.ok ? '运行完成' : '运行出错', event.ok ? 'success' : 'failed');
+          } else {
+            if (event.kind === 'stderr' && typeof event.text === 'string') stderr = (stderr + event.text).slice(-8192);
+            outputView.emit(event);
+          }
         };
         worker.onerror = function (e) {
           if (current !== generation) return;
@@ -482,7 +529,11 @@ var CodeRunner = (function () {
         finish('运行出错');
       });
     }
-    return { start: start, close: close, cancel: function () { var remote = !!(request || interactive); stop(); status.textContent = remote ? '已取消等待' : '已停止'; } };
+    return { start: start, close: close, cancel: function () {
+      var remote = !!(request || interactive);
+      stop();
+      setStatus(remote ? '已取消等待' : '已停止', 'cancelled');
+    } };
   }
   return { attach: attach };
 })();

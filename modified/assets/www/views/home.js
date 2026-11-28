@@ -1,55 +1,34 @@
-/* 信笺 · 视图：主页（4 个功能入口 + 天气占位） */
+/* 信笺 · 主页 */
 'use strict';
 
+VIEWS.home = function (el) {
+  el.classList.add('home-view');
+  var cards = [
+    ['shelf', 'bookshelf', '书架', '管理你的代码与工程'],
+    ['town', 'town', '小镇', '交流讨论、分享项目与灵感'],
+    ['yard', 'leaf', '后院', '实用工具、运行环境与拓展'],
+    ['inn', 'inn', '小宿店', '主题、插件、模板与资源']
+  ];
+  el.innerHTML =
+    '<header class="workspace-heading"><div><h1>信笺</h1><p>写代码、聊天与探索的空间</p></div>' +
+    '<div class="workspace-actions">' + ThemeReveal.buttonHtml(true) +
+    '<button type="button" class="icon-btn" data-act="notices" aria-label="好友申请">' + svg('bell') + '</button></div></header>' +
+    '<div class="scroll entries">' + cards.map(function (card) {
+      return '<button type="button" class="entry" data-go="' + card[0] + '" aria-label="' + card[2] + '">' +
+        '<span class="entry-main">' + svg(card[1]) + '<span><strong>' + card[2] + '</strong><small>' + card[3] +
+        '</small></span></span><span class="entry-arrow">' + svg('chevron-right') + '</span></button>';
+    }).join('') + '</div>';
 
-
-  VIEWS.home = function (el) {
-    var w = WEATHER_STUB;
-    /* 天气条右边划出一块给主题按钮：左边 .w-info 仍然整块可点（点开天气提示），
-       右边 .theme-slot 是一条竖线隔开的按钮位，不会再触发天气的 toast。 */
-    el.innerHTML =
-      '<div class="weather-bar">' +
-      '<span class="w-info" data-act="weather">' +
-      '<span class="w-city">' + esc(w.city) + '</span>' +
-      '<span class="w-main">' + esc(w.temp) + '°</span>' +
-      '<span class="w-desc">' + esc(w.desc) + '</span>' +
-      '<span class="w-aqi">' + esc(w.aqi) + '</span>' +
-      '</span>' +
-      '<span class="theme-slot">' + ThemeReveal.buttonHtml() + '</span>' +
-      '</div>' +
-      '<div class="entries">' +
-      '<button class="entry" data-go="shelf">' + svg('book') + '<span>书架</span></button>' +
-      '<button class="entry" data-go="town">' + svg('town') + '<span>小镇</span></button>' +
-      '<button class="entry" data-go="yard">' + svg('server') + '<span>后院</span></button>' +
-      '<button class="entry" data-go="inn">' + svg('shop') + '<span>小宿店</span></button>' +
-      '</div>' +
-      tabbar('home');
-
-    var themeBtn = ThemeReveal.attach(el.querySelector('[data-theme-btn]'));
-    el.__cleanup = function () {
-      if (themeBtn) themeBtn.destroy();
-      themeBtn = null;
-    };
-
-    el.addEventListener('click', function (e) {
-      var t = e.target.closest('[data-tab]');
-      if (t) {
-        var k = t.dataset.tab;
-        if (k === 'home') return;
-        return Nav.go(k);
-      }
-      var g = e.target.closest('[data-go]');
-      if (g) {
-        var name = g.dataset.go;
-        if (name === 'shelf') return Nav.go('shelf');
-        return Nav.go('stub', { title: { town: '小镇', yard: '后院', inn: '小宿店' }[name] });
-      }
-      if (e.target.closest('[data-act=weather]')) {
-        toast('天气模块将在第二阶段接入');
-      }
-    });
-  };
-
+  var theme = ThemeReveal.attach(el.querySelector('[data-theme-btn]'));
+  el.__cleanup = function () { if (theme) theme.destroy(); };
+  el.addEventListener('click', function (event) {
+    var button = event.target.closest('button');
+    if (!button) return;
+    if (button.dataset.act === 'notices') return Nav.go('requests');
+    var name = button.dataset.go;
+    if (name) Nav.openCard(name, button);
+  });
+};
 
   VIEWS.stub = function (el, p) {
     var text = p.text || ((p.title || '') + '正在开发中，先等等吧~');

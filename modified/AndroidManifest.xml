@@ -10,9 +10,9 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <uses-permission android:maxSdkVersion="32" android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:maxSdkVersion="28" android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <application android:allowBackup="false" android:debuggable="false" android:hardwareAccelerated="true" android:icon="@mipmap/ic_launcher" android:label="信笺·运行版" android:roundIcon="@mipmap/ic_launcher_round" android:supportsRtl="true" android:theme="@android:style/Theme.Material.Light.NoActionBar">
+    <application android:allowBackup="false" android:debuggable="false" android:hardwareAccelerated="true" android:icon="@mipmap/ic_launcher" android:label="信笺" android:roundIcon="@mipmap/ic_launcher_round" android:supportsRtl="true" android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <provider android:name="tt.xinjian.cn.UpdateApkProvider" android:authorities="tt.xinjian.cn.codeedit.run.updates" android:exported="false" android:grantUriPermissions="true"/>
-        <activity android:configChanges="density|fontScale|keyboardHidden|orientation|screenLayout|screenSize|uiMode" android:exported="true" android:label="信笺·运行版" android:name="tt.xinjian.cn.MainActivity" android:theme="@style/XjLaunch" android:windowSoftInputMode="adjustResize">
+        <activity android:configChanges="density|fontScale|keyboardHidden|orientation|screenLayout|screenSize|uiMode" android:exported="true" android:label="信笺" android:name="tt.xinjian.cn.MainActivity" android:theme="@style/XjLaunch" android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

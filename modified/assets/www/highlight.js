@@ -18,6 +18,10 @@
     return '<span class="tk-' + cls + '">' + esc(text) + '</span>';
   }
 
+  function markupEdge(text) {
+    return '<span class="tk-p" data-markup-edge>' + esc(text) + '</span>';
+  }
+
   /* 找注释结束位置：括号配对计数，未闭合则到文末 */
   function commentEnd(src, start) {
     var i = start + 2;        // 跳过 "/("
@@ -156,7 +160,7 @@
     if (ext === 'py' || ext === 'pyw' || ext === 'python') return tokenizePython(text);
     if (ext === 'java') return tokenizeJava(text);
     if (ext === 'bf' || ext === 'bfh') return tokenizeBF(text);
-    if (ext === 'c' || ext === 'cpp' || ext === 'cs') return tokenizeCFamily(text);
+    if (/^(?:c|h|cpp|cxx|cc|c\+\+|hpp|hxx|hh|cs)$/.test(ext)) return tokenizeCFamily(text);
     if (ext === 'js' || ext === 'mjs' || ext === 'cjs' || ext === 'javascript') return tokenizeJavaScript(text);
     if (ext === 'json' || ext === 'jsonc') return tokenizeJSON(text, ext === 'jsonc');
     if (ext === 'css') return tokenizeCSS(text);
@@ -621,7 +625,7 @@
     if (closing) i++;
     var name = matchAt(MARKUP_NAME, src, i);
     if (!name) return null;
-    out.push(span('p', closing ? '</' : '<')); out.push(span('k', name)); i += name.length;
+    out.push(markupEdge(closing ? '</' : '<')); out.push(span('k', name)); i += name.length;
     var tag = { name: name.toLowerCase(), closing: closing, closed: false, selfClosing: false, type: '', hasType: false, end: i };
     while (i < src.length) {
       var c = src[i], end, attr;
@@ -630,7 +634,7 @@
       }
       if (c === '>' || (c === '/' && src[i + 1] === '>')) {
         tag.selfClosing = c === '/'; tag.closed = true; end = i + (tag.selfClosing ? 2 : 1);
-        out.push(span('p', src.slice(i, end))); i = end; break;
+        out.push(markupEdge(src.slice(i, end))); i = end; break;
       }
       if (c === '<') break;  // 编辑中另一个标签开始时交还外层，至少已经消费了标签名。
       attr = matchAt(MARKUP_ATTR, src, i);
@@ -696,7 +700,10 @@
         }
         continue;
       }
-      if (src[i] === '<') { out.push(span('p', '<')); i++; continue; }
+      if (src[i] === '<') {
+        var edge = html && src[i + 1] === '/' ? '</' : '<';
+        out.push(markupEdge(edge)); i += edge.length; continue;
+      }
       end = src.indexOf('<', i); if (end === -1) end = src.length;
       markupText(out, src, i, end, ''); i = end;
     }
@@ -754,7 +761,26 @@
     return out;
   }
 
+  var completionWords = {
+    py: { keywords: Object.keys(PY_KEY).concat(['True', 'False', 'None']),
+      types: Object.keys(PY_TYPES), functions: Object.keys(PY_BUILTINS) },
+    java: { keywords: Object.keys(JAVA_KEY).concat(['true', 'false', 'null']), types: Object.keys(JAVA_TYPES) },
+    js: { keywords: Object.keys(JS_KEY).concat(Object.keys(JS_LITERAL)), types: Object.keys(JS_TYPES) },
+    bf: { keywords: BF_KEYWORDS, types: BF_TYPES },
+    c: { keywords: C_KEY.filter(function (word) {
+      return !/^(?:class|public|private|protected|namespace|using|template|new|delete)$/.test(word);
+    }).concat(['inline', 'restrict', 'volatile', '_Bool']) },
+    cpp: { keywords: C_KEY.concat(['alignof', 'constexpr', 'decltype', 'explicit', 'friend', 'noexcept', 'operator', 'static_assert', 'throw', 'try', 'typename', 'virtual']) },
+    cs: { keywords: C_KEY.filter(function (word) {
+      return !/^(?:union|unsigned|signed|extern|typedef|template|delete|nullptr|auto)$/.test(word);
+    }).concat(['null', 'readonly', 'static', 'void', 'using']) }
+  };
+  var noCompletionWords = {};
+
   global.HL = {
+    completionVocabulary: function (kind) {
+      return Object.prototype.hasOwnProperty.call(completionWords, kind) ? completionWords[kind] : noCompletionWords;
+    },
     highlight: highlight,
     javascriptLiterals: function (source) {
       var ranges = Object.create(null);

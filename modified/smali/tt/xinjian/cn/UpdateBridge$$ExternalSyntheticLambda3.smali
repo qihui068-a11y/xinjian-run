@@ -9,11 +9,11 @@
 # instance fields
 .field public final synthetic f$0:Ltt/xinjian/cn/UpdateBridge;
 
-.field public final synthetic f$1:Ljava/lang/String;
+.field public final synthetic f$1:Ltt/xinjian/cn/UpdateRelease;
 
 
 # direct methods
-.method public synthetic constructor <init>(Ltt/xinjian/cn/UpdateBridge;Ljava/lang/String;)V
+.method public synthetic constructor <init>(Ltt/xinjian/cn/UpdateBridge;Ltt/xinjian/cn/UpdateRelease;)V
     .locals 0
 
     .line 0
@@ -21,7 +21,7 @@
 
     iput-object p1, p0, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda3;->f$0:Ltt/xinjian/cn/UpdateBridge;
 
-    iput-object p2, p0, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda3;->f$1:Ljava/lang/String;
+    iput-object p2, p0, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda3;->f$1:Ltt/xinjian/cn/UpdateRelease;
 
     return-void
 .end method
@@ -34,9 +34,9 @@
     .line 0
     iget-object v0, p0, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda3;->f$0:Ltt/xinjian/cn/UpdateBridge;
 
-    iget-object v1, p0, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda3;->f$1:Ljava/lang/String;
+    iget-object v1, p0, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda3;->f$1:Ltt/xinjian/cn/UpdateRelease;
 
-    invoke-virtual {v0, v1}, Ltt/xinjian/cn/UpdateBridge;->lambda$publish$3$tt-xinjian-cn-UpdateBridge(Ljava/lang/String;)V
+    invoke-virtual {v0, v1}, Ltt/xinjian/cn/UpdateBridge;->lambda$download$1$tt-xinjian-cn-UpdateBridge(Ltt/xinjian/cn/UpdateRelease;)V
 
     return-void
 .end method

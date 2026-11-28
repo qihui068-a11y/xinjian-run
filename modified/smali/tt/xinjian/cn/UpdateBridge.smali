@@ -24,14 +24,6 @@
 
 
 # direct methods
-.method public static synthetic $r8$lambda$2rRptL989pbsKf1XnOg7oX479H8(Ltt/xinjian/cn/UpdateBridge;)V
-    .locals 0
-
-    invoke-direct {p0}, Ltt/xinjian/cn/UpdateBridge;->openInstaller()V
-
-    return-void
-.end method
-
 .method public constructor <init>(Landroid/app/Activity;Landroid/webkit/WebView;)V
     .locals 1
 
@@ -113,7 +105,7 @@
 .method private begin(Ljava/lang/String;I)Z
     .locals 2
 
-    .line 145
+    .line 146
     iget-boolean v0, p0, Ltt/xinjian/cn/UpdateBridge;->closed:Z
 
     if-nez v0, :cond_1
@@ -124,21 +116,21 @@
 
     goto :goto_0
 
-    .line 146
+    .line 147
     :cond_0
     const/4 v0, 0x1
 
     iput-boolean v0, p0, Ltt/xinjian/cn/UpdateBridge;->busy:Z
 
-    .line 147
+    .line 148
     const-string v1, ""
 
     invoke-direct {p0, p1, p2, v1}, Ltt/xinjian/cn/UpdateBridge;->publish(Ljava/lang/String;ILjava/lang/String;)V
 
-    .line 148
+    .line 149
     return v0
 
-    .line 145
+    .line 146
     :cond_1
     :goto_0
     const/4 p1, 0x0
@@ -154,23 +146,23 @@
         }
     .end annotation
 
-    .line 229
+    .line 230
     move-object/from16 v1, p0
 
     move-object/from16 v0, p1
 
     iget-object v2, v1, Ltt/xinjian/cn/UpdateBridge;->activity:Landroid/app/Activity;
 
-    invoke-static {v2}, Ltt/xinjian/cn/UpdateApkProvider;->apk(Landroid/content/Context;)Ljava/io/File;
+    invoke-static {v2, v0}, Ltt/xinjian/cn/UpdateApkProvider;->apk(Landroid/content/Context;Ltt/xinjian/cn/UpdateRelease;)Ljava/io/File;
 
     move-result-object v2
 
-    .line 230
+    .line 231
     invoke-virtual {v2}, Ljava/io/File;->getParentFile()Ljava/io/File;
 
     move-result-object v3
 
-    .line 231
+    .line 232
     invoke-virtual {v3}, Ljava/io/File;->isDirectory()Z
 
     move-result v4
@@ -194,7 +186,7 @@
 
     throw v0
 
-    .line 232
+    .line 233
     :cond_1
     :goto_0
     const-string v4, "download-"
@@ -205,13 +197,13 @@
 
     move-result-object v3
 
-    .line 234
+    .line 235
     :try_start_0
     invoke-static {}, Ltt/xinjian/cn/UpdateBridge;->newDigest()Ljava/security/MessageDigest;
 
     move-result-object v4
 
-    .line 235
+    .line 236
     iget-object v5, v0, Ltt/xinjian/cn/UpdateRelease;->url:Ljava/lang/String;
 
     const-string v6, "application/octet-stream"
@@ -222,13 +214,13 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_5
 
-    .line 236
-    nop
-
     .line 237
     nop
 
     .line 238
+    nop
+
+    .line 239
     :try_start_1
     invoke-virtual {v5}, Ljava/net/HttpURLConnection;->getInputStream()Ljava/io/InputStream;
 
@@ -243,7 +235,7 @@
     :try_end_2
     .catchall {:try_start_2 .. :try_end_2} :catchall_2
 
-    .line 239
+    .line 240
     const/16 v8, 0x4000
 
     :try_start_3
@@ -255,7 +247,7 @@
 
     const/4 v12, 0x0
 
-    .line 241
+    .line 242
     :goto_1
     invoke-virtual {v6, v8}, Ljava/io/InputStream;->read([B)I
 
@@ -265,30 +257,30 @@
 
     if-eq v13, v14, :cond_5
 
-    .line 242
+    .line 243
     iget-boolean v14, v1, Ltt/xinjian/cn/UpdateBridge;->closed:Z
 
     if-nez v14, :cond_4
 
-    .line 243
+    .line 244
     int-to-long v14, v13
 
     add-long/2addr v10, v14
 
-    .line 244
+    .line 245
     iget-wide v14, v0, Ltt/xinjian/cn/UpdateRelease;->bytes:J
 
     cmp-long v16, v10, v14
 
     if-gtz v16, :cond_3
 
-    .line 245
+    .line 246
     invoke-virtual {v7, v8, v9, v13}, Ljava/io/FileOutputStream;->write([BII)V
 
-    .line 246
+    .line 247
     invoke-virtual {v4, v8, v9, v13}, Ljava/security/MessageDigest;->update([BII)V
 
-    .line 247
+    .line 248
     const-wide/16 v13, 0x64
 
     mul-long v13, v13, v10
@@ -301,13 +293,13 @@
 
     long-to-int v9, v13
 
-    .line 248
+    .line 249
     if-eq v9, v12, :cond_2
 
-    .line 249
+    .line 250
     nop
 
-    .line 250
+    .line 251
     const-string v10, "downloading"
 
     const-string v11, ""
@@ -316,7 +308,7 @@
 
     move v12, v9
 
-    .line 252
+    .line 253
     :cond_2
     move-wide/from16 v10, v16
 
@@ -324,7 +316,7 @@
 
     goto :goto_1
 
-    .line 244
+    .line 245
     :cond_3
     new-instance v0, Ljava/io/IOException;
 
@@ -334,7 +326,7 @@
 
     throw v0
 
-    .line 242
+    .line 243
     :cond_4
     new-instance v0, Ljava/io/IOException;
 
@@ -346,7 +338,7 @@
     :try_end_3
     .catchall {:try_start_3 .. :try_end_3} :catchall_0
 
-    .line 253
+    .line 254
     :cond_5
     :try_start_4
     invoke-virtual {v7}, Ljava/io/FileOutputStream;->close()V
@@ -360,15 +352,15 @@
     :try_end_5
     .catchall {:try_start_5 .. :try_end_5} :catchall_4
 
-    .line 254
+    .line 255
     :cond_6
     :try_start_6
     invoke-virtual {v5}, Ljava/net/HttpURLConnection;->disconnect()V
 
-    .line 255
+    .line 256
     nop
 
-    .line 256
+    .line 257
     iget-wide v5, v0, Ltt/xinjian/cn/UpdateRelease;->bytes:J
 
     cmp-long v7, v10, v5
@@ -391,10 +383,10 @@
 
     if-eqz v4, :cond_9
 
-    .line 259
+    .line 260
     invoke-direct {v1, v3, v0}, Ltt/xinjian/cn/UpdateBridge;->verifyPackage(Ljava/io/File;Ltt/xinjian/cn/UpdateRelease;)V
 
-    .line 260
+    .line 261
     iget-boolean v0, v1, Ltt/xinjian/cn/UpdateBridge;->closed:Z
 
     if-nez v0, :cond_8
@@ -407,7 +399,7 @@
 
     if-eqz v0, :cond_8
 
-    .line 262
+    .line 263
     invoke-virtual {v3}, Ljava/io/File;->exists()Z
 
     move-result v0
@@ -416,11 +408,11 @@
 
     invoke-virtual {v3}, Ljava/io/File;->delete()Z
 
-    .line 264
+    .line 265
     :cond_7
     return-void
 
-    .line 260
+    .line 261
     :cond_8
     :try_start_7
     new-instance v0, Ljava/io/IOException;
@@ -431,7 +423,7 @@
 
     throw v0
 
-    .line 257
+    .line 258
     :cond_9
     new-instance v0, Ljava/io/IOException;
 
@@ -443,7 +435,7 @@
     :try_end_7
     .catchall {:try_start_7 .. :try_end_7} :catchall_5
 
-    .line 238
+    .line 239
     :catchall_0
     move-exception v0
 
@@ -497,19 +489,19 @@
     :try_end_b
     .catchall {:try_start_b .. :try_end_b} :catchall_4
 
-    .line 254
+    .line 255
     :catchall_4
     move-exception v0
 
     :try_start_c
     invoke-virtual {v5}, Ljava/net/HttpURLConnection;->disconnect()V
 
-    .line 255
+    .line 256
     throw v0
     :try_end_c
     .catchall {:try_start_c .. :try_end_c} :catchall_5
 
-    .line 262
+    .line 263
     :catchall_5
     move-exception v0
 
@@ -521,7 +513,7 @@
 
     invoke-virtual {v3}, Ljava/io/File;->delete()Z
 
-    .line 263
+    .line 264
     :cond_b
     throw v0
 .end method
@@ -535,7 +527,7 @@
         }
     .end annotation
 
-    .line 213
+    .line 214
     const-string v0, "https://api.github.com/repos/qihui068-a11y/xinjian-run/releases/latest"
 
     const-string v1, "application/vnd.github+json"
@@ -544,7 +536,7 @@
 
     move-result-object v0
 
-    .line 214
+    .line 215
     :try_start_0
     invoke-virtual {v0}, Ljava/net/HttpURLConnection;->getInputStream()Ljava/io/InputStream;
 
@@ -552,18 +544,18 @@
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_2
 
-    .line 215
+    .line 216
     :try_start_1
     new-instance v2, Ljava/io/ByteArrayOutputStream;
 
     invoke-direct {v2}, Ljava/io/ByteArrayOutputStream;-><init>()V
 
-    .line 216
+    .line 217
     const/16 v3, 0x2000
 
     new-array v3, v3, [B
 
-    .line 218
+    .line 219
     :goto_0
     invoke-virtual {v1, v3}, Ljava/io/InputStream;->read([B)I
 
@@ -573,7 +565,7 @@
 
     if-eq v4, v5, :cond_1
 
-    .line 219
+    .line 220
     invoke-virtual {v2}, Ljava/io/ByteArrayOutputStream;->size()I
 
     move-result v5
@@ -584,14 +576,14 @@
 
     if-gt v5, v6, :cond_0
 
-    .line 220
+    .line 221
     const/4 v5, 0x0
 
     invoke-virtual {v2, v3, v5, v4}, Ljava/io/ByteArrayOutputStream;->write([BII)V
 
     goto :goto_0
 
-    .line 219
+    .line 220
     :cond_0
     new-instance v2, Ljava/io/IOException;
 
@@ -601,7 +593,7 @@
 
     throw v2
 
-    .line 222
+    .line 223
     :cond_1
     new-instance v3, Lorg/json/JSONObject;
 
@@ -619,7 +611,7 @@
     :try_end_1
     .catchall {:try_start_1 .. :try_end_1} :catchall_0
 
-    .line 223
+    .line 224
     if-eqz v1, :cond_2
 
     :try_start_2
@@ -627,14 +619,14 @@
     :try_end_2
     .catchall {:try_start_2 .. :try_end_2} :catchall_2
 
-    .line 224
+    .line 225
     :cond_2
     invoke-virtual {v0}, Ljava/net/HttpURLConnection;->disconnect()V
 
-    .line 222
+    .line 223
     return-object v3
 
-    .line 214
+    .line 215
     :catchall_0
     move-exception v2
 
@@ -659,13 +651,13 @@
     :try_end_4
     .catchall {:try_start_4 .. :try_end_4} :catchall_2
 
-    .line 224
+    .line 225
     :catchall_2
     move-exception v1
 
     invoke-virtual {v0}, Ljava/net/HttpURLConnection;->disconnect()V
 
-    .line 225
+    .line 226
     throw v1
 .end method
 
@@ -674,23 +666,23 @@
 
     monitor-enter p0
 
-    .line 152
+    .line 153
     const/4 v0, 0x0
 
     :try_start_0
     iput-boolean v0, p0, Ltt/xinjian/cn/UpdateBridge;->busy:Z
 
-    .line 153
+    .line 154
     invoke-direct {p0, p1, p2, p3}, Ltt/xinjian/cn/UpdateBridge;->publish(Ljava/lang/String;ILjava/lang/String;)V
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
-    .line 154
+    .line 155
     monitor-exit p0
 
     return-void
 
-    .line 151
+    .line 152
     :catchall_0
     move-exception p1
 
@@ -705,7 +697,7 @@
 .method private static hex([B)Ljava/lang/String;
     .locals 6
 
-    .line 317
+    .line 318
     new-instance v0, Ljava/lang/StringBuilder;
 
     array-length v1, p0
@@ -714,7 +706,7 @@
 
     invoke-direct {v0, v1}, Ljava/lang/StringBuilder;-><init>(I)V
 
-    .line 318
+    .line 319
     array-length v1, p0
 
     const/4 v2, 0x0
@@ -724,7 +716,7 @@
 
     aget-byte v3, p0, v2
 
-    .line 319
+    .line 320
     shr-int/lit8 v4, v3, 0x4
 
     and-int/lit8 v4, v4, 0xf
@@ -747,12 +739,12 @@
 
     invoke-virtual {v4, v3}, Ljava/lang/StringBuilder;->append(C)Ljava/lang/StringBuilder;
 
-    .line 318
+    .line 319
     add-int/lit8 v2, v2, 0x1
 
     goto :goto_0
 
-    .line 321
+    .line 322
     :cond_0
     invoke-virtual {v0}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
 
@@ -764,12 +756,12 @@
 .method private static message(Ljava/lang/Exception;Ljava/lang/String;)Ljava/lang/String;
     .locals 1
 
-    .line 325
+    .line 326
     invoke-virtual {p0}, Ljava/lang/Exception;->getMessage()Ljava/lang/String;
 
     move-result-object v0
 
-    .line 326
+    .line 327
     instance-of p0, p0, Ljava/io/IOException;
 
     if-eqz p0, :cond_0
@@ -784,7 +776,7 @@
 
     if-eqz p0, :cond_0
 
-    .line 327
+    .line 328
     move-object p1, v0
 
     goto :goto_0
@@ -792,7 +784,7 @@
     :cond_0
     nop
 
-    .line 326
+    .line 327
     :goto_0
     return-object p1
 .end method
@@ -800,7 +792,7 @@
 .method private static newDigest()Ljava/security/MessageDigest;
     .locals 2
 
-    .line 312
+    .line 313
     :try_start_0
     const-string v0, "SHA-256"
 
@@ -812,7 +804,7 @@
 
     return-object v0
 
-    .line 313
+    .line 314
     :catch_0
     move-exception v0
 
@@ -831,12 +823,12 @@
         }
     .end annotation
 
-    .line 175
+    .line 176
     new-instance v0, Ljava/net/URL;
 
     invoke-direct {v0, p0}, Ljava/net/URL;-><init>(Ljava/lang/String;)V
 
-    .line 176
+    .line 177
     const/4 p0, 0x0
 
     const/4 v1, 0x0
@@ -846,12 +838,12 @@
 
     if-ge v1, v2, :cond_9
 
-    .line 177
+    .line 178
     invoke-virtual {v0}, Ljava/net/URL;->getHost()Ljava/lang/String;
 
     move-result-object v2
 
-    .line 178
+    .line 179
     const-string v3, "https"
 
     invoke-virtual {v0}, Ljava/net/URL;->getProtocol()Ljava/lang/String;
@@ -872,7 +864,7 @@
 
     if-nez v3, :cond_8
 
-    .line 179
+    .line 180
     invoke-virtual {v0}, Ljava/net/URL;->getPort()I
 
     move-result v3
@@ -889,7 +881,7 @@
 
     if-ne v3, v5, :cond_8
 
-    .line 180
+    .line 181
     :cond_0
     const-string v3, "api.github.com"
 
@@ -907,7 +899,7 @@
 
     if-nez v3, :cond_1
 
-    .line 181
+    .line 182
     const-string v3, "release-assets.githubusercontent.com"
 
     invoke-virtual {v3, v2}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
@@ -924,7 +916,7 @@
 
     if-eqz v2, :cond_8
 
-    .line 184
+    .line 185
     :cond_1
     invoke-virtual {v0}, Ljava/net/URL;->openConnection()Ljava/net/URLConnection;
 
@@ -932,53 +924,53 @@
 
     check-cast v2, Ljava/net/HttpURLConnection;
 
-    .line 185
+    .line 186
     const/16 v3, 0x2ee0
 
     invoke-virtual {v2, v3}, Ljava/net/HttpURLConnection;->setConnectTimeout(I)V
 
-    .line 186
+    .line 187
     invoke-virtual {v2, v3}, Ljava/net/HttpURLConnection;->setReadTimeout(I)V
 
-    .line 187
+    .line 188
     invoke-virtual {v2, p0}, Ljava/net/HttpURLConnection;->setInstanceFollowRedirects(Z)V
 
-    .line 188
+    .line 189
     invoke-virtual {v2, p0}, Ljava/net/HttpURLConnection;->setUseCaches(Z)V
 
-    .line 189
+    .line 190
     const-string v3, "User-Agent"
 
     const-string v5, "XinJian-Run-Android"
 
     invoke-virtual {v2, v3, v5}, Ljava/net/HttpURLConnection;->setRequestProperty(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 190
+    .line 191
     const-string v3, "Accept"
 
     invoke-virtual {v2, v3, p1}, Ljava/net/HttpURLConnection;->setRequestProperty(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 191
+    .line 192
     const-string v3, "Accept-Encoding"
 
     const-string v5, "identity"
 
     invoke-virtual {v2, v3, v5}, Ljava/net/HttpURLConnection;->setRequestProperty(Ljava/lang/String;Ljava/lang/String;)V
 
-    .line 193
+    .line 194
     :try_start_0
     invoke-virtual {v2}, Ljava/net/HttpURLConnection;->getResponseCode()I
 
     move-result v3
 
-    .line 194
+    .line 195
     const/16 v5, 0xc8
 
     if-ne v3, v5, :cond_2
 
     return-object v2
 
-    .line 195
+    .line 196
     :cond_2
     const/16 v5, 0x12d
 
@@ -1002,7 +994,7 @@
 
     goto :goto_2
 
-    .line 202
+    .line 203
     :cond_3
     const/16 p0, 0x193
 
@@ -1014,7 +1006,7 @@
 
     goto :goto_1
 
-    .line 203
+    .line 204
     :cond_4
     new-instance p0, Ljava/io/IOException;
 
@@ -1024,7 +1016,7 @@
 
     throw p0
 
-    .line 202
+    .line 203
     :cond_5
     :goto_1
     new-instance p0, Ljava/io/IOException;
@@ -1035,7 +1027,7 @@
 
     throw p0
 
-    .line 196
+    .line 197
     :cond_6
     :goto_2
     const-string v3, "Location"
@@ -1044,28 +1036,28 @@
 
     move-result-object v3
 
-    .line 197
+    .line 198
     if-eqz v3, :cond_7
 
-    .line 198
+    .line 199
     new-instance v4, Ljava/net/URL;
 
     invoke-direct {v4, v0, v3}, Ljava/net/URL;-><init>(Ljava/net/URL;Ljava/lang/String;)V
 
-    .line 199
+    .line 200
     invoke-virtual {v2}, Ljava/net/HttpURLConnection;->disconnect()V
 
-    .line 200
+    .line 201
     nop
 
-    .line 176
+    .line 177
     add-int/lit8 v1, v1, 0x1
 
     move-object v0, v4
 
     goto/16 :goto_0
 
-    .line 197
+    .line 198
     :cond_7
     new-instance p0, Ljava/io/IOException;
 
@@ -1075,17 +1067,17 @@
     :try_end_0
     .catch Ljava/io/IOException; {:try_start_0 .. :try_end_0} :catch_0
 
-    .line 204
+    .line 205
     :catch_0
     move-exception p0
 
-    .line 205
+    .line 206
     invoke-virtual {v2}, Ljava/net/HttpURLConnection;->disconnect()V
 
-    .line 206
+    .line 207
     throw p0
 
-    .line 182
+    .line 183
     :cond_8
     new-instance p0, Ljava/io/IOException;
 
@@ -1093,7 +1085,7 @@
 
     throw p0
 
-    .line 209
+    .line 210
     :cond_9
     new-instance p0, Ljava/io/IOException;
 
@@ -1104,17 +1096,15 @@
     throw p0
 .end method
 
-.method private openInstaller()V
-    .locals 6
+.method private openInstaller(Ltt/xinjian/cn/UpdateRelease;)V
+    .locals 5
 
     .line 113
     iget-boolean v0, p0, Ltt/xinjian/cn/UpdateBridge;->closed:Z
 
-    const-string v1, ""
+    const/16 v1, 0x64
 
-    const/16 v2, 0x64
-
-    const-string v3, "ready"
+    const-string v2, "ready"
 
     if-nez v0, :cond_2
 
@@ -1126,15 +1116,15 @@
 
     if-eqz v0, :cond_0
 
-    goto :goto_4
+    goto/16 :goto_4
 
     .line 117
     :cond_0
     sget v0, Landroid/os/Build$VERSION;->SDK_INT:I
 
-    const/16 v4, 0x1a
+    const/16 v3, 0x1a
 
-    if-lt v0, v4, :cond_1
+    if-lt v0, v3, :cond_1
 
     iget-object v0, p0, Ltt/xinjian/cn/UpdateBridge;->activity:Landroid/app/Activity;
 
@@ -1150,50 +1140,50 @@
 
     .line 119
     :try_start_0
-    new-instance v0, Landroid/content/Intent;
+    new-instance p1, Landroid/content/Intent;
 
-    const-string v1, "android.settings.MANAGE_UNKNOWN_APP_SOURCES"
+    const-string v0, "android.settings.MANAGE_UNKNOWN_APP_SOURCES"
 
-    new-instance v4, Ljava/lang/StringBuilder;
+    new-instance v3, Ljava/lang/StringBuilder;
 
-    invoke-direct {v4}, Ljava/lang/StringBuilder;-><init>()V
+    invoke-direct {v3}, Ljava/lang/StringBuilder;-><init>()V
 
-    const-string v5, "package:"
+    const-string v4, "package:"
 
-    invoke-virtual {v4, v5}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    move-result-object v4
+    move-result-object v3
 
-    iget-object v5, p0, Ltt/xinjian/cn/UpdateBridge;->activity:Landroid/app/Activity;
+    iget-object v4, p0, Ltt/xinjian/cn/UpdateBridge;->activity:Landroid/app/Activity;
 
     .line 120
-    invoke-virtual {v5}, Landroid/app/Activity;->getPackageName()Ljava/lang/String;
-
-    move-result-object v5
-
-    invoke-virtual {v4, v5}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v4}, Landroid/app/Activity;->getPackageName()Ljava/lang/String;
 
     move-result-object v4
 
-    invoke-virtual {v4}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    move-result-object v4
+    move-result-object v3
 
-    invoke-static {v4}, Landroid/net/Uri;->parse(Ljava/lang/String;)Landroid/net/Uri;
+    invoke-virtual {v3}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
 
-    move-result-object v4
+    move-result-object v3
 
-    invoke-direct {v0, v1, v4}, Landroid/content/Intent;-><init>(Ljava/lang/String;Landroid/net/Uri;)V
+    invoke-static {v3}, Landroid/net/Uri;->parse(Ljava/lang/String;)Landroid/net/Uri;
+
+    move-result-object v3
+
+    invoke-direct {p1, v0, v3}, Landroid/content/Intent;-><init>(Ljava/lang/String;Landroid/net/Uri;)V
 
     .line 121
-    iget-object v1, p0, Ltt/xinjian/cn/UpdateBridge;->activity:Landroid/app/Activity;
+    iget-object v0, p0, Ltt/xinjian/cn/UpdateBridge;->activity:Landroid/app/Activity;
 
-    invoke-virtual {v1, v0}, Landroid/app/Activity;->startActivity(Landroid/content/Intent;)V
+    invoke-virtual {v0, p1}, Landroid/app/Activity;->startActivity(Landroid/content/Intent;)V
 
     .line 122
-    const-string v0, "\u5141\u8bb8\u4fe1\u7b3a\u5b89\u88c5\u5e94\u7528\u540e\uff0c\u8fd4\u56de\u8fd9\u91cc\u518d\u70b9\u4e00\u6b21\u5b89\u88c5"
+    const-string p1, "\u5141\u8bb8\u4fe1\u7b3a\u5b89\u88c5\u5e94\u7528\u540e\uff0c\u8fd4\u56de\u8fd9\u91cc\u518d\u70b9\u4e00\u6b21\u5b89\u88c5"
 
-    invoke-direct {p0, v3, v2, v0}, Ltt/xinjian/cn/UpdateBridge;->finish(Ljava/lang/String;ILjava/lang/String;)V
+    invoke-direct {p0, v2, v1, p1}, Ltt/xinjian/cn/UpdateBridge;->finish(Ljava/lang/String;ILjava/lang/String;)V
     :try_end_0
     .catch Landroid/content/ActivityNotFoundException; {:try_start_0 .. :try_end_0} :catch_1
     .catch Ljava/lang/SecurityException; {:try_start_0 .. :try_end_0} :catch_0
@@ -1203,18 +1193,18 @@
 
     .line 123
     :catch_0
-    move-exception v0
+    move-exception p1
 
     goto :goto_0
 
     :catch_1
-    move-exception v0
+    move-exception p1
 
     .line 124
     :goto_0
-    const-string v0, "\u7cfb\u7edf\u9650\u5236\u4e86\u5e94\u7528\u5185\u5b89\u88c5"
+    const-string p1, "\u7cfb\u7edf\u9650\u5236\u4e86\u5e94\u7528\u5185\u5b89\u88c5"
 
-    invoke-direct {p0, v3, v2, v0}, Ltt/xinjian/cn/UpdateBridge;->finish(Ljava/lang/String;ILjava/lang/String;)V
+    invoke-direct {p0, v2, v1, p1}, Ltt/xinjian/cn/UpdateBridge;->finish(Ljava/lang/String;ILjava/lang/String;)V
 
     .line 126
     :goto_1
@@ -1225,63 +1215,67 @@
     :try_start_1
     new-instance v0, Landroid/content/Intent;
 
-    const-string v4, "android.intent.action.VIEW"
+    const-string v3, "android.intent.action.VIEW"
 
-    invoke-direct {v0, v4}, Landroid/content/Intent;-><init>(Ljava/lang/String;)V
-
-    .line 130
-    iget-object v4, p0, Ltt/xinjian/cn/UpdateBridge;->activity:Landroid/app/Activity;
-
-    invoke-static {v4}, Ltt/xinjian/cn/UpdateApkProvider;->uri(Landroid/content/Context;)Landroid/net/Uri;
-
-    move-result-object v4
-
-    const-string v5, "application/vnd.android.package-archive"
-
-    invoke-virtual {v0, v4, v5}, Landroid/content/Intent;->setDataAndType(Landroid/net/Uri;Ljava/lang/String;)Landroid/content/Intent;
+    invoke-direct {v0, v3}, Landroid/content/Intent;-><init>(Ljava/lang/String;)V
 
     .line 131
-    const/4 v4, 0x1
+    iget-object v3, p0, Ltt/xinjian/cn/UpdateBridge;->activity:Landroid/app/Activity;
 
-    invoke-virtual {v0, v4}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
+    invoke-static {v3, p1}, Ltt/xinjian/cn/UpdateApkProvider;->uri(Landroid/content/Context;Ltt/xinjian/cn/UpdateRelease;)Landroid/net/Uri;
+
+    move-result-object p1
+
+    const-string v3, "application/vnd.android.package-archive"
+
+    invoke-virtual {v0, p1, v3}, Landroid/content/Intent;->setDataAndType(Landroid/net/Uri;Ljava/lang/String;)Landroid/content/Intent;
 
     .line 132
-    iget-object v4, p0, Ltt/xinjian/cn/UpdateBridge;->activity:Landroid/app/Activity;
+    const/4 p1, 0x1
 
-    invoke-virtual {v4, v0}, Landroid/app/Activity;->startActivity(Landroid/content/Intent;)V
+    invoke-virtual {v0, p1}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
 
     .line 133
-    invoke-direct {p0, v3, v2, v1}, Ltt/xinjian/cn/UpdateBridge;->finish(Ljava/lang/String;ILjava/lang/String;)V
+    iget-object p1, p0, Ltt/xinjian/cn/UpdateBridge;->activity:Landroid/app/Activity;
+
+    invoke-virtual {p1, v0}, Landroid/app/Activity;->startActivity(Landroid/content/Intent;)V
+
+    .line 134
+    const-string p1, "\u8bf7\u5728\u7cfb\u7edf\u5b89\u88c5\u5668\u4e2d\u786e\u8ba4\u66f4\u65b0"
+
+    invoke-direct {p0, v2, v1, p1}, Ltt/xinjian/cn/UpdateBridge;->finish(Ljava/lang/String;ILjava/lang/String;)V
     :try_end_1
     .catch Landroid/content/ActivityNotFoundException; {:try_start_1 .. :try_end_1} :catch_3
     .catch Ljava/lang/SecurityException; {:try_start_1 .. :try_end_1} :catch_2
 
-    .line 136
+    .line 137
     goto :goto_3
 
-    .line 134
+    .line 135
     :catch_2
-    move-exception v0
+    move-exception p1
 
     goto :goto_2
 
     :catch_3
-    move-exception v0
+    move-exception p1
 
-    .line 135
+    .line 136
     :goto_2
-    const-string v0, "\u65e0\u6cd5\u6253\u5f00\u7cfb\u7edf\u5b89\u88c5\u5668"
+    const-string p1, "\u65e0\u6cd5\u6253\u5f00\u7cfb\u7edf\u5b89\u88c5\u5668"
 
-    invoke-direct {p0, v3, v2, v0}, Ltt/xinjian/cn/UpdateBridge;->finish(Ljava/lang/String;ILjava/lang/String;)V
+    invoke-direct {p0, v2, v1, p1}, Ltt/xinjian/cn/UpdateBridge;->finish(Ljava/lang/String;ILjava/lang/String;)V
 
-    .line 137
+    .line 138
     :goto_3
     return-void
 
     .line 114
     :cond_2
     :goto_4
-    invoke-direct {p0, v3, v2, v1}, Ltt/xinjian/cn/UpdateBridge;->finish(Ljava/lang/String;ILjava/lang/String;)V
+    const-string p1, ""
+
+    invoke-direct {p0, v2, v1, p1}, Ltt/xinjian/cn/UpdateBridge;->finish(Ljava/lang/String;ILjava/lang/String;)V
 
     .line 115
     return-void
@@ -1290,14 +1284,14 @@
 .method private publish(Ljava/lang/String;ILjava/lang/String;)V
     .locals 1
 
-    .line 166
+    .line 167
     iget-boolean v0, p0, Ltt/xinjian/cn/UpdateBridge;->closed:Z
 
     if-eqz v0, :cond_0
 
     return-void
 
-    .line 167
+    .line 168
     :cond_0
     invoke-direct {p0, p1, p2, p3}, Ltt/xinjian/cn/UpdateBridge;->status(Ljava/lang/String;ILjava/lang/String;)Lorg/json/JSONObject;
 
@@ -1307,26 +1301,26 @@
 
     move-result-object p1
 
-    .line 168
+    .line 169
     iput-object p1, p0, Ltt/xinjian/cn/UpdateBridge;->state:Ljava/lang/String;
 
-    .line 169
+    .line 170
     iget-object p2, p0, Ltt/xinjian/cn/UpdateBridge;->web:Landroid/webkit/WebView;
 
-    new-instance p3, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda3;
+    new-instance p3, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda2;
 
-    invoke-direct {p3, p0, p1}, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda3;-><init>(Ltt/xinjian/cn/UpdateBridge;Ljava/lang/String;)V
+    invoke-direct {p3, p0, p1}, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda2;-><init>(Ltt/xinjian/cn/UpdateBridge;Ljava/lang/String;)V
 
     invoke-virtual {p2, p3}, Landroid/webkit/WebView;->post(Ljava/lang/Runnable;)Z
 
-    .line 172
+    .line 173
     return-void
 .end method
 
 .method private static signatures(Landroid/content/pm/PackageInfo;)[Landroid/content/pm/Signature;
     .locals 2
 
-    .line 302
+    .line 303
     sget v0, Landroid/os/Build$VERSION;->SDK_INT:I
 
     const/16 v1, 0x1c
@@ -1337,7 +1331,7 @@
 
     return-object p0
 
-    .line 303
+    .line 304
     :cond_0
     iget-object v0, p0, Landroid/content/pm/PackageInfo;->signingInfo:Landroid/content/pm/SigningInfo;
 
@@ -1361,7 +1355,7 @@
 .method private static signerFlags()I
     .locals 2
 
-    .line 297
+    .line 298
     sget v0, Landroid/os/Build$VERSION;->SDK_INT:I
 
     const/16 v1, 0x1c
@@ -1382,7 +1376,7 @@
 .method private status(Ljava/lang/String;ILjava/lang/String;)Lorg/json/JSONObject;
     .locals 2
 
-    .line 158
+    .line 159
     :try_start_0
     new-instance v0, Lorg/json/JSONObject;
 
@@ -1406,7 +1400,7 @@
 
     const-string v0, "latest"
 
-    .line 159
+    .line 160
     iget-object v1, p0, Ltt/xinjian/cn/UpdateBridge;->release:Ltt/xinjian/cn/UpdateRelease;
 
     if-nez v1, :cond_0
@@ -1439,14 +1433,14 @@
     :try_end_0
     .catch Lorg/json/JSONException; {:try_start_0 .. :try_end_0} :catch_0
 
-    .line 158
+    .line 159
     return-object p1
 
-    .line 160
+    .line 161
     :catch_0
     move-exception p1
 
-    .line 161
+    .line 162
     new-instance p2, Ljava/lang/IllegalStateException;
 
     invoke-direct {p2, p1}, Ljava/lang/IllegalStateException;-><init>(Ljava/lang/Throwable;)V
@@ -1457,7 +1451,7 @@
 .method private validCached(Ljava/io/File;Ltt/xinjian/cn/UpdateRelease;)Z
     .locals 6
 
-    .line 267
+    .line 268
     invoke-virtual {p1}, Ljava/io/File;->isFile()Z
 
     move-result v0
@@ -1478,7 +1472,7 @@
 
     goto :goto_3
 
-    .line 268
+    .line 269
     :cond_0
     :try_start_0
     new-instance v0, Ljava/io/FileInputStream;
@@ -1488,18 +1482,18 @@
     .catch Ljava/io/IOException; {:try_start_0 .. :try_end_0} :catch_1
     .catch Ljava/lang/RuntimeException; {:try_start_0 .. :try_end_0} :catch_0
 
-    .line 269
+    .line 270
     :try_start_1
     invoke-static {}, Ltt/xinjian/cn/UpdateBridge;->newDigest()Ljava/security/MessageDigest;
 
     move-result-object v2
 
-    .line 270
+    .line 271
     const/16 v3, 0x4000
 
     new-array v3, v3, [B
 
-    .line 272
+    .line 273
     :goto_0
     invoke-virtual {v0, v3}, Ljava/io/FileInputStream;->read([B)I
 
@@ -1513,7 +1507,7 @@
 
     goto :goto_0
 
-    .line 273
+    .line 274
     :cond_1
     iget-object v3, p2, Ltt/xinjian/cn/UpdateRelease;->sha256:Ljava/lang/String;
 
@@ -1533,39 +1527,39 @@
 
     if-nez v2, :cond_2
 
-    .line 276
+    .line 277
     :try_start_2
     invoke-virtual {v0}, Ljava/io/FileInputStream;->close()V
     :try_end_2
     .catch Ljava/io/IOException; {:try_start_2 .. :try_end_2} :catch_1
     .catch Ljava/lang/RuntimeException; {:try_start_2 .. :try_end_2} :catch_0
 
-    .line 273
+    .line 274
     return v1
 
-    .line 274
+    .line 275
     :cond_2
     :try_start_3
     invoke-direct {p0, p1, p2}, Ltt/xinjian/cn/UpdateBridge;->verifyPackage(Ljava/io/File;Ltt/xinjian/cn/UpdateRelease;)V
     :try_end_3
     .catchall {:try_start_3 .. :try_end_3} :catchall_0
 
-    .line 275
+    .line 276
     nop
 
-    .line 276
+    .line 277
     :try_start_4
     invoke-virtual {v0}, Ljava/io/FileInputStream;->close()V
     :try_end_4
     .catch Ljava/io/IOException; {:try_start_4 .. :try_end_4} :catch_1
     .catch Ljava/lang/RuntimeException; {:try_start_4 .. :try_end_4} :catch_0
 
-    .line 275
+    .line 276
     const/4 p1, 0x1
 
     return p1
 
-    .line 268
+    .line 269
     :catchall_0
     move-exception p1
 
@@ -1588,7 +1582,7 @@
     .catch Ljava/io/IOException; {:try_start_6 .. :try_end_6} :catch_1
     .catch Ljava/lang/RuntimeException; {:try_start_6 .. :try_end_6} :catch_0
 
-    .line 276
+    .line 277
     :catch_0
     move-exception p1
 
@@ -1597,11 +1591,11 @@
     :catch_1
     move-exception p1
 
-    .line 277
+    .line 278
     :goto_2
     return v1
 
-    .line 267
+    .line 268
     :cond_3
     :goto_3
     return v1
@@ -1615,7 +1609,7 @@
         }
     .end annotation
 
-    .line 283
+    .line 284
     iget-object v0, p0, Ltt/xinjian/cn/UpdateBridge;->activity:Landroid/app/Activity;
 
     invoke-virtual {v0}, Landroid/app/Activity;->getPackageManager()Landroid/content/pm/PackageManager;
@@ -1634,7 +1628,7 @@
 
     move-result-object p1
 
-    .line 284
+    .line 285
     if-eqz p1, :cond_1
 
     iget-object v0, p0, Ltt/xinjian/cn/UpdateBridge;->installed:Landroid/content/pm/PackageInfo;
@@ -1653,7 +1647,7 @@
 
     iget-object v0, p1, Landroid/content/pm/PackageInfo;->versionName:Ljava/lang/String;
 
-    .line 285
+    .line 286
     invoke-virtual {p2, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
 
     move-result p2
@@ -1674,7 +1668,7 @@
 
     if-lez p2, :cond_1
 
-    .line 288
+    .line 289
     iget-object p2, p0, Ltt/xinjian/cn/UpdateBridge;->installed:Landroid/content/pm/PackageInfo;
 
     invoke-static {p2}, Ltt/xinjian/cn/UpdateBridge;->signatures(Landroid/content/pm/PackageInfo;)[Landroid/content/pm/Signature;
@@ -1685,7 +1679,7 @@
 
     move-result-object p1
 
-    .line 289
+    .line 290
     if-eqz p2, :cond_0
 
     if-eqz p1, :cond_0
@@ -1700,7 +1694,7 @@
 
     new-instance v0, Ljava/util/HashSet;
 
-    .line 290
+    .line 291
     invoke-static {p2}, Ljava/util/Arrays;->asList([Ljava/lang/Object;)Ljava/util/List;
 
     move-result-object p2
@@ -1721,10 +1715,10 @@
 
     if-eqz p1, :cond_0
 
-    .line 293
+    .line 294
     return-void
 
-    .line 291
+    .line 292
     :cond_0
     new-instance p1, Ljava/io/IOException;
 
@@ -1734,7 +1728,7 @@
 
     throw p1
 
-    .line 286
+    .line 287
     :cond_1
     new-instance p1, Ljava/io/IOException;
 
@@ -1748,7 +1742,7 @@
 .method private static versionCode(Landroid/content/pm/PackageInfo;)J
     .locals 2
 
-    .line 308
+    .line 309
     sget v0, Landroid/os/Build$VERSION;->SDK_INT:I
 
     const/16 v1, 0x1c
@@ -1832,25 +1826,25 @@
 
     monitor-enter p0
 
-    .line 140
+    .line 141
     const/4 v0, 0x1
 
     :try_start_0
     iput-boolean v0, p0, Ltt/xinjian/cn/UpdateBridge;->closed:Z
 
-    .line 141
+    .line 142
     iget-object v0, p0, Ltt/xinjian/cn/UpdateBridge;->worker:Ljava/util/concurrent/ExecutorService;
 
     invoke-interface {v0}, Ljava/util/concurrent/ExecutorService;->shutdownNow()Ljava/util/List;
     :try_end_0
     .catchall {:try_start_0 .. :try_end_0} :catchall_0
 
-    .line 142
+    .line 143
     monitor-exit p0
 
     return-void
 
-    .line 139
+    .line 140
     :catchall_0
     move-exception v0
 
@@ -1897,9 +1891,9 @@
     .line 84
     iget-object v1, p0, Ltt/xinjian/cn/UpdateBridge;->worker:Ljava/util/concurrent/ExecutorService;
 
-    new-instance v2, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda4;
+    new-instance v2, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda3;
 
-    invoke-direct {v2, p0, v0}, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda4;-><init>(Ltt/xinjian/cn/UpdateBridge;Ltt/xinjian/cn/UpdateRelease;)V
+    invoke-direct {v2, p0, v0}, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda3;-><init>(Ltt/xinjian/cn/UpdateBridge;Ltt/xinjian/cn/UpdateRelease;)V
 
     invoke-interface {v1, v2}, Ljava/util/concurrent/ExecutorService;->execute(Ljava/lang/Runnable;)V
     :try_end_0
@@ -2032,7 +2026,7 @@
 
     iget-object v2, p0, Ltt/xinjian/cn/UpdateBridge;->activity:Landroid/app/Activity;
 
-    invoke-static {v2}, Ltt/xinjian/cn/UpdateApkProvider;->apk(Landroid/content/Context;)Ljava/io/File;
+    invoke-static {v2, v1}, Ltt/xinjian/cn/UpdateApkProvider;->apk(Landroid/content/Context;Ltt/xinjian/cn/UpdateRelease;)Ljava/io/File;
 
     move-result-object v2
 
@@ -2219,20 +2213,29 @@
 .end method
 
 .method synthetic lambda$install$2$tt-xinjian-cn-UpdateBridge(Ltt/xinjian/cn/UpdateRelease;)V
+    .locals 0
+
+    .line 108
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/UpdateBridge;->openInstaller(Ltt/xinjian/cn/UpdateRelease;)V
+
+    return-void
+.end method
+
+.method synthetic lambda$install$3$tt-xinjian-cn-UpdateBridge(Ltt/xinjian/cn/UpdateRelease;)V
     .locals 2
 
     .line 101
     iget-object v0, p0, Ltt/xinjian/cn/UpdateBridge;->activity:Landroid/app/Activity;
 
-    invoke-static {v0}, Ltt/xinjian/cn/UpdateApkProvider;->apk(Landroid/content/Context;)Ljava/io/File;
+    invoke-static {v0, p1}, Ltt/xinjian/cn/UpdateApkProvider;->apk(Landroid/content/Context;Ltt/xinjian/cn/UpdateRelease;)Ljava/io/File;
 
     move-result-object v0
 
     invoke-direct {p0, v0, p1}, Ltt/xinjian/cn/UpdateBridge;->validCached(Ljava/io/File;Ltt/xinjian/cn/UpdateRelease;)Z
 
-    move-result p1
+    move-result v0
 
-    if-nez p1, :cond_0
+    if-nez v0, :cond_0
 
     .line 102
     monitor-enter p0
@@ -2268,22 +2271,22 @@
 
     .line 108
     :cond_0
-    iget-object p1, p0, Ltt/xinjian/cn/UpdateBridge;->web:Landroid/webkit/WebView;
+    iget-object v0, p0, Ltt/xinjian/cn/UpdateBridge;->web:Landroid/webkit/WebView;
 
-    new-instance v0, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda2;
+    new-instance v1, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda4;
 
-    invoke-direct {v0, p0}, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda2;-><init>(Ltt/xinjian/cn/UpdateBridge;)V
+    invoke-direct {v1, p0, p1}, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda4;-><init>(Ltt/xinjian/cn/UpdateBridge;Ltt/xinjian/cn/UpdateRelease;)V
 
-    invoke-virtual {p1, v0}, Landroid/webkit/WebView;->post(Ljava/lang/Runnable;)Z
+    invoke-virtual {v0, v1}, Landroid/webkit/WebView;->post(Ljava/lang/Runnable;)Z
 
     .line 109
     return-void
 .end method
 
-.method synthetic lambda$publish$3$tt-xinjian-cn-UpdateBridge(Ljava/lang/String;)V
+.method synthetic lambda$publish$4$tt-xinjian-cn-UpdateBridge(Ljava/lang/String;)V
     .locals 3
 
-    .line 170
+    .line 171
     iget-boolean v0, p0, Ltt/xinjian/cn/UpdateBridge;->closed:Z
 
     if-nez v0, :cond_0
@@ -2322,7 +2325,7 @@
 
     invoke-virtual {v0, p1, v1}, Landroid/webkit/WebView;->evaluateJavascript(Ljava/lang/String;Landroid/webkit/ValueCallback;)V
 
-    .line 171
+    .line 172
     :cond_0
     return-void
 .end method

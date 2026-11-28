@@ -24,12 +24,11 @@
       '<div class="rows">' +
       rowHtml('pigeon', 'bird', '鸽屋', n ? (n + ' 个') : '') +
       rowHtml('backup', 'download', '备份', '') +
-      rowHtml('settings', 'gear', '设置', '') +
+      rowHtml('settings', 'gear', '设置', '') + '</div><div class="rows">' +
       rowHtml('about', 'info', '关于', '') +
       rowHtml('sponsor', 'cup', '赞助', '') +
       '</div>' +
-      '</div>' +
-      tabbar('me');
+      '</div>';
 
     var themeBtn = ThemeReveal.attach(el.querySelector('[data-theme-btn]'));
     el.__cleanup = function () {
@@ -38,12 +37,6 @@
     };
 
     el.addEventListener('click', function (e) {
-      var t = e.target.closest('[data-tab]');
-      if (t) {
-        if (t.dataset.tab === 'home') return Nav.reset('home');
-        if (t.dataset.tab === 'create') return Nav.go('create');
-        return;
-      }
       var a = e.target.closest('[data-act]');
       if (!a) return;
       var act = a.dataset.act;
@@ -92,12 +85,11 @@
       '<div class="t-title">设置</div><div class="t-gap"></div></div>' +
       '<div class="scroll set-body">' +
       '<div class="form"><div class="field"><label>动效</label>' +
-      '<div class="chips" id="animChips"></div></div></div>' +
+      '<div class="chips anim-settings" id="animChips"></div></div></div>' +
       '<div class="rows">' +
       rowHtml('perm', 'lock', '权限设置', '') +
-      rowHtml('pigeonSet', 'bird', '鸽屋设置', '') +
-      '<button type="button" class="row update-row" data-act="update"><span class="row-ico">' + svg('download') +
-      '</span><span class="row-t">应用更新</span><span class="row-arrow" aria-hidden="true">›</span></button>' +
+      rowHtml('pigeonSet', null, '鸽屋设置', '') +
+      rowHtml('update', null, '应用更新', '') +
       '</div>' +
       /* push-bottom：内容不满一屏时把「关于」压到最底；内容超出一屏时它自然落在最后 */
       '<div class="rows push-bottom">' +
@@ -146,7 +138,7 @@
       '<div class="topbar"><button class="icon-btn" data-act="back">' + svg('back') + '</button>' +
       '<div class="t-title">关于</div><div class="t-gap"></div></div>' +
       '<div class="scroll"><div class="form">' +
-      '<div class="field"><label>信笺·运行版</label>' +
+      '<div class="field"><label>信笺</label>' +
       '<div class="set-note">' + (Bridge.isNative ? '版本 ' + esc(AppUpdate.status().current || '未知') : '浏览器演示模式') + '</div></div>' +
       '<div class="field"><label>鸽屋的使用边界</label>' +
       '<div class="set-note">只能在可信局域网里用（家里的 WiFi、或只有你自己连的手机热点）。<br>' +
@@ -171,7 +163,7 @@
       '<div class="field"><label>当前版本</label><div data-update-current></div></div>' +
       '<div class="field"><div class="update-status" data-update-status role="status"></div>' +
       '<progress data-update-progress max="100" aria-label="下载进度" hidden></progress></div>' +
-      '<div class="chips"><button type="button" class="chip" data-act="check">检查更新</button>' +
+      '<div class="chips update-actions"><button type="button" class="chip" data-act="check">检查更新</button>' +
       '<button type="button" class="chip on" data-act="apply" hidden></button></div>' +
       '</div></div>';
 

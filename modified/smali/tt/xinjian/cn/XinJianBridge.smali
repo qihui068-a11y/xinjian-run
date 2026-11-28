@@ -1295,8 +1295,49 @@
     return-object v0
 .end method
 
+# Read-only display preferences for the app shell. WebView stays at 100% text zoom so
+# editor font metrics, selection, and highlighting remain aligned.
+.method public appearance()Ljava/lang/String;
+    .locals 5
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    iget-object v0, p0, Ltt/xinjian/cn/XinJianBridge;->ctx:Landroid/content/Context;
+    invoke-virtual {v0}, Landroid/content/Context;->getResources()Landroid/content/res/Resources;
+    move-result-object v0
+    invoke-virtual {v0}, Landroid/content/res/Resources;->getConfiguration()Landroid/content/res/Configuration;
+    move-result-object v0
+
+    new-instance v1, Ljava/lang/StringBuilder;
+    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
+    sget v2, Landroid/os/Build$VERSION;->SDK_INT:I
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+    const-string v2, "|"
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    iget v3, v0, Landroid/content/res/Configuration;->uiMode:I
+    and-int/lit8 v3, v3, 0x30
+    const/16 v4, 0x20
+    if-ne v3, v4, :appearance_light
+    const/4 v3, 0x1
+    goto :appearance_mode
+
+    :appearance_light
+    const/4 v3, 0x0
+
+    :appearance_mode
+    invoke-virtual {v1, v3}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    iget v0, v0, Landroid/content/res/Configuration;->fontScale:F
+    invoke-virtual {v1, v0}, Ljava/lang/StringBuilder;->append(F)Ljava/lang/StringBuilder;
+    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object v0
+    return-object v0
+.end method
+
 .method public insets()Ljava/lang/String;
     .locals 1
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
 
     .line 76
     :try_start_0

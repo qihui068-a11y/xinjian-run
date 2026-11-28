@@ -36,7 +36,7 @@
 
     iget-object v1, p0, Ltt/xinjian/cn/UpdateBridge$$ExternalSyntheticLambda4;->f$1:Ltt/xinjian/cn/UpdateRelease;
 
-    invoke-virtual {v0, v1}, Ltt/xinjian/cn/UpdateBridge;->lambda$download$1$tt-xinjian-cn-UpdateBridge(Ltt/xinjian/cn/UpdateRelease;)V
+    invoke-virtual {v0, v1}, Ltt/xinjian/cn/UpdateBridge;->lambda$install$2$tt-xinjian-cn-UpdateBridge(Ltt/xinjian/cn/UpdateRelease;)V
 
     return-void
 .end method

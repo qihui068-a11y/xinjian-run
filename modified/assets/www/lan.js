@@ -128,25 +128,33 @@ var Lan = (function () {
       if (bridge.start(Profile.get().nick || '')) setState(true);
       else toast('无法开启局域网，请检查网络或端口占用');
     } catch (error) { toast('无法开启局域网'); }
+    return on;
   }
 
   /* 第一次开启先讲清楚这是什么网络：提示放在决策点上，而不是藏在「关于」里 */
-  function toggle() {
-    if (!available) { toast('局域网需要 Android 应用'); return; }
-    if (on) {
-      try { bridge.stop(); } catch (error) {}
-      setState(false);
-      return;
-    }
+  var enabling;
+  function enable() {
+    if (on) return Promise.resolve(true);
+    if (!available) { toast('局域网需要 Android 应用'); return Promise.resolve(false); }
+    if (enabling) return enabling;
     var warned = true;
     try { warned = localStorage.getItem(WARN_KEY) === '1'; } catch (error) {}
-    if (warned) { startLan(); return; }
-    confirmBox('鸽屋只能在可信局域网使用：不做身份校验，别人可以冒充；传输是明文，同网段能抓到内容。确定在这里开启？',
+    if (warned) return Promise.resolve(startLan());
+    enabling = confirmBox('鸽屋只能在可信局域网使用：不做身份校验，别人可以冒充；传输是明文，同网段能抓到内容。确定在这里开启？',
       '了解，开启').then(function (ok) {
-      if (!ok) return;
+      if (!ok) return false;
       try { localStorage.setItem(WARN_KEY, '1'); } catch (error) {}
-      startLan();
+      return on || startLan();
+    }).finally(function () {
+      enabling = null;
     });
+    return enabling;
+  }
+
+  function toggle() {
+    if (!on) return enable();
+    try { bridge.stop(); } catch (error) {}
+    setState(false);
   }
 
   function send(session, text) {
@@ -155,6 +163,10 @@ var Lan = (function () {
     if (!text.trim()) return;
     var mid = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2);
     Pigeon.add(session.id, text, 'out', { mid: mid, delivery: 'pending' });
+    transmitText(session, mid, text);
+  }
+
+  function transmitText(session, mid, text) {
     pending[mid] = session.id;
     var queued = false;
     try { queued = on && bridge.send(session.peer, mid, text); }
@@ -339,7 +351,15 @@ var Lan = (function () {
   }
 
   function retry(session, message) {
-    if (!message || !message.name) return false;
+    if (!message || message.dir !== 'out' || !midPattern.test(message.mid || '') ||
+        !Pigeon.canSend(session.id).ok || Pigeon.blocked(session.peer) || pending[message.mid] || inflight[message.mid]) return false;
+    if (!message.kind || message.kind === 'text') {
+      if (!message.text || message.delivery === 'delivered') return false;
+      Pigeon.delivery(session.id, message.mid);
+      transmitText(session, message.mid, message.text);
+      return true;
+    }
+    if (message.kind !== 'image' || !message.name) return false;
     var source = readMedia(message.name);
     if (!source) { toast('原图已经不在了'); return false; }
     message.delivery = 'pending';
@@ -353,6 +373,7 @@ var Lan = (function () {
     running: function () { return on; },
     id: function () { return id; },
     short: shortId,
+    enable: enable,
     toggle: toggle,
     peers: function () { return Object.keys(peers).map(function (peer) { return peers[peer]; }); },
     peer: function (peer) { return peers[peer]; },

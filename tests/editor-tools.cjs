@@ -9,6 +9,88 @@ module.exports = async function ({ test, app, settle }) {
     return w.document.querySelector('#ta');
   }
 
+  await test('Editor Enter, Space, Backspace and Tab follow four-column indentation without changing ordinary text', async () => {
+    const a = app();
+    try {
+      const w = a.w;
+      const ta = await open(w, 'indent.py', 'def greet(name): # 注释');
+      function before(inputType, data, composing = false) {
+        const e = new w.InputEvent('beforeinput', { inputType, data, isComposing: composing, bubbles: true, cancelable: true });
+        ta.dispatchEvent(e);
+        return e.defaultPrevented;
+      }
+      function caret(start, end = start) { ta.setSelectionRange(start, end); }
+      function key(extra = {}) {
+        ta.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true, ...extra }));
+      }
+      caret(ta.value.length);
+      assert(before('insertLineBreak'));
+      assert.equal(ta.value, 'def greet(name): # 注释\n    ');
+      assert.equal(ta.selectionStart, ta.value.length);
+      assert(before('insertText', ' '));
+      assert(ta.value.endsWith('\n        '));
+      assert(before('deleteContentBackward'));
+      assert(ta.value.endsWith('\n    '));
+      assert(before('insertParagraph'));
+      assert(ta.value.endsWith('\n    \n    '));
+
+      ta.value = ' \t    text';
+      caret(1);
+      assert(before('insertText', ' '));
+      assert.equal(ta.selectionStart, 2);
+      assert.equal(ta.value, ' \t    text');
+      assert(before('deleteContentBackward'));
+      assert.equal(ta.value, '    text');
+      assert.equal(ta.selectionStart, 0);
+      caret(ta.value.length);
+      assert(!before('insertText', ' '), 'normal space in code');
+      assert(!before('deleteContentBackward'), 'normal deletion in code');
+      assert(!before('insertText', ' ', true), 'IME composing');
+      ta.value = '    one\n    two\nthree';
+      caret(0, 16);
+      key();
+      assert.equal(ta.value, '        one\n        two\nthree');
+      key({ shiftKey: true });
+      assert.equal(ta.value, '    one\n    two\nthree');
+      ta.value = '    pass';
+      caret(2);
+      w.document.querySelector('[data-act=indent]').click();
+      assert.equal(ta.selectionStart, 4);
+      assert.equal(ta.value, '    pass');
+    } finally { a.close(); }
+  });
+
+  await test('Python indentation distinguishes multi-line headers from bracket colons, strings and empty lines', () => {
+    const a = app();
+    try {
+      const edit = source => a.w.EditorTools.indentEdit(source, source.length, source.length, 'enter', 'py').text;
+      for (const [source, expected] of [
+        ['async def f(\n    n,\n    ):', '\n    '],
+        ['    if value:', '\n        '],
+        ['    print("colon:") # :', '\n    '],
+        ['    data = {"key":', '\n    '],
+        ['    item = values[1:', '\n    '],
+        ['msg = ' + '"'.repeat(3) + '\ndef not_code():', '\n'],
+        ['def f():\n    ', '\n    ']
+      ]) assert.equal(edit(source), expected, source);
+    } finally { a.close(); }
+  });
+
+  await test('Source errors map to recognized compiler or runtime filenames and skip warnings', () => {
+    const a = app();
+    try {
+      const diagnostics = a.w.EditorDiagnostics;
+      const gcc = diagnostics.compilerIssue('/usr/include/other.h:2:1: error: ignore\nprog.cpp:5:3: warning: ignore\nprog.cpp:7:4: error: expected ;', ['prog.cpp']);
+      assert.equal(gcc.line, 7);
+      assert.equal(gcc.column, 4);
+      assert.equal(diagnostics.compilerIssue('prog.cs(8,2): error CS1002: ; expected', ['prog.cs']).line, 8);
+      assert.equal(diagnostics.compilerIssue('src/Foo.java:4: error: illegal start', ['src/Foo.java']).line, 4);
+      assert.equal(diagnostics.runtimeIssue('Traceback\n  File "main.py", line 3\nNameError: x', 'main.py').line, 3);
+      assert.equal(diagnostics.runtimeIssue('SyntaxError: unexpected token\n    at hello (test.js:12:2)', 'test.js').line, 12);
+      assert.equal(diagnostics.runtimeIssue('testXjs:4:2', 'test.js'), null);
+    } finally { a.close(); }
+  });
+
   await test('Each file type offers formatting and language-specific keys in edit mode', async () => {
     const a = app();
     try {
@@ -90,13 +172,16 @@ module.exports = async function ({ test, app, settle }) {
       assert.equal(offset(), '300px');
       viewport.offsetTop = 20;
       viewport.dispatchEvent(new w.Event('scroll'));
-      assert.equal(offset(), '280px');
+      assert.equal(offset(), '300px');
       assert.equal(top(), '20px');
-      assert.equal(bottom(), '520px');
+      assert.equal(bottom(), '500px');
+      viewport.height = 470;
+      viewport.dispatchEvent(new w.Event('resize'));
+      assert.equal(bottom(), '500px');
 
       // Android may resize the layout without sending another native IME callback.
       layoutHeight = 500;
-      viewport.offsetTop = 0;
+      viewport.height = 500;
       w.dispatchEvent(new w.Event('resize'));
       assert.equal(offset(), '0px');
       assert.equal(top(), '0px');
@@ -109,6 +194,7 @@ module.exports = async function ({ test, app, settle }) {
 
       // Use the visual viewport as Android clears its IME insets.
       layoutHeight = 800;
+      viewport.offsetTop = 0;
       w.__xjKeyboardViewport(0, false);
       assert.equal(offset(), '300px');
       viewport.height = 800;

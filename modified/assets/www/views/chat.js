@@ -7,53 +7,56 @@
 
   /* ================= 视图：鸽屋（二级） ================= */
   VIEWS.pigeon = function (el) {
+    el.classList.add('pigeon-view');
     el.innerHTML =
-      '<div class="topbar"><button class="icon-btn" data-act="back">' + svg('back') + '</button>' +
-      '<div class="t-title">鸽屋</div>' +
-      '<button class="icon-btn" data-act="new">' + svg('plus') + '</button></div>' +
-      '<div class="scroll pg-scroll" id="pgList"><div class="pg-sessions"></div></div>' +
-      '<div class="pg-scan" id="pgScan" hidden><div class="pg-scan-list" id="pgScanList"></div></div>' +
-      '<div class="pg-tabbar">' +
-      '<button type="button" class="pg-tab" data-act="lan-toggle" id="pgLan">' + svg('wifiOff') + '<span>局域网</span></button>' +
-      '<button type="button" class="pg-tab" data-act="contacts">' + svg('contacts') + '<span>通讯录</span></button>' +
-      '</div>' +
-      /* 边界提示常驻在底栏上方：坐在咖啡厅里点开鸽屋，第一眼就该看到它 */
-      '<button type="button" class="pg-safe" data-act="boundary">仅限可信网络 · 明文传输</button>';
+      '<header class="workspace-heading"><div><h1 class="t-title">鸽屋</h1><p>和朋友聊聊代码与日常</p></div>' +
+      '<div class="workspace-actions"><button type="button" class="icon-btn" data-act="new" aria-label="添加朋友">' +
+      svg('plus-square') + '</button><button type="button" class="icon-btn" data-act="more" aria-label="鸽屋选项">' +
+      svg('more') + '</button></div></header>' +
+      '<div class="scroll workspace-content pg-scroll" id="pgList">' +
+      '<div class="workspace-filters"><button type="button" aria-current="page">消息</button>' +
+      '<button type="button" data-act="contacts">好友</button></div>' +
+      '<label class="workspace-search">' + svg('search') +
+      '<input type="search" id="pgSearch" placeholder="搜索会话或消息" aria-label="搜索会话或消息"></label>' +
+      '<div class="workspace-shortcuts">' +
+      '<button type="button" data-act="lan-toggle" id="pgLan"></button>' +
+      '<button type="button" data-act="nearby" id="pgNearby" aria-haspopup="dialog" aria-expanded="false"></button></div>' +
+      '<button type="button" class="pg-safe" data-act="boundary">仅限可信网络 · 明文传输</button>' +
+      '<div class="workspace-section"><h2>最近聊天</h2><button type="button" data-act="requests" id="pgRequests">好友申请</button></div>' +
+      '<div class="pg-sessions"></div></div>';
     var sessionList = el.querySelector('.pg-sessions');
-    var scanBox = el.querySelector('#pgScan');
-    var scanList = el.querySelector('#pgScanList');
     var lanBtn = el.querySelector('#pgLan');
+    var nearby = el.querySelector('#pgNearby');
+    nearby.innerHTML = svg('radar') + '<span><strong>附近设备</strong><small></small></span>';
+    var scanStatus = nearby.querySelector('small'), radar;
+    var search = el.querySelector('#pgSearch');
+    var requests = el.querySelector('#pgRequests');
+    search.addEventListener('input', render);
 
     /* 两态图标：开着是实心 wifi，关着是带斜线的 wifi */
     function paintLan() {
       var on = Lan.running();
-      lanBtn.innerHTML = svg(on ? 'wifi' : 'wifiOff') + '<span>' + (on ? '局域网已开' : '局域网') + '</span>';
+      lanBtn.innerHTML = svg(on ? 'wifi' : 'wifiOff') + '<span><strong>' +
+        (on ? '局域网已开启' : '局域网已关闭') + '</strong><small>' +
+        (on ? '连接可信网络中的设备' : '点击开启局域网') + '</small></span>';
       lanBtn.classList.toggle('on', on);
     }
 
-    /* 只有真的扫到设备才亮出这张表：局域网开着但空着的时候，整块不存在 */
-    function paintScan() {
-      var near = Lan.running() ? Lan.peers() : [];
-      if (!near.length) {
-        scanBox.hidden = true;
-        if (scanList.innerHTML !== '') scanList.innerHTML = '';
-        return;
-      }
-      var h = near.map(function (d) {
-        return '<button type="button" class="pg-scan-row" data-peer="' + esc(d.id) + '">' +
-          '<span class="pg-scan-id">' + esc(Lan.short(d.id)) + '</span>' +
-          '<span class="pg-scan-name">' + esc(d.name || '未命名设备') + '</span>' +
-        '</button>';
-      }).join('');
-      if (scanList.innerHTML !== h) scanList.innerHTML = h;
-      scanBox.hidden = false;
-    }
     function render() {
       paintLan();
-      paintScan();
+      var count = Lan.running() ? Lan.peers().length : 0;
+      scanStatus.textContent = count ? '发现 ' + count + ' 台设备' :
+        Lan.running() ? '查看局域网设备' : '开启局域网后搜索';
+      var term = search.value.trim().toLowerCase();
+      var pending = Pigeon.requestCount();
+      requests.textContent = pending ? '好友申请 · ' + pending : '好友申请';
       var list = Pigeon.list(), body = '';
       for (var i = 0; i < list.length; i++) {
         var s = list[i];
+        var name = Pigeon.displayName(s.peer, s.name) || '';
+        if (term && name.toLowerCase().indexOf(term) < 0 && !s.msgs.some(function (message) {
+          return String(message.text || message.name || '').toLowerCase().indexOf(term) >= 0;
+        })) continue;
         var tail = s.msgs.length ? s.msgs[s.msgs.length - 1] : null;
         var last = '';
         if (tail) last = tail.kind === 'image' ? '[图片]' : (tail.text || '');
@@ -69,26 +72,41 @@
           '<span class="pg-main"><span class="pg-top">' +
           '<span class="pg-name">' + esc(Pigeon.displayName(s.peer, s.name)) + '</span>' + mark +
           '<span class="pg-time">' + fmtTime(s.mtime) + '</span></span>' +
-          '<span class="pg-last">' + (s.peer ? '局域网 · ' : '') + esc(last || '还没有消息') + '</span></span></button>';
+          '<span class="pg-last">' + (s.peer ? '局域网 · ' : s.npc ? '内置助手 · ' : '') + esc(last || '还没有消息') + '</span></span></button>';
       }
-      if (!body) body = '<div class="empty"><p>还没有通信</p><button data-act="contacts">打开通讯录</button></div>';
+      if (!body) body = '<div class="empty"><p>' + (term ? '未找到会话' : '还没有通信') + '</p>' +
+        (term ? '' : '<button data-act="contacts">打开通讯录</button>') + '</div>';
       if (sessionList.innerHTML !== body) sessionList.innerHTML = body;
     }
 
     render();
-    el.__cleanup = Lan.observe(render);
+    var unobserve = Lan.observe(render);
+    el.__cleanup = function () {
+      unobserve();
+      if (radar && radar.isOpen()) radar.dispose();
+    };
 
     el.addEventListener('click', function (e) {
-      if (e.target.closest('[data-act=back]')) return Nav.back(false);
+      if (e.target.closest('[data-act=requests]')) return Nav.go('requests');
+      if (e.target.closest('[data-act=nearby]')) {
+        if (!radar || !radar.isOpen()) {
+          radar = RadarSheet.open(el, nearby, function (id) {
+            var peer = Lan.peer(id);
+            if (peer) Nav.go('chat', { sid: Pigeon.openLan(peer.id, peer.name).id });
+            else toast('设备已离线');
+          });
+        }
+        return;
+      }
+      if (e.target.closest('[data-act=more]')) {
+        return popover([
+          { ico: 'contacts', label: '通讯录', value: 'contacts' },
+          { ico: 'info', label: '局域网使用说明', value: 'about' }
+        ], e.target.closest('[data-act=more]')).then(function (name) { if (name) Nav.go(name); });
+      }
       if (e.target.closest('[data-act=lan-toggle]')) return Lan.toggle();
       if (e.target.closest('[data-act=contacts]')) return Nav.go('contacts');
       if (e.target.closest('[data-act=boundary]')) return Nav.go('about');
-      var peerButton = e.target.closest('[data-peer]');
-      if (peerButton) {
-        var peer = Lan.peer(peerButton.dataset.peer);
-        if (peer) Nav.go('chat', { sid: Pigeon.openLan(peer.id, peer.name).id });
-        return;
-      }
       if (e.target.closest('[data-act=new]')) {
         var btn = e.target.closest('[data-act=new]');
         popover([
@@ -154,13 +172,13 @@
         '<span class="ct-entry-ico">' + svg('userPlus') + '</span>' +
         '<span class="ct-entry-main">验证消息</span>' +
         (waiting ? '<span class="ct-badge">' + (waiting > 99 ? '99+' : waiting) + '</span>' : '') +
-        '<span class="ct-arrow">' + svg('back') + '</span></button>';
+        '<span class="ct-arrow">' + svg('chevron') + '</span></button>';
       var fs = Pigeon.friends();
       if (fs.length) h += '<div class="ct-section">联系人</div>';
       if (!fs.length) {
         h += '<div class="ct-empty">还没有联系人<br><small>在鸽屋打开局域网，聊过一句就算认识</small></div>';
       } else {
-        h += fs.map(function (f) {
+        h += '<div class="ct-group">' + fs.map(function (f) {
           var name = f.alias || f.name || f.id;
           return '<div class="ct-row" data-peer="' + esc(f.id) + '">' +
             '<div class="ct-actions">' +
@@ -174,7 +192,7 @@
             '<span class="ct-sub">' + esc(subOf(f)) + '</span></span>' +
             '<span class="ct-dot' + (Lan.peer(f.id) && !f.blocked ? ' on' : '') + '"></span>' +
             '</button></div>';
-        }).join('');
+        }).join('') + '</div>';
       }
       listEl.innerHTML = h;
     }
@@ -236,12 +254,23 @@
           return render();
         }
         var label = f.alias || f.name || f.id;
+        var rowEl = act.closest('.ct-row');
         confirmBox('删除「' + label + '」和聊天记录？', '删除').then(function (ok) {
           if (!ok) return;
-          if (Lan.running()) Lan.dropContact(f.id);
-          else Pigeon.deleteFriend(f.id);
-          toast('已删除');
-          render();
+          var animOn = typeof Anim !== 'undefined' && Anim.enabled();
+          function finish() {
+            if (Lan.running()) Lan.dropContact(f.id);
+            else Pigeon.deleteFriend(f.id);
+            toast('已删除');
+            render();
+          }
+          /* 规范第 12 条：先失焦 200ms，再塌陷 260ms，最后才从列表移除 */
+          if (animOn && rowEl) {
+            rowEl.classList.add('leaving');
+            setTimeout(finish, 460);
+          } else {
+            finish();
+          }
         });
         return;
       }
@@ -298,6 +327,8 @@
       if (btn.dataset.req === 'accept') {
           Pigeon.acceptRequest(peer);
         if (Lan.running()) Lan.accept(peer);
+        /* 全站唯一一处 Lottie：验证通过的高光；关动效时自动不播 */
+        if (typeof Motion !== 'undefined') Motion.verify();
         toast('已添加');
         render();
       } else {
@@ -323,6 +354,7 @@
     var s = Pigeon.get(p && p.sid);
     if (!s) { Nav.back(false); return; }
     var lanChat = !!s.peer;
+    el.classList.add('chat-view');
 
     var acts = '';
     for (var k = 0; !lanChat && k < CHAT_ACTS.length; k++) {
@@ -359,7 +391,10 @@
     /* 输入框空着 → 显示 +；有字 → 显示 发送 */
     function paintSend() {
       var has = ipt.value.trim() !== '';
-      sendBtn.textContent = has || lanChat ? '发送' : '+';
+      sendBtn.innerHTML = has || lanChat
+        ? svg('send') + '<span class="send-label">发送</span>' : '+';
+      sendBtn.setAttribute('aria-label', has || lanChat ? '发送消息' : '附件');
+      sendBtn.classList.toggle('ready', has && !ipt.disabled);
       sendBtn.classList.toggle('plus', !has && !lanChat);
       sendBtn.disabled = lanChat && !has;
     }
@@ -409,15 +444,25 @@
         return '<div class="bubble media"><div class="msg-loc">' + svg('pin') +
           '<span>' + esc(locText(m)) + '</span></div>';
       }
-      return '<div class="bubble">' + esc(m.text) +
-        (m.dir === 'out' ? '<div class="msg-st">' + deliveryText(m) + '</div>' : '') + '</div>';
+      return '<div class="bubble">' + esc(m.text);
     }
 
-    function deliveryText(message) {
-      if (!lanChat) return '本机 · 未送达';
-      if (message.delivery === 'delivered') return '已送达';
-      if (message.delivery === 'pending') return '发送中…';
-      return Lan.pending(message.mid) ? '发送中…' : '未送达';
+    function failedDelivery(message) {
+      if (!lanChat || message.dir !== 'out' || !message.mid) return '';
+      if (message.delivery !== 'failed' && (message.delivery || Lan.pending(message.mid))) return '';
+      return '<div class="msg-st"><button type="button" data-retry="' + esc(message.mid) +
+        '" aria-label="未送达，重发">' + svg('redo') + '重发</button></div>';
+    }
+
+    function transferState(message) {
+      if (!lanChat || message.dir !== 'out' || !message.mid || !/^(image|file)$/.test(message.kind)) return '';
+      if (message.delivery === 'pending' && Lan.pending(message.mid)) {
+        return '<span class="msg-transfer is-busy" role="status" aria-label="正在发送"></span>';
+      }
+      if (message.delivery === 'delivered') {
+        return '<span class="msg-transfer is-delivered" role="img" aria-label="已送达">' + svg('check') + '</span>';
+      }
+      return '';
     }
 
     /* 对方终止通讯后只弹一次三选一：删除 / 备份后删除 / 保留 */
@@ -449,29 +494,41 @@
       }, function () { toast('备份失败'); });
     }
 
+    var seenMessages = new WeakSet(), deliveryStates = new WeakMap(), chatMarkup = null;
     function render() {
       var cur = Pigeon.get(s.id);
       if (!cur) return;
-      var h = '', i;
-      for (i = 0; i < cur.msgs.length; i++) {
+      var h = '', previous, groupStart;
+      for (var i = 0; i < cur.msgs.length; i++) {
         var m = cur.msgs[i];
-        var out = m.dir === 'out';
-        var body = bodyOf(m);
-        /* 非文字消息：气泡要无条件闭合；「未送达」只在自己的消息上标 */
-        if (m.kind && m.kind !== 'text') {
-          if (out) {
-            body += '<div class="msg-st">' + deliveryText(m) + '</div>';
-            /* 失败才给重发：自动重试两次都过不去，才轮到用户点 */
-            if (m.kind === 'image' && m.delivery === 'failed' && m.mid) {
-              body += '<button type="button" class="img-retry" data-retry="' + esc(m.mid) + '">重发</button>';
-            }
-          }
-          body += '</div>';
+        var grouped = previous && previous.dir === m.dir && Number.isFinite(m.t) &&
+          Number.isFinite(groupStart) && m.t >= groupStart && m.t - groupStart < 300000;
+        if (!grouped) {
+          groupStart = m.t;
+          if (Number.isFinite(m.t)) h += '<div class="msg-time">' + esc(fmtTime(m.t)) + '</div>';
         }
-        h += '<div class="msg ' + (out ? 'out' : 'in') + '">' + body + '</div>';
+        h += '<div class="msg ' + (m.dir === 'out' ? 'out' : 'in') +
+          (grouped ? ' is-continuation' : '') + '">' + bodyOf(m) + failedDelivery(m) + transferState(m) + '</div></div>';
+        previous = m;
       }
-      listEl.innerHTML = h || '<div class="chat-tip">这里还没有消息</div>';
-      listEl.scrollTop = listEl.scrollHeight;
+      if (h !== chatMarkup) {
+        listEl.innerHTML = h || '<div class="chat-tip">这里还没有消息</div>';
+        listEl.querySelectorAll('.msg').forEach(function (row, i) {
+          var message = cur.msgs[i];
+          if (chatMarkup !== null && !seenMessages.has(message)) {
+            var sent = message.dir === 'out';
+            Motion.play(row, sent ? [{ opacity: 0, transform: 'translateY(10px) scale(.96)' },
+              { opacity: 1, transform: 'none' }] : [{ opacity: .3 }, { opacity: 1 }], sent ? 230 : 180);
+          } else if (seenMessages.has(message) && deliveryStates.get(message) !== message.delivery) {
+            Motion.play(row.querySelector('.msg-transfer, [data-retry]'),
+              [{ opacity: .3, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }], 200);
+          }
+          seenMessages.add(message);
+          deliveryStates.set(message, message.delivery);
+        });
+        chatMarkup = h;
+        listEl.scrollTop = listEl.scrollHeight;
+      }
       if (!lanChat) {
         tipEl.textContent = s.npc ? 'FUO 是内置占位对象，只会重复一句开场白。' : '消息只保存在本机。';
       } else if (cur.terminated) {
@@ -728,10 +785,10 @@
     function paint() {
       var f = Pigeon.friend(peer) || {};
       listEl.innerHTML =
-        rowHtml('note', 'pencil', '备注', f.alias || '未设置') +
-        rowHtml('mute', 'lock', '消息免打扰', f.muted ? '已开启' : '未开启') +
-        rowHtml('bt', 'share', '切换蓝牙通讯', '未实现') +
-        rowHtml('p2p', 'server', 'p2p 通讯', '未实现') +
+        rowHtml('note', null, '备注', f.alias || '未设置') +
+        rowHtml('mute', null, '消息免打扰', f.muted ? '已开启' : '未开启') +
+        rowHtml('bt', null, '切换蓝牙通讯', '未实现') +
+        rowHtml('p2p', null, 'p2p 通讯', '未实现') +
         rowHtml('del', 'trash', '终结通讯', '');
     }
     paint();

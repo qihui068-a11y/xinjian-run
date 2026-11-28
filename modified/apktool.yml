@@ -1,5 +1,5 @@
 version: 2.12.1
-apkFileName: 信笺_0.7.13_运行版.apk
+apkFileName: 信笺_0.8.6.apk
 usesFramework:
   ids:
   - 1
@@ -9,7 +9,7 @@ sdkInfo:
 packageInfo:
   forcedPackageId: 127
 versionInfo:
-  versionCode: 22
-  versionName: 0.7.3-run
+  versionCode: 35
+  versionName: 0.8.6
 doNotCompress:
 - arsc

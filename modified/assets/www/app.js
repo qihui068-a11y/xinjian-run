@@ -20,7 +20,12 @@
 
 
   var SVG = {
-    back: '<path d="M15 6l-6 6 6 6"/>',
+    back: '<path d="M14 5l-7 7 7 7M7 12h13"/>',
+    chevron: '<path d="M9 6l6 6-6 6"/>',
+    send: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+    homeFill: '<path d="M4 10l8-6 8 6v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/>',
+    meFill: '<circle cx="12" cy="7.5" r="3.5"/><path d="M5 20v-2a7 7 0 0 1 14 0v2z"/>',
+    createFill: '<circle cx="12" cy="12" r="9"/><path class="tab-fill-mark" d="M12 8v8m-4-4h8"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     pencil: '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L4.6 17.4z"/><path d="M14.5 5.5l3 3"/>',
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
@@ -28,17 +33,22 @@
     town: '<circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6"/><path d="M18 19a5.5 5.5 0 0 0-2-4"/>',
     server: '<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
     shop: '<path d="M4 9h16l-1-4H5z"/><path d="M5 9v10h14V9"/><path d="M10 19v-5h4v5"/>',
-    home: '<path d="M4 10l8-6 8 6v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/>',
+    home: '<path d="M4 10l8-6 8 6v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M9 20v-6h6v6"/>',
     me: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
     sort: '<path d="M7 4v16M4 17l3 3 3-3"/><path d="M14 7h6M14 12h4M14 17h2"/>',
     check: '<path d="M5 12l5 5L20 7"/>',
     trash: '<path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/>',
     share: '<path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/>',
+    undo: '<path d="M9 6l-5 5 5 5M4 11h11a4 4 0 0 1 0 8h-3"/>',
+    redo: '<path d="M15 6l5 5-5 5m5-5H9a4 4 0 0 0 0 8h3"/>',
+    expand: '<path d="M14 4h6v6M20 4l-6 6M10 20H4v-6m0 6l6-6"/>',
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
     bird: '<path d="M21 4l-9 8-3-1-5 3 1-5 4-2h4z"/><path d="M12 12l1 8"/>',
     gear: '<circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.2M12 18.8V21M4.6 7.6l1.9 1.1M17.5 15.3l1.9 1.1M4.6 16.4l1.9-1.1M17.5 8.7l1.9-1.1"/>',
     download: '<path d="M12 3v11M8 10l4 4 4-4"/><path d="M5 19h14"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 8h.01"/>',
+    lineStart: '<path d="M4 5v14m16-7H8m4-4-4 4 4 4"/>',
+    lineEnd: '<path d="M20 5v14M4 12h12m-4-4 4 4-4 4"/>',
     cup: '<path d="M5 8h11v6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z"/><path d="M16 9h2a2 2 0 0 1 0 4h-2"/><path d="M6 21h10"/>',
     users: '<circle cx="9" cy="8" r="3.2"/><path d="M3 19a6 6 0 0 1 12 0"/><path d="M16 5.3a3.2 3.2 0 0 1 0 5.4"/><path d="M18 19a5.5 5.5 0 0 0-2-4.3"/>',
     contacts: '<path d="M6 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6z"/><path d="M6 3v18"/><circle cx="13" cy="10" r="1.9"/><path d="M10.6 15.6a2.9 2.9 0 0 1 4.8 0"/>',
@@ -54,8 +64,44 @@
     folder: '<path d="M3 7a1 1 0 0 1 1-1h5l2 2h8a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>'
   };
 
+  /* 图形来自 design/icons/adaptive，内联以继承按钮的 currentColor。 */
+  var adaptiveIcons = {
+    'home': '<path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3Z"/>',
+    'home-active': '<path fill="currentColor" stroke="none" d="M2.5 10.2 12 2l9.5 8.2V20a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2Z"/>',
+    'bookshelf': '<path d="m12 3 10 5-10 5L2 8 12 3ZM2 12l10 5 10-5M2 16l10 5 10-5"/>',
+    'bookshelf-active': '<path fill="currentColor" stroke="none" d="m12 2 11 5.5L12 13 1 7.5Z"/><path d="m2 12 10 5 10-5M2 16.5 12 22l10-5.5"/>',
+    'pigeon': '<path d="M3 11c3.5 2.7 6.5 2.6 9.2-.5C14.8 7.6 15 4 18.4 4c1.8 0 3 1 3.6 2.5L23 8l-2.3 1.2c.1 6.9-4.6 12.1-11 11.1C5.7 19.7 2.9 16.3 2 12Z"/><circle cx="18.8" cy="6.8" r=".65" fill="currentColor" stroke="none"/>',
+    'pigeon-active': '<path fill="currentColor" stroke="none" d="M2 10c4 3 7 3 10-.5C14.6 6.5 15 3.5 18.5 3.5c2.2 0 3.8 1.4 4.1 3.1L24 8l-2.5 1.5c0 7.3-5 12.4-12 11.4C5.2 20.2 1.8 16.4 1 11Z"/><circle cx="18.9" cy="6.6" r=".8" fill="var(--icon-cutout, #fff)" stroke="none"/>',
+    'profile': '<circle cx="12" cy="7.2" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',
+    'profile-active': '<circle cx="12" cy="7" r="4.5" fill="currentColor" stroke="none"/><path fill="currentColor" stroke="none" d="M3 22v-2a9 9 0 0 1 18 0v2Z"/>',
+    'town': '<circle cx="9" cy="7" r="3.8"/><path d="M2 21v-1.8a7 7 0 0 1 14 0V21M16.5 3.5a3.8 3.8 0 0 1 0 7.2M18.5 14c2.2 1.1 3.5 3 3.5 5.2V21"/>',
+    'leaf': '<path d="M3 21c5-8 9-10 15-13M5 17C1 7 10 4 21 3c-1 11-5 18-14 15"/>',
+    'inn': '<path d="M4 3h16l2 6v1a3.4 3.4 0 0 1-6 2.1 4.3 4.3 0 0 1-8 0A3.4 3.4 0 0 1 2 10V9ZM4 13v8h16v-8M10 21v-5h4v5"/>',
+    'moon': '<path d="M20.7 15.4A9.2 9.2 0 0 1 8.6 3.3 9.2 9.2 0 1 0 20.7 15.4Z"/>',
+    'sun': '<circle cx="12" cy="12" r="4.5"/><path d="M12 1v2.5m0 17V23M1 12h2.5m17 0H23M4.2 4.2 6 6m12 12 1.8 1.8M4.2 19.8 6 18M18 6l1.8-1.8"/>',
+    'chevron-right': '<path d="m9 5 7 7-7 7"/>',
+    'search': '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
+    'file-plus': '<path d="M5 2h9l5 5v15H5Z M14 2v6h5M12 11v7m-3.5-3.5h7"/>',
+    'file-code': '<path d="M5 2h9l5 5v15H5Z M14 2v6h5M10 11l-3 3 3 3m4-6 3 3-3 3"/>',
+    'download': '<path d="M12 2v13m-5-5 5 5 5-5M3 15v5h18v-5"/>',
+    'wifi': '<path d="M2 8a15.5 15.5 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 16a4.7 4.7 0 0 1 6 0"/><circle cx="12" cy="20" r="1" fill="currentColor" stroke="none"/>',
+    'radar': '<circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5"/><path d="m12 12 7-7"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>',
+    'plus-square': '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 7v10M7 12h10"/>',
+    'bell': '<path d="M5 9a7 7 0 0 1 14 0v5l2 3H3l2-3ZM9 21h6"/>',
+    'more': '<circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none"/>',
+    'play': '<path d="M6 3 21 12 6 21Z"/>',
+    'stop': '<rect x="5" y="5" width="14" height="14" rx="2"/>',
+    'terminal': '<path d="m3 5 7 7-7 7m10 0h9"/>',
+    'plus': '<path d="M12 4v16M4 12h16"/>',
+  };
+
   function svg(n) {
-    return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (SVG[n] || '') + '</svg>';
+    if (Object.prototype.hasOwnProperty.call(adaptiveIcons, n)) {
+      return '<svg class="ui-icon adaptive-icon" data-icon="' + n + '" viewBox="0 0 24 24"' +
+        ' aria-hidden="true" focusable="false">' + adaptiveIcons[n] + '</svg>';
+    }
+    return '<svg class="ui-icon' + (/Fill$/.test(n) ? ' tab-fill' : '') +
+      '" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + (SVG[n] || '') + '</svg>';
   }
 
 
@@ -75,24 +121,45 @@
   }
 
 
+  /* 弹层离场结束后摘节点。关闭动效时直接摘除。 */
+  function dismiss(mask) {
+    if (mask.__dismiss) { mask.__dismiss(); return; }
+    var anim = (typeof Anim !== 'undefined') && Anim.enabled();
+    if (!anim) { mask.remove(); return; }
+    mask.classList.add('m-leave');
+    mask.setAttribute('aria-hidden', 'true');
+    var sheet = mask.querySelector('.sheet');
+    if (sheet) sheet.addEventListener('animationend', function () { mask.remove(); }, { once: true });
+    setTimeout(function () { mask.remove(); }, 450);
+  }
+
   /* items: [{label, value, danger}] | 'sep' | {title:'…'} */
-  function sheet(title, items) {
+  function sheet(title, items, alert) {
     return new Promise(function (resolve) {
       var mask = document.createElement('div');
-      mask.className = 'mask';
-      var html = '<div class="sheet">';
+      var previousFocus = document.activeElement;
+      mask.className = alert ? 'mask alert-mask' : 'mask';
+      var html = '<div class="sheet' + (alert ? ' sheet-alert' : '') +
+        '" role="' + (alert ? 'alertdialog' : 'dialog') + '" aria-modal="true" aria-label="' + esc(title || '选项') + '">';
       if (title) html += '<div class="sheet-title">' + esc(title) + '</div>';
       items.forEach(function (it, idx) {
         if (it === 'sep') { html += '<div class="sheet-sep"></div>'; return; }
         if (it.title) { html += '<div class="sheet-title">' + esc(it.title) + '</div>'; return; }
-        html += '<button type="button" class="sheet-item" data-i="' + idx + '"' +
-          (it.danger ? ' style="opacity:.75"' : '') + '>' + esc(it.label) + '</button>';
+        html += '<button type="button" class="sheet-item' + (it.side ? ' sheet-choice' : '') +
+          '" data-i="' + idx + '"' + (it.current ? ' aria-current="true"' : '') +
+          (it.key ? ' data-fmt="' + esc(it.key) + '"' : '') + '>' + esc(it.label) +
+          (it.side ? '<span>' + esc(it.side) + '</span>' : '') + '</button>';
       });
       html += '</div>';
       mask.innerHTML = html;
       document.body.appendChild(mask);
-      var first = mask.querySelector('button');
-      if (first) first.focus();
+      var first = mask.querySelector('[aria-current="true"]') || mask.querySelector('button');
+      if (first) first.focus({ preventScroll: true });
+      function restoreFocus() {
+        if (previousFocus && previousFocus.isConnected && !previousFocus.matches('input, textarea')) {
+          previousFocus.focus({ preventScroll: true });
+        }
+      }
 
       var layer = null, settled = false;
 
@@ -100,18 +167,24 @@
       function close(v) {
         if (settled) return;
         settled = true;
-        mask.remove();
+        dismiss(mask);
         if (layer) Back.done(layer);
+        restoreFocus();
         resolve(v);
       }
       /* 系统返回键关闭：历史已经退过了，这里只收拾界面 */
       layer = Back.open(function () {
         if (settled) return;
         settled = true;
-        mask.remove();
+        dismiss(mask);
+        restoreFocus();
         resolve(null);
       });
+      if (!alert) GestureMotion.sheet(mask, close);
 
+      mask.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { e.preventDefault(); close(null); }
+      });
       mask.addEventListener('click', function (e) {
         if (e.target === mask) return close(null);
         var it = e.target.closest('.sheet-item');
@@ -128,7 +201,7 @@
       { label: okLabel || '确定', value: true, danger: true },
       'sep',
       { label: '取消', value: false }
-    ]).then(function (v) { return v === true; });
+    ], true).then(function (v) { return v === true; });
   }
 
 
@@ -137,7 +210,7 @@
       var mask = document.createElement('div');
       mask.className = 'mask';
       mask.innerHTML =
-        '<div class="sheet">' +
+        '<div class="sheet" role="dialog" aria-modal="true" aria-label="' + esc(title) + '">' +
         '<div class="sheet-title">' + esc(title) + '</div>' +
         '<div class="form" style="padding:4px 22px 14px">' +
         '<div class="field"><input type="text" id="_ipt" value="' + esc(value || '') +
@@ -158,14 +231,14 @@
       function close(v) {
         if (settled) return;
         settled = true;
-        mask.remove();
+        dismiss(mask);
         if (layer) Back.done(layer);
         resolve(v);
       }
       layer = Back.open(function () {
         if (settled) return;
         settled = true;
-        mask.remove();
+        dismiss(mask);
         resolve(null);
       });
       function submit() {
@@ -182,55 +255,135 @@
   }
 
 
-  /* 下拉气泡菜单：从某个按钮下方长出来，点空白关闭，占返回键一层。
-     items: [{ico, label, value}] | 'sep' */
-  function popover(items, anchorEl) {
-    return new Promise(function (resolve) {
+  /* 锚点菜单共用一层。收起时释放交互，保留节点直到动画结束。 */
+  var popover = (function () {
+    var active = null;
+
+    function clamp(value, min, max) { return Math.max(min, Math.min(value, max)); }
+
+    function create(anchor) {
       var mask = document.createElement('div');
       mask.className = 'pop';
-      var html = '<div class="pop-menu">';
-      items.forEach(function (it, idx) {
-        if (it === 'sep') { html += '<div class="pop-sep"></div>'; return; }
-        html += '<div class="pop-item" data-i="' + idx + '">' +
-          svg(it.ico) + '<span>' + esc(it.label) + '</span></div>';
-      });
-      html += '</div>';
-      mask.innerHTML = html;
+      mask.innerHTML = '<div class="pop-menu" id="xj-popover-menu" role="group">' +
+        '<span class="pop-tip" aria-hidden="true"></span><div class="pop-content"></div></div>';
       document.body.appendChild(mask);
-
       var menu = mask.firstChild;
-      var rect = (anchorEl && anchorEl.getBoundingClientRect) ? anchorEl.getBoundingClientRect() : null;
-      var top = (rect && rect.bottom) ? rect.bottom + 10 : 64;
-      var right = rect ? (window.innerWidth - rect.right) : 12;
-      if (!isFinite(right) || right < 8) right = 8;
-      if (right > window.innerWidth - 160) right = Math.max(8, window.innerWidth - 160);
-      menu.style.top = top + 'px';
-      menu.style.right = right + 'px';
+      var content = menu.querySelector('.pop-content');
+      var viewport = window.visualViewport;
+      var layer, resolve, motion, items;
+      var entry = { anchor: anchor, isOpen: function () { return !!resolve; }, open: open, close: close, remove: remove };
 
-      var layer = null, settled = false;
-      function close(v) {
-        if (settled) return;
-        settled = true;
-        mask.remove();
-        if (layer) Back.done(layer);
-        resolve(v);
+      function position() {
+        if (!anchor.isConnected) return close(null);
+        var rect = anchor.getBoundingClientRect();
+        var left = (viewport ? viewport.offsetLeft : 0) + 8;
+        var top = (viewport ? viewport.offsetTop : 0) + 8;
+        var right = left + (viewport ? viewport.width : window.innerWidth) - 16;
+        var bottom = top + (viewport ? viewport.height : window.innerHeight) - 16;
+        var below = Math.max(0, bottom - rect.bottom - 10);
+        var above = Math.max(0, rect.top - top - 10);
+        menu.style.setProperty('--pop-max-width', Math.max(0, right - left) + 'px');
+        menu.style.setProperty('--pop-max-height', Math.max(above, below) + 'px');
+        var up = below < menu.offsetHeight && above > below;
+        menu.classList.toggle('pop-up', up);
+        menu.style.setProperty('--pop-max-height', (up ? above : below) + 'px');
+        var width = menu.offsetWidth;
+        var x = clamp(rect.right - width, left, right - width);
+        var corner = Math.min(17, width / 2);
+        var tip = clamp((rect.left + rect.right) / 2 - x, corner, width - corner);
+        menu.style.left = x + 'px';
+        menu.style.top = (up ? rect.top - 10 - menu.offsetHeight : rect.bottom + 10) + 'px';
+        menu.style.setProperty('--pop-tip-x', tip + 'px');
       }
-      /* 系统返回键：先关菜单，不许退出这一页 */
-      layer = Back.open(function () {
-        if (settled) return;
-        settled = true;
+
+      function motionChanged() {
+        if (motion && (document.hidden || !Anim.enabled())) motion.finish();
+      }
+      function remove() {
+        if (resolve) close(null, true);
+        if (motion) motion.cancel();
+        window.removeEventListener('resize', position);
+        if (viewport) {
+          viewport.removeEventListener('resize', position);
+          viewport.removeEventListener('scroll', position);
+        }
+        window.removeEventListener('xj:motionchange', motionChanged);
+        document.removeEventListener('visibilitychange', motionChanged);
         mask.remove();
-        resolve(null);
-      });
+        if (active === entry) active = null;
+      }
+
+      function open(nextItems, title) {
+        items = nextItems;
+        menu.setAttribute('aria-label', title || anchor.getAttribute('aria-label') || '选项');
+        content.innerHTML = (title ? '<div class="pop-title">' + esc(title) + '</div>' : '') +
+          items.map(function (item, i) {
+            if (item === 'sep') return '<div class="pop-sep" aria-hidden="true"></div>';
+            if (item.title) return '<div class="pop-caption">' + esc(item.title) + '</div>';
+            return '<button type="button" class="pop-item" data-i="' + i + '">' +
+              (item.ico ? svg(item.ico) : '') + '<span>' + esc(item.label) + '</span></button>';
+          }).join('');
+        return new Promise(function (done) {
+          resolve = done;
+          layer = Back.open(function () { close(null); });
+          mask.classList.remove('pop-closing');
+          mask.removeAttribute('aria-hidden');
+          anchor.setAttribute('aria-expanded', 'true');
+          anchor.setAttribute('aria-controls', menu.id);
+          position();
+          var first = content.querySelector('button');
+          if (first) first.focus({ preventScroll: true });
+          motion = Anim.popover(menu, true, motion, function () { motion = null; });
+        });
+      }
+
+      function close(value, immediate) {
+        if (!resolve) return;
+        var done = resolve;
+        resolve = null;
+        Back.done(layer);
+        layer = null;
+        if (menu.contains(document.activeElement) && anchor.isConnected) anchor.focus({ preventScroll: true });
+        anchor.setAttribute('aria-expanded', 'false');
+        anchor.removeAttribute('aria-controls');
+        mask.classList.add('pop-closing');
+        mask.setAttribute('aria-hidden', 'true');
+        content.querySelectorAll('button').forEach(function (button) { button.disabled = true; });
+        if (!immediate) motion = Anim.popover(menu, false, motion, remove);
+        done(value);
+      }
+
       mask.addEventListener('click', function (e) {
-        if (e.target === mask) return close(null);
-        var it = e.target.closest('.pop-item');
-        if (!it) return;
-        var item = items[+it.dataset.i];
-        close(item && item.value !== undefined ? item.value : null);
+        if (e.target === mask) { close(null); return; }
+        var button = e.target.closest('.pop-item');
+        if (button) close(items[+button.dataset.i].value);
       });
-    });
-  }
+      mask.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { e.preventDefault(); close(null); }
+      });
+      window.addEventListener('resize', position);
+      if (viewport) {
+        viewport.addEventListener('resize', position);
+        viewport.addEventListener('scroll', position);
+      }
+      window.addEventListener('xj:motionchange', motionChanged);
+      document.addEventListener('visibilitychange', motionChanged);
+      return entry;
+    }
+
+    function show(items, anchor, title) {
+      if (!anchor || !anchor.isConnected) return Promise.resolve(null);
+      if (active && active.anchor === anchor && active.isOpen()) {
+        active.close(null);
+        return Promise.resolve(null);
+      }
+      if (active && active.anchor !== anchor) active.remove();
+      if (!active) active = create(anchor);
+      return active.open(items, title);
+    }
+    show.close = function () { if (active) active.close(null); };
+    return show;
+  })();
 
 
   /* ================= 主题 ================= */
@@ -245,10 +398,13 @@
      原生那边更重：setBackgroundDrawable + 状态栏/导航栏换色 → 整窗重排。 */
   function flushThemeNow() {
     if (themeNativeHold > 0) return;
+    if (appearanceNeedsSaving) {
+      appearanceNeedsSaving = false;
+      try { localStorage.setItem('xj:appearance', appearanceOverride ? 'dark' : 'light'); } catch (e) {}
+    }
     var v = themeNativePending;
     if (v === null || v === themeApplied) return;
     themeApplied = v;
-    try { localStorage.setItem('xj:dark', v ? '1' : '0'); } catch (e) {}
     try { if (window.Bridge && Bridge.theme) Bridge.theme(!!v); } catch (e) {}
   }
 
@@ -277,19 +433,88 @@
        所以键盘收起、视口变高的那一两帧，底部会露出一条白。
        这里再把底色直接写成内联样式，不依赖 CSS 变量是否解析成功。 */
     var root = document.documentElement;
+    var changed = root.classList.contains('dark') !== isDark;
     root.classList.toggle('dark', isDark);
     root.style.backgroundColor = isDark ? '#1E1E1E' : '#FFFFFF';
+    if (changed) document.dispatchEvent(new Event('xj:appearance'));
     /* 这里只改 DOM（快照要拍的就是它）；落盘和通知推到 flushThemeNow。 */
     themeNativePending = isDark;
     if (themeNativeHold > 0) return;
     queueThemeFlush();
   }
 
-  var darkPref = false;
+  function nativeAppearance() {
+    try {
+      var bridge = window.XinJianBridge;
+      if (bridge && typeof bridge.appearance === 'function') {
+        var fields = bridge.appearance().split('|');
+        return { api: Number(fields[0]), dark: fields[1] === '1', scale: Number(fields[2]) };
+      }
+    } catch (e) {}
+    return null;
+  }
 
-  try { darkPref = localStorage.getItem('xj:dark') === '1'; } catch (e) {}
+  var firstAppearance = nativeAppearance();
+  var manualAppearance = firstAppearance
+    ? firstAppearance.api < 29
+    : /Android [1-9](?:[.; )]|$)/.test(navigator.userAgent);
+  var colorPreference = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+  var appearanceTarget;
+  var appearanceTransition;
+  var appearanceNeedsSaving = false;
+  var appearanceOverride = null;
+  try {
+    var savedAppearance = localStorage.getItem('xj:appearance');
+    if (savedAppearance === 'dark' || savedAppearance === 'light') appearanceOverride = savedAppearance === 'dark';
+  } catch (e) {}
 
-  applyTheme(darkPref);
+  function selectAppearance(isDark) {
+    appearanceOverride = appearanceTarget = !!isDark;
+    appearanceNeedsSaving = true;
+    if (appearanceTransition) appearanceTransition.skipTransition();
+    applyTheme(appearanceOverride);
+  }
+
+  function refreshAppearance(animate) {
+    var prefs = nativeAppearance();
+    var root = document.documentElement;
+    if (prefs && prefs.scale >= .5 && prefs.scale <= 3) root.style.setProperty('--ui-scale', prefs.scale);
+    var dark = appearanceOverride;
+    if (dark === null) {
+      if (manualAppearance) {
+        dark = false;
+        try { dark = localStorage.getItem('xj:dark') === '1'; } catch (e) {}
+      } else {
+        dark = prefs ? prefs.dark : !!(colorPreference && colorPreference.matches);
+      }
+    }
+    if (dark === appearanceTarget) return;
+    appearanceTarget = dark;
+    if (appearanceTransition) appearanceTransition.skipTransition();
+    if (!animate || !Anim.enabled() || !document.startViewTransition || !root.animate) {
+      applyTheme(dark);
+      return;
+    }
+    var radius = Math.hypot(innerWidth, innerHeight) / 2;
+    var transition = document.startViewTransition(function () {
+      if (appearanceTarget === dark) applyTheme(dark);
+    });
+    appearanceTransition = transition;
+    transition.ready.then(function () {
+      root.animate({ clipPath: ['circle(0px at 50% 50%)', 'circle(' + radius + 'px at 50% 50%)'] },
+        { duration: 320, easing: 'ease-out', pseudoElement: '::view-transition-new(root)' });
+    }).catch(function () {});
+    transition.finished.then(function () {
+      if (appearanceTransition === transition) appearanceTransition = null;
+    });
+  }
+
+  refreshAppearance(false);
+  window.__xjAppearanceChanged = function () { refreshAppearance(true); };
+  if (colorPreference) {
+    if (colorPreference.addEventListener) colorPreference.addEventListener('change', window.__xjAppearanceChanged);
+    else if (colorPreference.addListener) colorPreference.addListener(window.__xjAppearanceChanged);
+  }
 
 
   /* ================= 系统栏占位 =================
@@ -310,11 +535,14 @@
       }
     } catch (e) {}
     var root = document.documentElement;
-    if (t > 0) root.style.setProperty('--safe-t', t + 'px');
+    var ratio = window.devicePixelRatio || 1;
+    // 原生上报物理像素，WebView 布局使用 CSS 像素。
+    if (insets && Number.isFinite(insets.top)) {
+      root.style.setProperty('--safe-t', Math.max(0, Math.ceil(t / ratio)) + 'px');
+    }
     // 旧 Android 的可见区域可能把键盘也算作底部系统栏。
-    if (insets && !editorKeyboardVisible && b / (window.devicePixelRatio || 1) < 80) {
-      if (b > 0) root.style.setProperty('--safe-b', b + 'px');
-      else root.style.removeProperty('--safe-b');
+    if (insets && Number.isFinite(insets.bottom) && !editorKeyboardVisible && b / ratio < 80) {
+      root.style.setProperty('--safe-b', Math.max(0, Math.ceil(b / ratio)) + 'px');
     }
     return { top: t, bottom: b };
   }
@@ -324,15 +552,17 @@
     var root = document.documentElement;
     var layoutHeight = root.clientHeight || window.innerHeight;
     var viewport = window.visualViewport;
-    var visualTop = viewport ? Math.max(0, viewport.offsetTop) : 0;
     var visibleHeight = viewport ? viewport.height : layoutHeight;
-    if (editorKeyboardVisible) {
+    var visualTop = viewport ? Math.min(Math.max(0, viewport.offsetTop), Math.max(0, layoutHeight - visibleHeight)) : 0;
+    var bottom = visualTop + visibleHeight;
+    if (editorKeyboardVisible && editorNativeVisibleHeight > 0) {
       var scale = viewport ? viewport.scale || 1 : 1;
       var nativeHeight = editorNativeVisibleHeight / ((window.devicePixelRatio || 1) * scale);
-      visibleHeight = Math.min(visibleHeight, nativeHeight);
+      // 原生边界从 WebView 顶部量起。常规比例下浏览器平移光标不会移动键盘上沿。
+      bottom = nativeHeight + (scale === 1 ? 0 : visualTop);
     }
-    // 以键盘上沿定位。布局已经随键盘缩小时，底部补偿自然为零。
-    var bottom = visualTop + visibleHeight;
+    bottom = Math.min(layoutHeight, bottom);
+    visualTop = Math.min(visualTop, bottom);
     var overlap = Math.ceil(Math.max(0, layoutHeight - bottom));
     var imeVisible = editorKeyboardVisible || overlap > 0;
     if (imeVisible) root.style.setProperty('--editor-ime-bottom', Math.floor(bottom) + 'px');
@@ -372,6 +602,7 @@
 
     return {
       count: function () { return layers.length; },
+      isTop: function (layer) { return layers[layers.length - 1] === layer; },
 
       /* onBack = 系统返回键到来时如何关掉这一层 */
       open: function (onBack) {
@@ -403,8 +634,20 @@
   var Nav = {
     stack: [{ name: 'home', params: {}, layer: null }],
     go: function (name, params) {
-      var entry = { name: name, params: params || {}, layer: null };
+      if (name === 'create') return FileCreate.open();
+      var current = $app.firstElementChild;
+      var card = this.card;
+      this.card = null;
+      var previous = null;
+      if (current && !card && this.motion !== 'tab' &&
+          ['chat', 'cset', 'settings', 'perm', 'update', 'about', 'backup'].indexOf(name) !== -1) {
+        previous = current.cloneNode(true);
+        var scroller = current.querySelector('.scroll, .chat-list');
+        if (scroller) previous.scrollOffset = scroller.scrollTop;
+      }
+      var entry = { name: name, params: params || {}, layer: null, card: card, previous: previous };
       this.stack.push(entry);
+      if (!this.motion) this.motion = 'push';
       this.render();
       // 压一层历史，返回键就能逐级退回
       var onBack = function () {
@@ -423,9 +666,30 @@
     back: function (silent) {
       if (this.stack.length <= 1) return false;
       var entry = this.stack.pop();
+      this.motion = this.edgeReturning ? '' : entry.card ? 'card-close' : 'pop';
+      this.returnCard = entry.card;
+      this.edgeReturning = false;
       this.render();
       if (!silent && entry.layer) Back.done(entry.layer);
       return true;
+    },
+    openCard: function (name, button) {
+      this.card = { name: name, rect: button.getBoundingClientRect(), radius: getComputedStyle(button).borderRadius };
+      this.motion = 'card-open';
+      if (name === 'shelf') this.tab(name);
+      else this.go('stub', { title: button.getAttribute('aria-label') });
+    },
+    /* 一级页之间切换：不压栈，栈深永远是 2（home + 当前 tab） */
+    tab: function (name) {
+      var top = this.stack[this.stack.length - 1];
+      if (top && top.name === name) return;
+      if (this.motion !== 'card-open') this.motion = 'tab';
+      if (name === 'home') { this.reset('home'); return; }
+      while (this.stack.length > 1) {
+        var e = this.stack.pop();
+        if (e.layer) Back.done(e.layer);
+      }
+      this.go(name);
     },
     reset: function (name, params) {
       while (this.stack.length > 1) {
@@ -436,30 +700,56 @@
       this.render();
     },
     render: function () {
+      FileCreate.dismiss();
+      popover.close();
+      if (this.finishTransition) this.finishTransition();
+      this.finishTransition = null;
       var cur = this.stack[this.stack.length - 1];
-      if ($app.firstChild && $app.firstChild.__cleanup) $app.firstChild.__cleanup();
-      $app.innerHTML = '';
+      var old = $app.firstElementChild;
+      if (old && old.__cleanup) old.__cleanup();
+      var motion = this.motion;
+      this.motion = '';
+      var returning = this.returnCard;
+      this.returnCard = null;
       var el = document.createElement('div');
       el.className = 'view' + (cur.name === 'home' ? '' : ' full');
-      $app.appendChild(el);
       VIEWS[cur.name](el, cur.params);
+      el.classList.toggle('has-tabs', BottomNav.includes(cur.name));
+      var topbar = el.querySelector('.topbar');
+      var scrolling = el.querySelector('.scroll, .editor-wrap textarea, .chat-list');
+      if (topbar) {
+        Array.prototype.forEach.call(topbar.querySelectorAll('[data-act="back"],[data-act="leave"]'), function (button) {
+          button.setAttribute('aria-label', '返回');
+        });
+        if (scrolling) {
+          scrolling.addEventListener('scroll', function () {
+            topbar.classList.toggle('is-scrolled', scrolling.scrollTop > 8);
+          }, { passive: true });
+        }
+      }
+      $app.insertBefore(el, old);
+      BottomNav.update(cur.name === 'editor' ? 'shelf' : cur.name);
+      if (cur.previous) {
+        var cleanup = el.__cleanup;
+        var detachEdge = GestureMotion.edge(el, cur.previous, function () {
+          return Back.isTop(cur.layer) && $app.firstElementChild === el;
+        }, function () {
+          Nav.edgeReturning = true;
+          window.__xjBack();
+          Nav.edgeReturning = false;
+        });
+        el.__cleanup = function () { detachEdge(); if (cleanup) cleanup(); };
+      }
+      if (!old) return;
+      var card = cur.card;
+      if (motion === 'card-close' && returning) {
+        var button = el.querySelector('[data-go="' + returning.name + '"]');
+        card = button && { rect: button.getBoundingClientRect(), radius: returning.radius };
+      }
+      if (motion && Anim.swap) this.finishTransition = Anim.swap(old, el, motion, card);
+      else old.remove();
     }
   };
-
-
-  /* ================= 视图：主页 ================= */
-  var WEATHER_STUB = { city: '定位中', temp: '--', desc: '待接入', aqi: '' };
-
-
-  function tabbar(active) {
-    return '<div class="tabbar">' +
-      '<button class="tab ' + (active === 'home' ? 'active' : '') + '" data-tab="home">' +
-      svg('home') + '<span>主页</span></button>' +
-      '<button class="tab" data-tab="create">' + svg('plus') + '<span>新建</span></button>' +
-      '<button class="tab ' + (active === 'me' ? 'active' : '') + '" data-tab="me">' +
-      svg('me') + '<span>小家</span></button>' +
-      '</div>';
-  }
 
 
   var VIEWS = {};

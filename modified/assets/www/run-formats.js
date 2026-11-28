@@ -82,16 +82,17 @@ var RunFormats = (function () {
     return out;
   }
 
+  function jsonSource(ext, source) {
+    if (ext !== 'jsonc') return source;
+    // Replace comments with spaces to preserve original offsets and line numbers.
+    return source.replace(/"(?:\\.|[^"\\])*"|\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g, function (match) {
+      return match.charAt(0) === '/' ? match.replace(/[^\r\n]/g, ' ') : match;
+    });
+  }
+
   function validate(ext, source) {
     if (ext === 'json' || ext === 'jsonc') {
-      var json = source;
-      if (ext === 'jsonc') {
-        // 保留字符串与换行，让解析错误仍可对应原文。
-        json = json.replace(/"(?:\\.|[^"\\])*"|\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g, function (match) {
-          return match.charAt(0) === '/' ? match.replace(/[^\r\n]/g, ' ') : match;
-        });
-      }
-      JSON.parse(json);
+      JSON.parse(jsonSource(ext, source));
       return 'JSON 语法正确';
     }
     var parser = new DOMParser();
@@ -101,5 +102,5 @@ var RunFormats = (function () {
     if (error) throw new Error(error.textContent.trim());
     return 'XML 格式正确 · 根元素 ' + doc.documentElement.nodeName;
   }
-  return { compilers: compilers, label: label, payload: payload, validate: validate };
+  return { compilers: compilers, label: label, payload: payload, jsonSource: jsonSource, validate: validate };
 })();

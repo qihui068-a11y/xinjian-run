@@ -442,9 +442,9 @@
 
 
   function rowHtml(act, ico, label, val) {
-    return '<div class="row" data-act="' + act + '">' +
-      '<span class="row-ico">' + svg(ico) + '</span>' +
+    return '<button type="button" class="row' + (ico ? ' has-icon' : '') + '" data-act="' + act + '">' +
+      (ico ? '<span class="row-ico">' + svg(ico) + '</span>' : '') +
       '<span class="row-t">' + esc(label) + '</span>' +
       (val ? '<span class="row-v">' + esc(val) + '</span>' : '') +
-      '<span class="row-arrow">&#8250;</span></div>';
+      '<span class="row-arrow">' + svg('chevron') + '</span></button>';
   }

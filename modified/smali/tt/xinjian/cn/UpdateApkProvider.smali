@@ -4,8 +4,6 @@
 
 
 # static fields
-.field private static final NAME:Ljava/lang/String; = "update.apk"
-
 .field static final TYPE:Ljava/lang/String; = "application/vnd.android.package-archive"
 
 
@@ -19,10 +17,25 @@
     return-void
 .end method
 
-.method static apk(Landroid/content/Context;)Ljava/io/File;
+.method static apk(Landroid/content/Context;Ltt/xinjian/cn/UpdateRelease;)Ljava/io/File;
+    .locals 0
+
+    .line 23
+    invoke-virtual {p1}, Ltt/xinjian/cn/UpdateRelease;->cacheName()Ljava/lang/String;
+
+    move-result-object p1
+
+    invoke-static {p0, p1}, Ltt/xinjian/cn/UpdateApkProvider;->cacheFile(Landroid/content/Context;Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p0
+
+    return-object p0
+.end method
+
+.method private static cacheFile(Landroid/content/Context;Ljava/lang/String;)Ljava/io/File;
     .locals 3
 
-    .line 20
+    .line 19
     new-instance v0, Ljava/io/File;
 
     new-instance v1, Ljava/io/File;
@@ -35,43 +48,49 @@
 
     invoke-direct {v1, p0, v2}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
-    const-string p0, "update.apk"
-
-    invoke-direct {v0, v1, p0}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+    invoke-direct {v0, v1, p1}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
     return-object v0
 .end method
 
 .method private file(Landroid/net/Uri;)Ljava/io/File;
-    .locals 1
+    .locals 3
 
-    .line 28
+    .line 35
+    invoke-virtual {p1}, Landroid/net/Uri;->getLastPathSegment()Ljava/lang/String;
+
+    move-result-object v0
+
+    .line 36
     invoke-virtual {p0}, Ltt/xinjian/cn/UpdateApkProvider;->getContext()Landroid/content/Context;
 
-    move-result-object v0
+    move-result-object v1
 
-    invoke-static {v0}, Ltt/xinjian/cn/UpdateApkProvider;->uri(Landroid/content/Context;)Landroid/net/Uri;
+    .line 37
+    invoke-static {v0}, Ltt/xinjian/cn/UpdateRelease;->isCacheName(Ljava/lang/String;)Z
 
-    move-result-object v0
+    move-result v2
 
-    invoke-virtual {v0, p1}, Landroid/net/Uri;->equals(Ljava/lang/Object;)Z
+    if-eqz v2, :cond_0
+
+    invoke-static {v1, v0}, Ltt/xinjian/cn/UpdateApkProvider;->fileUri(Landroid/content/Context;Ljava/lang/String;)Landroid/net/Uri;
+
+    move-result-object v2
+
+    invoke-virtual {v2, p1}, Landroid/net/Uri;->equals(Ljava/lang/Object;)Z
 
     move-result p1
 
     if-eqz p1, :cond_0
 
-    .line 29
-    invoke-virtual {p0}, Ltt/xinjian/cn/UpdateApkProvider;->getContext()Landroid/content/Context;
-
-    move-result-object p1
-
-    invoke-static {p1}, Ltt/xinjian/cn/UpdateApkProvider;->apk(Landroid/content/Context;)Ljava/io/File;
+    .line 40
+    invoke-static {v1, v0}, Ltt/xinjian/cn/UpdateApkProvider;->cacheFile(Landroid/content/Context;Ljava/lang/String;)Ljava/io/File;
 
     move-result-object p1
 
     return-object p1
 
-    .line 28
+    .line 38
     :cond_0
     new-instance p1, Ljava/lang/IllegalArgumentException;
 
@@ -82,10 +101,10 @@
     throw p1
 .end method
 
-.method static uri(Landroid/content/Context;)Landroid/net/Uri;
+.method private static fileUri(Landroid/content/Context;Ljava/lang/String;)Landroid/net/Uri;
     .locals 2
 
-    .line 24
+    .line 27
     new-instance v0, Ljava/lang/StringBuilder;
 
     invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
@@ -110,9 +129,7 @@
 
     move-result-object p0
 
-    const-string v0, "update.apk"
-
-    invoke-virtual {p0, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {p0, p1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
     move-result-object p0
 
@@ -127,12 +144,27 @@
     return-object p0
 .end method
 
+.method static uri(Landroid/content/Context;Ltt/xinjian/cn/UpdateRelease;)Landroid/net/Uri;
+    .locals 0
+
+    .line 31
+    invoke-virtual {p1}, Ltt/xinjian/cn/UpdateRelease;->cacheName()Ljava/lang/String;
+
+    move-result-object p1
+
+    invoke-static {p0, p1}, Ltt/xinjian/cn/UpdateApkProvider;->fileUri(Landroid/content/Context;Ljava/lang/String;)Landroid/net/Uri;
+
+    move-result-object p0
+
+    return-object p0
+.end method
+
 
 # virtual methods
 .method public delete(Landroid/net/Uri;Ljava/lang/String;[Ljava/lang/String;)I
     .locals 0
 
-    .line 60
+    .line 71
     new-instance p1, Ljava/lang/UnsupportedOperationException;
 
     invoke-direct {p1}, Ljava/lang/UnsupportedOperationException;-><init>()V
@@ -143,10 +175,10 @@
 .method public getType(Landroid/net/Uri;)Ljava/lang/String;
     .locals 0
 
-    .line 40
+    .line 51
     invoke-direct {p0, p1}, Ltt/xinjian/cn/UpdateApkProvider;->file(Landroid/net/Uri;)Ljava/io/File;
 
-    .line 41
+    .line 52
     const-string p1, "application/vnd.android.package-archive"
 
     return-object p1
@@ -155,7 +187,7 @@
 .method public insert(Landroid/net/Uri;Landroid/content/ContentValues;)Landroid/net/Uri;
     .locals 0
 
-    .line 58
+    .line 69
     new-instance p1, Ljava/lang/UnsupportedOperationException;
 
     invoke-direct {p1}, Ljava/lang/UnsupportedOperationException;-><init>()V
@@ -166,7 +198,7 @@
 .method public onCreate()Z
     .locals 1
 
-    .line 32
+    .line 43
     const/4 v0, 0x1
 
     return v0
@@ -180,7 +212,7 @@
         }
     .end annotation
 
-    .line 35
+    .line 46
     const-string v0, "r"
 
     invoke-virtual {v0, p2}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
@@ -189,7 +221,7 @@
 
     if-eqz p2, :cond_0
 
-    .line 36
+    .line 47
     invoke-direct {p0, p1}, Ltt/xinjian/cn/UpdateApkProvider;->file(Landroid/net/Uri;)Ljava/io/File;
 
     move-result-object p1
@@ -202,7 +234,7 @@
 
     return-object p1
 
-    .line 35
+    .line 46
     :cond_0
     new-instance p1, Ljava/io/FileNotFoundException;
 
@@ -216,12 +248,12 @@
 .method public query(Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)Landroid/database/Cursor;
     .locals 5
 
-    .line 45
+    .line 56
     invoke-direct {p0, p1}, Ltt/xinjian/cn/UpdateApkProvider;->file(Landroid/net/Uri;)Ljava/io/File;
 
     move-result-object p1
 
-    .line 46
+    .line 57
     const-string p3, "_size"
 
     const-string p4, "_display_name"
@@ -240,13 +272,13 @@
 
     aput-object p3, p2, v0
 
-    .line 47
+    .line 58
     :cond_0
     new-instance v1, Landroid/database/MatrixCursor;
 
     invoke-direct {v1, p2, v0}, Landroid/database/MatrixCursor;-><init>([Ljava/lang/String;I)V
 
-    .line 48
+    .line 59
     invoke-virtual {p1}, Ljava/io/File;->isFile()Z
 
     move-result v0
@@ -255,13 +287,13 @@
 
     return-object v1
 
-    .line 49
+    .line 60
     :cond_1
     invoke-virtual {v1}, Landroid/database/MatrixCursor;->newRow()Landroid/database/MatrixCursor$RowBuilder;
 
     move-result-object v0
 
-    .line 50
+    .line 61
     array-length v2, p2
 
     :goto_0
@@ -269,20 +301,22 @@
 
     aget-object v3, p2, p5
 
-    .line 51
+    .line 62
     invoke-virtual {p4, v3}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
 
     move-result v4
 
     if-eqz v4, :cond_2
 
-    const-string v3, "update.apk"
+    invoke-virtual {p1}, Ljava/io/File;->getName()Ljava/lang/String;
+
+    move-result-object v3
 
     invoke-virtual {v0, v3}, Landroid/database/MatrixCursor$RowBuilder;->add(Ljava/lang/Object;)Landroid/database/MatrixCursor$RowBuilder;
 
     goto :goto_1
 
-    .line 52
+    .line 63
     :cond_2
     invoke-virtual {p3, v3}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
 
@@ -302,19 +336,19 @@
 
     goto :goto_1
 
-    .line 53
+    .line 64
     :cond_3
     const/4 v3, 0x0
 
     invoke-virtual {v0, v3}, Landroid/database/MatrixCursor$RowBuilder;->add(Ljava/lang/Object;)Landroid/database/MatrixCursor$RowBuilder;
 
-    .line 50
+    .line 61
     :goto_1
     add-int/lit8 p5, p5, 0x1
 
     goto :goto_0
 
-    .line 55
+    .line 66
     :cond_4
     return-object v1
 .end method
@@ -322,7 +356,7 @@
 .method public update(Landroid/net/Uri;Landroid/content/ContentValues;Ljava/lang/String;[Ljava/lang/String;)I
     .locals 0
 
-    .line 59
+    .line 70
     new-instance p1, Ljava/lang/UnsupportedOperationException;
 
     invoke-direct {p1}, Ljava/lang/UnsupportedOperationException;-><init>()V

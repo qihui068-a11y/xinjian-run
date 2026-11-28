@@ -3260,3 +3260,17 @@
 
     return-void
 .end method
+
+.method public onConfigurationChanged(Landroid/content/res/Configuration;)V
+    .locals 3
+
+    invoke-super {p0, p1}, Landroid/app/Activity;->onConfigurationChanged(Landroid/content/res/Configuration;)V
+    iget-object v0, p0, Ltt/xinjian/cn/MainActivity;->web:Landroid/webkit/WebView;
+    if-eqz v0, :appearance_end
+    const-string v1, "if(window.__xjAppearanceChanged)window.__xjAppearanceChanged();"
+    const/4 v2, 0x0
+    invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->evaluateJavascript(Ljava/lang/String;Landroid/webkit/ValueCallback;)V
+
+    :appearance_end
+    return-void
+.end method

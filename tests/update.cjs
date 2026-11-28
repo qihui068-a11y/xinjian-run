@@ -20,12 +20,12 @@ module.exports = async ({ test, app }) => {
       assert.equal(typeof start, 'function');
       start();
       const { w } = a;
-      const emit = state => w.__xjUpdate(JSON.stringify({ state, current: '0.7.2-run', latest: '0.7.3-run' }));
+      const emit = state => w.__xjUpdate(JSON.stringify({ state, current: '0.7.18-run', latest: '0.7.19' }));
       emit('checking');
       emit('available');
       w.document.dispatchEvent(new w.Event('visibilitychange'));
       assert.deepEqual(calls, ['check']);
-      assert.match(w.document.querySelector('.toast').textContent, /发现信笺 0\.7\.3-run/);
+      assert.match(w.document.querySelector('.toast').textContent, /发现信笺 0\.7\.19，/);
     } finally { a.close(); }
   });
 
@@ -57,10 +57,11 @@ module.exports = async ({ test, app }) => {
       check.click();
       emit('current');
       assert.equal(select('[data-update-status]').textContent, '已是最新版本');
-      assert.equal(apply.hidden, true);
+      assert.equal(w.getComputedStyle(apply).display, 'none');
       check.click();
       emit('available');
       assert.equal(apply.textContent, '下载更新');
+      assert.notEqual(w.getComputedStyle(apply).display, 'none');
       apply.click();
       emit('downloading', 45);
       assert.equal(check.disabled, true);
