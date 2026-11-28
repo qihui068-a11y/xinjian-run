@@ -10,6 +10,150 @@
 
 
 # direct methods
+.method public bookSize(Ljava/lang/String;)J
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1}, Ltt/xinjian/cn/BookFiles;->size(Ljava/io/File;)J
+
+    move-result-wide v0
+
+    return-wide v0
+.end method
+
+.method public bookChunk(Ljava/lang/String;II)Ljava/lang/String;
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1, p2, p3}, Ltt/xinjian/cn/BookFiles;->chunk(Ljava/io/File;II)Ljava/lang/String;
+
+    move-result-object v0
+
+    return-object v0
+.end method
+
+.method public bookBegin(Ljava/lang/String;I)Ljava/lang/String;
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1, p2}, Ltt/xinjian/cn/BookFiles;->begin(Ljava/io/File;I)Ljava/lang/String;
+
+    move-result-object v0
+
+    return-object v0
+.end method
+
+.method public bookAppend(Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;)Z
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1, p2, p3, p4}, Ltt/xinjian/cn/BookFiles;->append(Ljava/io/File;Ljava/lang/String;ILjava/lang/String;)Z
+
+    move-result v0
+
+    return v0
+.end method
+
+.method public bookFinish(Ljava/lang/String;Ljava/lang/String;I)Z
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1, p2, p3}, Ltt/xinjian/cn/BookFiles;->finish(Ljava/io/File;Ljava/lang/String;I)Z
+
+    move-result v0
+
+    return v0
+.end method
+
+.method public bookCancel(Ljava/lang/String;Ljava/lang/String;)V
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1, p2}, Ltt/xinjian/cn/BookFiles;->cancel(Ljava/io/File;Ljava/lang/String;)V
+
+    return-void
+.end method
+
+.method public bookArchive(Ljava/lang/String;)Z
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1}, Ltt/xinjian/cn/BookFiles;->archive(Ljava/io/File;)Z
+
+    move-result v0
+
+    return v0
+.end method
+
+.method public bookEntry(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    invoke-static {p1, p2, p3}, Ltt/xinjian/cn/BookFiles;->entry(Ljava/io/File;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object v0
+
+    return-object v0
+.end method
+
+.method public bookExport(Ljava/lang/String;)Z
+    .locals 2
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    invoke-direct {p0, p1}, Ltt/xinjian/cn/XinJianBridge;->resolve(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object p1
+
+    iget-object v0, p0, Ltt/xinjian/cn/XinJianBridge;->ctx:Landroid/content/Context;
+
+    invoke-static {v0, p1}, Ltt/xinjian/cn/BookFiles;->export(Landroid/content/Context;Ljava/io/File;)Z
+
+    move-result v0
+
+    return v0
+.end method
+
 .method public constructor <init>(Landroid/content/Context;)V
     .locals 2
 

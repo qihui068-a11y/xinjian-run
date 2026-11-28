@@ -17,6 +17,13 @@
       var list = this.list().filter(function (file) { return file !== name && file !== previous; });
       list.unshift(name);
       try { localStorage.setItem('xj:shelf:recent', JSON.stringify(list.slice(0, 8))); } catch (e) {}
+    },
+    rename: function (name, destination) {
+      var list = this.list().filter(function (file) { return file !== destination; });
+      var at = list.indexOf(name);
+      if (at < 0) return;
+      list[at] = destination;
+      try { localStorage.setItem('xj:shelf:recent', JSON.stringify(list)); } catch (e) {}
     }
   };
 
@@ -39,6 +46,9 @@
       '<button type="button" data-act="create">' + svg('file-plus') + '<span><strong>新建文件</strong><small>创建代码或文稿</small></span></button>' +
       '<button type="button" data-act="import">' + svg('download') + '<span><strong>导入文件</strong><small>从设备选择文件</small></span></button></div>' +
       '<section class="shelf-recent" hidden><h2>最近打开</h2><div class="shelf-recent-list"></div></section>' +
+      '<section class="shelf-recent shelf-reading" hidden><div class="workspace-section"><h2>最近阅读</h2>' +
+      '<button type="button" class="t-text" data-act="clear-reading">清理</button></div>' +
+      '<div class="shelf-recent-list"></div></section>' +
       '<div class="workspace-section"><h2>全部文件</h2><button type="button" class="icon-btn" data-act="sort" aria-label="排序">' +
       svg('sort') + '</button></div><div class="grid shelf-files" id="grid"></div></div></div>' +
       '<input type="file" id="importer" multiple ' +
@@ -64,7 +74,10 @@
       if (button.dataset.act !== 'new') perform(button.dataset.act);
     });
 
-    function openFile(name) { Nav.go('editor', { name: name, mode: 'read' }); }
+    function openFile(name) {
+      if (Books.unsupported(name)) return toast('阅读器支持 TXT 和 EPUB。');
+      Nav.go(Books.format(name) ? 'reader' : 'editor', { name: name, mode: 'read' });
+    }
 
     /* 系统返回键：多选态先取消选择，不退页 */
     el.__onBack = function () {
@@ -99,6 +112,13 @@
       recentList.innerHTML = opened.map(function (d) {
         return '<button type="button" class="shelf-row" data-recent="' + esc(d.name) + '">' + fileBody(d) + '</button>';
       }).join('');
+      var reading = el.querySelector('.shelf-reading');
+      var books = !search && !selMode ? Books.recent(files.map(function (d) { return d.name; })) : [];
+      reading.hidden = !books.length;
+      reading.querySelector('.shelf-recent-list').innerHTML = books.map(function (name) {
+        var file = docs.find(function (d) { return d.name === name; });
+        return '<button type="button" class="shelf-row" data-recent="' + esc(name) + '">' + fileBody(file, true) + '</button>';
+      }).join('');
       if (!files.length) {
         /* 空态必须画在 #grid 里面，不能覆盖 scroll.innerHTML：
            一旦把 #grid 换掉，闭包里的 grid 变量就指向一个脱离文档的节点，
@@ -123,11 +143,13 @@
       grid.innerHTML = html;
     }
 
-    function fileBody(d) {
+    function fileBody(d, reading) {
       var format = FORMATS.find(function (f) { return f.ext === Bridge.extOf(d.name); });
-      var desc = format ? format.label : Bridge.extOf(d.name).toUpperCase() || '文件';
-      if (typeof d.size === 'number') desc += ' · ' + (d.size < 1024 ? d.size + ' B' : (d.size / 1024).toFixed(1) + ' KB');
-      return svg('file-code') + '<span class="shelf-file-info"><strong class="b-name">' + esc(d.name) + '</strong>' +
+      var book = Books.format(d.name);
+      var desc = book ? book.toUpperCase() + ' 阅读' : format ? format.label : Bridge.extOf(d.name).toUpperCase() || '文件';
+      if (reading) desc += ' · ' + (Books.record(d.name).percent || 0) + '%';
+      else if (typeof d.size === 'number') desc += ' · ' + (d.size < 1024 ? d.size + ' B' : (d.size / 1024).toFixed(1) + ' KB');
+      return svg(book ? 'bookshelf' : 'file-code') + '<span class="shelf-file-info"><strong class="b-name">' + esc(d.name) + '</strong>' +
         '<small class="b-excerpt">' + esc(desc) + '</small></span>' +
         '<time>' + (d.mtime ? fmtTime(d.mtime) : '') + '</time>';
     }
@@ -297,11 +319,9 @@
             return;
           }
           var nm = names[i++];
-          Bridge.read(nm).then(function (txt) {
-            return Bridge.exportOne(nm, txt).then(function (r) {
-              if (r === false) badN++; else okN++;
-              setTimeout(next, 260);
-            }, function () { badN++; setTimeout(next, 260); });
+          Books.exportFile(nm).then(function (r) {
+            if (r === false) badN++; else okN++;
+            setTimeout(next, 260);
           }, function () { badN++; setTimeout(next, 260); });
         }
         next();
@@ -322,6 +342,7 @@
         var removed = new Set(names.filter(function (name, i) {
           return results[i].status === 'fulfilled' && results[i].value !== false;
         }));
+        removed.forEach(Books.remove);
         var rows = grid.querySelectorAll('.book');
         var exits = [];
         rows.forEach(function (row) {
@@ -429,19 +450,24 @@
     };
 
     /* --- 导入 --- */
-    importer.addEventListener('change', function () {
+    scroll.addEventListener('click', function (event) {
+      if (!event.target.closest('[data-act=clear-reading]')) return;
+      Books.clearRecent();
+      paintList();
+    });
+    importer.addEventListener('change', async function () {
       var files = Array.prototype.slice.call(importer.files || []).slice(0, 20);
+      importer.value = '';
       if (!files.length) return;
-      var done = 0;
-      files.forEach(function (f) {
-        var r = new FileReader();
-        r.onload = function () {
-          Bridge.create(f.name, String(r.result || '')).then(function () {
-            done++;
-            if (done === files.length) { reload(); toast('已导入 ' + done + ' 个文件'); }
-          });
-        };
-        r.readAsText(f);
-      });
+      var done = 0, error = '';
+      for (var file of files) {
+        try {
+          if (await Books.importFile(file)) done++;
+          else error = '同名文件已存在或文件无法保存。';
+        } catch (failure) { error = failure.message || '导入失败。'; }
+      }
+      if (!disposed) reload();
+      if (!done && files.length === 1) toast(error);
+      else toast('已导入 ' + done + ' 个文件' + (done < files.length ? '，' + (files.length - done) + ' 个失败' : ''));
     });
   };

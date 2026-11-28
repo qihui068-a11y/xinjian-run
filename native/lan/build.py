@@ -22,6 +22,7 @@ def main():
         "logs": ("LogBridge",),
         "ai": ("AiBridge",),
         "crop": ("CropBridge", "CropActivity"),
+        "reader": ("BookFiles",),
     }
     parser.add_argument("--component", choices=components, default="lan")
     args = parser.parse_args()

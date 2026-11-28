@@ -444,11 +444,9 @@
             return;
           }
           var nm = list[i++].name;
-          Bridge.read(nm).then(function (txt) {
-            return Bridge.exportOne(nm, txt).then(function (r) {
-              if (r === false) badN++; else okN++;
-              setTimeout(next, 260);
-            }, function () { badN++; setTimeout(next, 260); });
+          Books.exportFile(nm).then(function (r) {
+            if (r === false) badN++; else okN++;
+            setTimeout(next, 260);
           }, function () { badN++; setTimeout(next, 260); });
         })();
       });

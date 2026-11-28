@@ -78,6 +78,17 @@ Java、C#、C++ 还支持「在线交互」：填一个自行部署、带 TLS �
 
 ---
 
+## 书架阅读
+
+书架点击 TXT 或 EPUB 进入阅读器。UTF-8 TXT 可通过阅读器菜单打开原有文本编辑器。导入 Android 书架的书籍会保留原始字节，可从阅读器、书架多选或备份页导出。书籍大小上限为 64 MiB。
+
+- TXT 支持 UTF-8、UTF-8 BOM、UTF-16 LE/BE。遇到无法识别的编码，可在阅读设置里选编码，包括 GBK/GB18030。长篇会分段显示，目录识别常见中英文标题。没有标题的书也可以连续分段阅读。
+- EPUB 支持按章阅读、元数据、EPUB 3 目录及 EPUB 2 NCX。缺少目录时可用章节顺序进入正文。支持包内 JPEG、PNG、GIF 和 WebP，限制单项大小、像素数和每章的图片用量。正文保留常用段落、列表、标题和安全的书内链接。
+- 阅读器忽略 EPUB 自带脚本、样式、外部资源及 SVG，暂不支持加密内容和固定布局。损坏或超出限制的书籍会显示原因。EPUB 压缩包读取由 Android 原生层提供。
+- 可用滚动或分页，支持按钮、两侧点按和横向滑动。字号、行距、主题和阅读模式是全局阅读偏好，编码和书签按书保存。阅读进度自动恢复，书架可清理最近阅读列表。进度、书签和阅读设置保存在本机，书架导出的还是原文件。
+
+阅读回归入口为 `python tests/run-reader.py`（浏览器模拟原生桥接）及 `tests/BookFilesTest.java`（JVM 检查 ZIP 和导入规则）。构建原生组件时使用 `native/lan/build.py --component reader`。
+
 ## 鸽屋（局域网聊天）
 
 鸽屋是**同一个局域网内**两台手机之间的聊天，消息不经过任何服务器。
@@ -166,7 +177,7 @@ apksigner sign --ks <你的密钥> --out 信笺.apk out-aligned.apk
 修改 `native/` 下的 Java 后需要重新生成 smali：
 
 ```powershell
-python native\lan\build.py <android.jar> <r8.jar> <apktool.jar> --component <lan|keyboard|python|update|logs|ai|crop>
+python native\lan\build.py <android.jar> <r8.jar> <apktool.jar> --component <lan|keyboard|python|update|logs|ai|crop|reader>
 ```
 
 测试：
