@@ -26,13 +26,13 @@ def check(browser):
         return done;
       };
     }""")
-    for title in ('书架', '小镇', '后院', '小宿店'):
+    for title in ('小镇', '后院', '小宿店'):
         page.locator('.home-view .entry', has_text=title).click()
         assert page.evaluate('transitions.at(-1)')[:2] == ['card-open', 350]
         assert 'round' in page.evaluate('transitions.at(-1)[2]')
         assert page.evaluate('__xjBack()') == 'handled'
         assert page.evaluate('transitions.at(-1)')[:2] == ['card-close', 300]
-        expect(page.locator('.home-view .entry')).to_have_count(4)
+        expect(page.locator('.home-view .entry')).to_have_count(3)
     print('PASS shared card open and back, including placeholders')
 
     page.evaluate("Nav.tab('shelf')")

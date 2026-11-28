@@ -17,18 +17,8 @@
   --d-1:4px;    /* 一级位移：行、文字 */
   --d-2:8px;    /* 二级位移：卡片、面板 */
 }
-/* 暗色：白不是纯白。
-   纯白 #FFFFFF 压在 #1E1E1E 上是 15:1 的极端对比，长时间看会刺眼；
-   换成米黄白（带一点点暖调）后对比降到 14:1 左右，比纯白柔和又几乎看不出偏色。
-   2026-11-25 第一次给的 #F1E9D8 偏黄，用户要求「往白色那边靠一点」，改成 #F7F2E8。
-   --fg-rgb 必须同步改，否则描边、分隔线、光斑这些 rgba(var(--fg-rgb),x)
-   还带着 255,255,255，会和文字色调对不上。 */
-html.dark,
-body.dark{
-  --bg:#1E1E1E;
-  --fg:#F7F2E8;
-  --fg-rgb:247,242,232;
-}
+/* 暗色令牌统一由 tokens.css 提供；这里不再覆盖 --bg/--fg，
+   否则会盖掉主页那套纯黑底与冷白字。 */
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 
@@ -975,13 +965,7 @@ html.anim-off *,html.anim-off *::before,html.anim-off *::after{
   flex:none;font-size:var(--fs-caption2);padding:.05rem .35rem;border-radius:.3rem;
   background:rgba(var(--fg-rgb),.08);opacity:.7;
 }
-/* 局域网会话的图片入口 + 图片重发 */
-.chat-attach{
-  width:2.75rem;height:2.75rem;flex:none;display:flex;align-items:center;justify-content:center;
-  border-radius:50%;background:rgba(var(--fg-rgb),.06);color:inherit;margin-right:.25rem;
-}
-.chat-attach:active{background:rgba(var(--fg-rgb),.12);}
-.chat-attach svg{width:1.25rem;height:1.25rem;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+/* 图片重发 */
 .img-retry{
   display:inline-block;margin-top:.35rem;padding:.3rem .7rem;border-radius:.45rem;
   border:1px solid rgba(var(--fg-rgb),.18);background:transparent;color:inherit;font-size:var(--fs-caption1);

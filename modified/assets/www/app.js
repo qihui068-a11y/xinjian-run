@@ -435,7 +435,7 @@
     var root = document.documentElement;
     var changed = root.classList.contains('dark') !== isDark;
     root.classList.toggle('dark', isDark);
-    root.style.backgroundColor = isDark ? '#1E1E1E' : '#FFFFFF';
+    root.style.backgroundColor = isDark ? '#000000' : '#FFFFFF';
     if (changed) document.dispatchEvent(new Event('xj:appearance'));
     /* 这里只改 DOM（快照要拍的就是它）；落盘和通知推到 flushThemeNow。 */
     themeNativePending = isDark;

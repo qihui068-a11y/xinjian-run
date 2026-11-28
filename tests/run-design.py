@@ -58,14 +58,14 @@ def compare(browser, scheme):
     page.add_init_script("localStorage.setItem('xj:profile', JSON.stringify({nick:'访客',sid:'xj-2026',cover:0}))")
     page.goto('https://xj.test/index.html')
     tabs = page.get_by_role('navigation', name='主导航')
-    expected_text = 'rgb(247, 242, 232)' if scheme == 'dark' else 'rgb(30, 30, 30)'
+    expected_text = 'rgb(245, 245, 245)' if scheme == 'dark' else 'rgb(23, 23, 23)'
     expect(page.locator('body')).to_have_css('color', expected_text)
     dark = scheme == 'dark'
     expect(page.locator('.home-view')).to_have_css('background-color', 'rgb(0, 0, 0)' if dark else 'rgb(255, 255, 255)')
     expect(tabs).to_have_css('height', '64px')
     expect(tabs).to_have_css('backdrop-filter', 'blur(16px)')
     entries = page.locator('.entries').get_by_role('button')
-    assert entries.locator('strong').all_text_contents() == ['书架', '小镇', '后院', '小宿店']
+    assert entries.locator('strong').all_text_contents() == ['小镇', '后院', '小宿店']
     expect(entries.first).to_have_css('background-color', 'rgb(18, 18, 18)' if dark else 'rgb(255, 255, 255)')
     expect(entries.first).to_have_css('min-height', '76px')
     expect(page.locator('.entries')).to_have_css('gap', '12px')
@@ -81,7 +81,7 @@ def compare(browser, scheme):
     expect(tabs.get_by_role('button')).to_have_text(['主页', '书架', '鸽屋', '小家'])
     expect(tabs.locator('[aria-current=page] svg')).to_have_attribute('data-icon', 'home-active')
     assert entries.locator('.entry-main svg').evaluate_all('items => items.map(icon => icon.dataset.icon)') == [
-        'bookshelf', 'town', 'leaf', 'inn']
+        'town', 'leaf', 'inn']
     expect(entries.first.locator('.entry-main svg')).to_have_css('stroke-width', '1.8px')
     expect(entries.first.locator('.entry-main svg')).to_have_css('stroke', 'rgb(245, 245, 245)' if dark else 'rgb(23, 23, 23)')
     button = toggle.bounding_box()
@@ -91,7 +91,7 @@ def compare(browser, scheme):
     expect(actions.get_by_role('button', name='好友申请')).to_be_visible()
     snapshot(page, 'home-' + scheme)
 
-    entries.first.click()
+    tabs.get_by_role('button', name='书架').click()
     expect(page.locator('#shelfBar .t-title')).to_have_text('书架')
     shelf_actions = page.locator('#shelfBar .workspace-actions').get_by_role('button')
     expect(shelf_actions).to_have_count(1)
@@ -124,10 +124,21 @@ def compare(browser, scheme):
     expect(dialog).to_have_count(0)
 
     tabs.get_by_role('button', name='小家').click()
+    expect(page.locator('.rows').get_by_role('button', name='鸽屋', exact=True)).to_have_count(0)
+    expect(page.locator('.rows').first.get_by_role('button')).to_have_count(2)
     expect(page.locator('.rows button').first).to_have_css('min-height', '44px')
-    expect(page.locator('.rows').first).to_have_css('border-radius', '12px')
+    expect(page.locator('.rows').first).to_have_css('border-radius', '16px')
     snapshot(page, 'account-' + scheme)
+    page.get_by_role('button', name='赞助', exact=True).click()
+    expect(page.locator('.sponsor-intro')).to_contain_text('感谢您赞助支持我们的独立产品')
+    expect(page.locator('.sponsor-row')).to_have_count(2)
+    page.locator('.sponsor-row').first.click()
+    expect(page.locator('.sponsor-code')).to_have_attribute('src', 'sponsor/huiqi.webp')
+    page.get_by_role('button', name='返回', exact=True).click()
+    page.get_by_role('button', name='返回', exact=True).click()
     page.get_by_role('button', name='设置', exact=True).click()
+    expect(page.get_by_role('button', name='权限设置').locator('.row-ico')).to_have_count(0)
+    expect(page.get_by_role('button', name='关于', exact=True)).to_have_count(0)
     expect(page.get_by_role('button', name='应用更新').locator('.row-ico')).to_have_count(0)
     snapshot(page, 'settings-' + scheme)
     page.evaluate("() => { window.confirmBox('删除这份文件？', '删除'); }")
@@ -292,7 +303,7 @@ def appearance_and_motion(browser):
     page.emulate_media(color_scheme='dark')
     expect(page.locator('html')).to_have_class('dark')
     entries = page.locator('.entries').get_by_role('button')
-    assert entries.locator('strong').all_text_contents() == ['书架', '小镇', '后院', '小宿店']
+    assert entries.locator('strong').all_text_contents() == ['小镇', '后院', '小宿店']
     toggle = page.get_by_role('button', name='切换到浅色模式')
     expect(toggle).to_have_attribute('aria-pressed', 'true')
     toggle.click()
@@ -304,7 +315,7 @@ def appearance_and_motion(browser):
     expect(page.locator('.home-view')).to_have_css('background-color', 'rgb(0, 0, 0)')
     page.emulate_media(color_scheme='light')
     expect(page.locator('.home-view')).to_have_css('background-color', 'rgb(0, 0, 0)')
-    assert entries.locator('strong').all_text_contents() == ['书架', '小镇', '后院', '小宿店']
+    assert entries.locator('strong').all_text_contents() == ['小镇', '后院', '小宿店']
     page.close()
 
     # A read-only native preference is enough for Android appearance without browser theme detection.
@@ -320,7 +331,7 @@ def appearance_and_motion(browser):
     expect(page.locator('body')).to_have_css('font-size', '21.25px')
     expect(page.locator('#app .view')).to_have_css('padding-top', '24px')
     expect(page.locator('.tabbar')).to_have_css('bottom', '28px')
-    expect(page.locator('body')).to_have_css('color', 'rgb(247, 242, 232)')
+    expect(page.locator('body')).to_have_css('color', 'rgb(245, 245, 245)')
     page.evaluate("""async () => {
       await Bridge.create('scale.py', 'print(5)');
       Nav.reset('editor', {name:'scale.py', mode:'edit'});
@@ -328,7 +339,7 @@ def appearance_and_motion(browser):
     expect(page.locator('#ta')).to_have_css('font-size', '14px')
     page.evaluate("window.fakeAppearance = '34|0|1'; __xjAppearanceChanged()")
     expect(page.locator('body')).to_have_css('font-size', '17px')
-    expect(page.locator('body')).to_have_css('color', 'rgb(30, 30, 30)')
+    expect(page.locator('body')).to_have_css('color', 'rgb(23, 23, 23)')
     page.close()
 
     page = start(browser, 'dark', user_agent='Mozilla/5.0 (Linux; Android 9; Mobile)', reduced_motion='reduce')
@@ -336,7 +347,7 @@ def appearance_and_motion(browser):
     toggle = page.locator('[data-theme-btn]')
     expect(toggle).to_be_visible()
     toggle.click()
-    expect(page.locator('body')).to_have_css('color', 'rgb(247, 242, 232)')
+    expect(page.locator('body')).to_have_css('color', 'rgb(245, 245, 245)')
     page.close()
 
 

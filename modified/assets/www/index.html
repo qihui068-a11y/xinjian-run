@@ -13,6 +13,8 @@
 <body>
 <div id="app"></div>
 <script src="bridge.js"></script>
+<!-- 日志先于全部界面加载，才能兜住启动阶段的报错；UI 由 boot.js 的 Logs.init() 接管 -->
+<script src="logs.js"></script>
 <script src="highlight.js"></script>
 <script src="md.js"></script>
 <script src="anim.js"></script>
@@ -34,6 +36,7 @@
 <script src="update.js"></script>
 <script src="data.js"></script>
 <script src="lan.js"></script>
+<script src="ai.js"></script>
 <script src="radar-sheet.js"></script>
 <script src="views/home.js"></script>
 <script src="views/shelf.js"></script>
@@ -48,6 +51,7 @@
 <script src="runner.js"></script>
 <script src="views/editor.js"></script>
 <script src="views/me.js"></script>
+<script src="views/ai.js"></script>
 <script src="views/chat.js"></script>
 <script src="boot.js"></script>
 </body>

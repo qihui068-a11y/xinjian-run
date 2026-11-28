@@ -41,3 +41,4 @@
 
   Nav.render();
   AppUpdate.start();
+  if (window.Logs) Logs.init();

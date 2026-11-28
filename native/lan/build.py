@@ -19,6 +19,9 @@ def main():
         "keyboard": ("KeyboardViewport",),
         "python": ("PythonTerminal",),
         "update": ("UpdateBridge", "UpdateRelease", "UpdateApkProvider"),
+        "logs": ("LogBridge",),
+        "ai": ("AiBridge",),
+        "crop": ("CropBridge", "CropActivity"),
     }
     parser.add_argument("--component", choices=components, default="lan")
     args = parser.parse_args()

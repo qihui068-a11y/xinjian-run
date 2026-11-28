@@ -58,11 +58,11 @@ const v = (el, k) => el.style.getPropertyValue(k);
   ok('选择器覆盖三类卡片', S.CARDS === '.entry, .book, .pg-item');
   ok('只画右半边的是鸽屋行', S.HALF === '.pg-item');
 
-  /* ============ 一、主页四张卡片 ============ */
+  /* ============ 一、主页三张卡片 ============ */
   w.Nav.go('home');
   await wait(250);
   const entries = Array.from(d.querySelectorAll('.entry'));
-  ok('主页有 4 张卡片', entries.length === 4);
+  ok('主页有 3 张卡片', entries.length === 3);
   ok('起始没有任何卡片带 .spot', d.querySelectorAll('.spot').length === 0);
 
   const e0 = stubRect(entries[0], { left: 20, top: 100, width: 160, height: 160 });

@@ -2681,6 +2681,30 @@
 
     invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
 
+    new-instance v1, Ltt/xinjian/cn/LogBridge;
+
+    invoke-direct {v1, p0}, Ltt/xinjian/cn/LogBridge;-><init>(Landroid/content/Context;)V
+
+    const-string v2, "XinJianLog"
+
+    invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
+
+    new-instance v1, Ltt/xinjian/cn/AiBridge;
+
+    invoke-direct {v1, v0}, Ltt/xinjian/cn/AiBridge;-><init>(Landroid/webkit/WebView;)V
+
+    const-string v2, "XinJianAi"
+
+    invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
+
+    new-instance v1, Ltt/xinjian/cn/CropBridge;
+
+    invoke-direct {v1, v0}, Ltt/xinjian/cn/CropBridge;-><init>(Landroid/webkit/WebView;)V
+
+    const-string v2, "XinJianCrop"
+
+    invoke-virtual {v0, v1, v2}, Landroid/webkit/WebView;->addJavascriptInterface(Ljava/lang/Object;Ljava/lang/String;)V
+
     new-instance v1, Ltt/xinjian/cn/PythonTerminal;
 
     invoke-direct {v1}, Ltt/xinjian/cn/PythonTerminal;-><init>()V

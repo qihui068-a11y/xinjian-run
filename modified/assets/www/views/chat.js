@@ -1,6 +1,6 @@
 /* 信笺 · 视图：鸽屋（会话列表）/ 会话页（消息 / 媒体面板）
 
-   媒体面板的四个入口（相册 / 拍摄 / 位置 / 文件）回调在 data.js 的 ChatSink。 */
+   媒体面板入口（相册 / 拍摄 / 位置 / 文件；局域网会话只显示前两项）回调在 data.js 的 ChatSink。 */
 'use strict';
 
 
@@ -341,7 +341,7 @@
 
 
   /* ================= 视图：会话（三级） ================= */
-  /* + 面板里的四项。收藏 / 音乐 / 个人名片按需求删掉了。 */
+  /* 面板项；局域网会话只取相册 / 拍摄。 */
   var CHAT_ACTS = [
     { key: 'album', ico: 'image', label: '相册' },
     { key: 'camera', ico: 'camera', label: '拍摄' },
@@ -357,8 +357,9 @@
     el.classList.add('chat-view');
 
     var acts = '';
-    for (var k = 0; !lanChat && k < CHAT_ACTS.length; k++) {
+    for (var k = 0; k < CHAT_ACTS.length; k++) {
       var a = CHAT_ACTS[k];
+      if (lanChat && a.key !== 'album' && a.key !== 'camera') continue;
       acts += '<div class="chat-act" data-chat="' + a.key + '">' +
         '<span class="chat-act-ico">' + svg(a.ico) + '</span>' +
         '<span>' + esc(a.label) + '</span></div>';
@@ -367,36 +368,37 @@
     el.innerHTML =
       '<div class="topbar"><button class="icon-btn" data-act="back">' + svg('back') + '</button>' +
       '<div class="t-title">' + esc(Pigeon.displayName(s.peer, s.name)) + '</div>' +
-      (lanChat ? '<button class="icon-btn" data-act="cset" aria-label="会话设置">' + svg('menu') + '</button>'
-               : '<div class="t-gap"></div>') + '</div>' +
+      '<button class="icon-btn" data-act="chatMenu" aria-label="会话菜单">' + svg('menu') + '</button></div>' +
+      '<div class="chat-bg" hidden></div>' +
       '<div class="chat-wrap">' +
       '<div class="chat-list" id="chatList"></div>' +
       '<div class="chat-tip" id="chatTip"></div>' +
+      '</div>' +
       '<div class="chat-bar">' +
-      (lanChat && Lan.canSendImage() ? '<button class="chat-attach" type="button" data-act="attach" aria-label="发送图片">' + svg('image') + '</button>' : '') +
       '<input type="text" id="chatIpt" placeholder="写点什么" autocomplete="off">' +
       '<button class="chat-send plus" data-act="send" id="sendBtn">+</button>' +
       '</div>' +
-      '<div class="chat-panel" id="chatPanel" hidden>' + acts + '</div>' +
-      '</div>';
+      '<div class="chat-panel" id="chatPanel" hidden>' + acts + '</div>';
 
     var listEl = el.querySelector('#chatList');
     var tipEl = el.querySelector('#chatTip');
     var ipt = el.querySelector('#chatIpt');
     var sendBtn = el.querySelector('#sendBtn');
     var panelEl = el.querySelector('#chatPanel');
+    var bgEl = el.querySelector('.chat-bg');
+    if (panelEl.children.length === 2) panelEl.classList.add('compact');
 
     var panelOpen = false, panelLayer = null;
 
     /* 输入框空着 → 显示 +；有字 → 显示 发送 */
     function paintSend() {
       var has = ipt.value.trim() !== '';
-      sendBtn.innerHTML = has || lanChat
+      sendBtn.innerHTML = has
         ? svg('send') + '<span class="send-label">发送</span>' : '+';
-      sendBtn.setAttribute('aria-label', has || lanChat ? '发送消息' : '附件');
+      sendBtn.setAttribute('aria-label', has ? '发送消息' : '附件');
       sendBtn.classList.toggle('ready', has && !ipt.disabled);
-      sendBtn.classList.toggle('plus', !has && !lanChat);
-      sendBtn.disabled = lanChat && !has;
+      sendBtn.classList.toggle('plus', !has);
+      sendBtn.disabled = ipt.disabled;
     }
 
     function togglePanel(open) {
@@ -426,6 +428,7 @@
       if (panelLayer) { Back.done(panelLayer); panelLayer = null; }
       ChatSink = null;
       window.__xjPerm = null;
+      window.__xjCrop = null;
     };
 
     /* 一条消息的正文。老数据没有 kind，一律当文字处理。 */
@@ -498,6 +501,15 @@
     function render() {
       var cur = Pigeon.get(s.id);
       if (!cur) return;
+      if (bgEl) {
+        if (cur.bg) {
+          bgEl.style.backgroundImage = 'url("/media/' + encodeURIComponent(cur.bg) + '")';
+          bgEl.hidden = false;
+        } else {
+          bgEl.style.backgroundImage = '';
+          bgEl.hidden = true;
+        }
+      }
       var h = '', previous, groupStart;
       for (var i = 0; i < cur.msgs.length; i++) {
         var m = cur.msgs[i];
@@ -530,7 +542,9 @@
         listEl.scrollTop = listEl.scrollHeight;
       }
       if (!lanChat) {
-        tipEl.textContent = s.npc ? 'FUO 是内置占位对象，只会重复一句开场白。' : '消息只保存在本机。';
+        tipEl.textContent = s.npc
+          ? (window.AI && AI.configure(AI.active()) ? 'FUO · AI 已连接' : 'FUO · 未配置 AI，点右上角设置')
+          : '消息只保存在本机。';
       } else if (cur.terminated) {
         tipEl.textContent = '对方已终止通讯';
         termCheck(cur);
@@ -555,12 +569,13 @@
       ipt.disabled = locked;
       ipt.placeholder = !locked ? '写点什么'
         : (gate.why === 'terminated' ? '对方已终止通讯' : '等对方回复后才能继续聊');
-      if (locked) sendBtn.disabled = true;
+      sendBtn.disabled = locked;
     }
 
     function send() {
       var v = ipt.value.trim();
       if (!v) return;
+      if (aiBusy) return toast('等 FUO 回复');
       if (lanChat) {
         /* 主动加的人，对方回第一句之前只准发一条（0.4 的 invite 规则） */
         if (!Pigeon.canSend(s.id).ok) { toast('等对方回复后才能继续发'); return; }
@@ -579,21 +594,14 @@
       ipt.value = '';
       paintSend();
       render();
-      /* 内置 NPC 只会回同一句；延迟一点，让「发出去 → 收到」看得出先后 */
-      var cur = Pigeon.get(s.id);
-      if (cur && cur.npc) {
-        setTimeout(function () {
-          Pigeon.add(s.id, Pigeon.line(), 'in');
-          render();
-        }, 420);
-      }
+      npcReply();
     }
 
     render();
     paintSend();
 
-    /* ---------- 四个媒体入口 ---------- */
-    var pendingCapture = false, pendingLoc = false;
+    /* ---------- 媒体入口 ---------- */
+    var pendingCapture = false, pendingLoc = false, pendingBg = false, aiBusy = false, aiEpoch = 0;
 
     function permItem(st, key) {
       var items = (st && st.items) || [];
@@ -614,17 +622,53 @@
     }
     function npcReply() {
       var cur = Pigeon.get(s.id);
-      if (cur && cur.npc) {
+      if (!cur || !cur.npc || aiBusy) return;
+      if (!window.AI) {
         setTimeout(function () {
           Pigeon.add(s.id, Pigeon.line(), 'in');
           render();
         }, 420);
+        return;
       }
+      var config = AI.active();
+      if (!AI.configure(config)) {
+        Pigeon.add(s.id, '还没有配置 AI 模型。点右上角三条杠 → AI 模型配置，填好 API 后就能聊天。', 'in');
+        render();
+        return;
+      }
+      aiBusy = true;
+      var epoch = aiEpoch;
+      tipEl.textContent = 'FUO 正在输入…';
+      AI.reply(cur.msgs, config).then(function (text) {
+        if (epoch !== aiEpoch) return;
+        aiBusy = false;
+        Pigeon.add(s.id, text || '（空回复）', 'in');
+        render();
+      }, function (error) {
+        if (epoch !== aiEpoch) return;
+        aiBusy = false;
+        Pigeon.add(s.id, 'AI 请求失败：' + (error && error.message ? error.message : '未知错误'), 'in');
+        render();
+      });
     }
 
     /* 原生把选好的东西送回来 */
     ChatSink = {
       picked: function (o) {
+        if (pendingBg) {
+          pendingBg = false;
+          if (!o.ok) {
+            if (o.why !== 'cancel') toast('选择背景图失败');
+            return;
+          }
+          if (o.kind !== 'image') return toast('背景图只能选图片');
+          var oldBg = Pigeon.get(s.id) && Pigeon.get(s.id).bg;
+          if (oldBg) Bridge.deleteMedia(oldBg);
+          Pigeon.setBg(s.id, o.name);
+          render();
+          toast('背景已更新');
+          return;
+        }
         if (!o.ok) {
           toast(o.why === 'cancel' ? '已取消'
             : o.why === 'perm' ? '相机权限没给'
@@ -651,6 +695,11 @@
     };
 
     function doAct(key) {
+      if (lanChat && (key === 'album' || key === 'camera') && !Lan.running()) {
+        return confirmBox('发送图片需要先开启局域网。现在开启？', '开启').then(function (ok) {
+          if (ok) Lan.enable().then(function (on) { if (on) doAct(key); });
+        });
+      }
       if (key === 'album') {
         if (!Bridge.pickImage()) return toast('演示模式没有相册');
         toast('选一张图');
@@ -711,6 +760,78 @@
       }
     };
 
+    function openChatMenu(anchor) {
+      var items = [
+        { ico: 'image', label: '设置本会话背景图', value: 'bg' },
+        { ico: 'gear', label: 'AI 模型配置', value: 'ai' }
+      ];
+      if (s.npc) items.push({ ico: 'trash', label: '清空聊天记录', value: 'clear' });
+      if (lanChat) items.push({ ico: 'users', label: '会话设置', value: 'cset' });
+      if (!s.npc) items.push({ ico: 'trash', label: '删除本会话', value: 'delete', danger: true });
+      popover(items, anchor).then(function (value) {
+        if (value === 'bg') return pickBackground();
+        if (value === 'ai') return Nav.go('aiConfig');
+        if (value === 'cset') return Nav.go('cset', { sid: s.id });
+        if (value === 'clear') return clearChat();
+        if (value === 'delete') return deleteSession();
+      });
+    }
+
+    function pickBackground() {
+      pendingBg = true;
+      if (!Bridge.pickBackground() && !Bridge.pickImage()) {
+        pendingBg = false;
+        toast('演示模式没有相册');
+      }
+    }
+
+    window.__xjCrop = function (raw) {
+      if (!pendingBg) return;
+      pendingBg = false;
+      var result;
+      try { result = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return; }
+      if (!result || !result.ok) {
+        if (result && result.why !== 'cancel') toast('裁剪失败');
+        return;
+      }
+      var old = Pigeon.get(s.id) && Pigeon.get(s.id).bg;
+      if (old) Bridge.deleteMedia(old);
+      Pigeon.setBg(s.id, result.name);
+      render();
+      toast('背景已更新');
+    };
+
+    function clearChat() {
+      var cur = Pigeon.get(s.id);
+      if (!cur) return;
+      confirmBox('清空 FUO 的聊天记录？AI 的上下文也会一起清空。', '清空').then(function (ok) {
+        if (!ok) return;
+        cur.msgs.forEach(function (message) {
+          if (message.kind === 'image' && message.name) Bridge.deleteMedia(message.name);
+        });
+        aiEpoch++;
+        aiBusy = false;
+        Pigeon.clear(s.id);
+        render();
+        toast('已清空');
+      });
+    }
+
+    function deleteSession() {
+      var cur = Pigeon.get(s.id);
+      if (!cur) return;
+      confirmBox('删除本会话？只删除聊天记录和本地图片，不会删除好友关系。', '删除').then(function (ok) {
+        if (!ok) return;
+        if (cur.bg) Bridge.deleteMedia(cur.bg);
+        cur.msgs.forEach(function (message) {
+          if (message.kind === 'image' && message.name) Bridge.deleteMedia(message.name);
+        });
+        Pigeon.remove(s.id);
+        toast('已删除');
+        Nav.reset('pigeon');
+      });
+    }
+
     el.addEventListener('input', function (e) {
       if (e.target === ipt) { paintSend(); paintLock(); }
     });
@@ -719,7 +840,7 @@
       if (e.target.closest('[data-act=back]')) return Nav.back(false);
       if (e.target.closest('[data-act=lan-toggle]')) return Lan.toggle();
 
-      if (e.target.closest('[data-act=cset]')) return Nav.go('cset', { sid: s.id });
+      if (e.target.closest('[data-act=chatMenu]')) return openChatMenu(e.target.closest('[data-act=chatMenu]'));
       if (e.target.closest('[data-act=unblock]')) {
         Pigeon.setBlocked(s.peer, false);
         toast('已解除屏蔽');
@@ -739,19 +860,9 @@
         if (lost) Lan.retry(s, lost);
         return;
       }
-      if (e.target.closest('[data-act=attach]')) {
-        sheet('发送图片', [
-          { label: '相册', value: 'album' },
-          { label: '拍摄', value: 'camera' }
-        ]).then(function (v) {
-          if (v === 'album') Bridge.pickImage();
-          else if (v === 'camera') Bridge.capture();
-        });
-        return;
-      }
       if (e.target.closest('[data-act=send]')) {
-        /* 按钮是 + 的时候，点它是开合面板 */
-        if (!lanChat && ipt.value.trim() === '') { togglePanel(); return; }
+        /* 输入框空着时点 + 开合面板 */
+        if (ipt.value.trim() === '') { togglePanel(); return; }
         return send();
       }
 

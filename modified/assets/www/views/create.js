@@ -3,7 +3,6 @@
 
 
 
-  /* 信笺 · 新建文件弹窗 */
   var FORMATS = [
     { id: 'txt', label: 'TXT', ext: 'txt' },
     { id: 'md', label: 'Markdown', ext: 'md' },

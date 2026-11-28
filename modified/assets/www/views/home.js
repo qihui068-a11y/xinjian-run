@@ -4,7 +4,6 @@
 VIEWS.home = function (el) {
   el.classList.add('home-view');
   var cards = [
-    ['shelf', 'bookshelf', '书架', '管理你的代码与工程'],
     ['town', 'town', '小镇', '交流讨论、分享项目与灵感'],
     ['yard', 'leaf', '后院', '实用工具、运行环境与拓展'],
     ['inn', 'inn', '小宿店', '主题、插件、模板与资源']
