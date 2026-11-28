@@ -44,7 +44,8 @@
       '<input type="search" id="shelfSearch" placeholder="搜索文件" aria-label="搜索文件"></label>' +
       '<div class="workspace-shortcuts">' +
       '<button type="button" data-act="create">' + svg('file-plus') + '<span><strong>新建文件</strong><small>创建代码或文稿</small></span></button>' +
-      '<button type="button" data-act="import">' + svg('download') + '<span><strong>导入文件</strong><small>从设备选择文件</small></span></button></div>' +
+      '<button type="button" data-act="import">' + svg('download') + '<span><strong>导入文件</strong><small>从设备选择文件</small></span></button>' +
+      '<button type="button" class="shelf-read-shortcut" data-act="read">' + svg('book-open') + '<span><strong>阅读</strong><small>打开阅读器</small></span></button></div>' +
       '<section class="shelf-recent" hidden><h2>最近打开</h2><div class="shelf-recent-list"></div></section>' +
       '<section class="shelf-recent shelf-reading" hidden><div class="workspace-section"><h2>最近阅读</h2>' +
       '<button type="button" class="t-text" data-act="clear-reading">清理</button></div>' +
@@ -71,12 +72,30 @@
       var button = event.target.closest('[data-act], [data-recent]');
       if (!button) return;
       if (button.hasAttribute('data-recent')) return openFile(button.dataset.recent);
-      if (button.dataset.act !== 'new') perform(button.dataset.act);
+      if (button.dataset.act !== 'new') perform(button.dataset.act, button);
     });
 
     function openFile(name) {
       if (Books.unsupported(name)) return toast('阅读器支持 TXT 和 EPUB。');
       Nav.go(Books.format(name) ? 'reader' : 'editor', { name: name, mode: 'read' });
+    }
+
+    /* 阅读入口（快捷栏第三位）：底部弹窗选书
+       只列 TXT / EPUB，读过的排前面并显示「继续阅读」；
+       点选后走 openFile → Nav.go('reader')，阅读器自己用 Books.record(name) 恢复上次位置。 */
+    function openReadPicker(trigger) {
+      var books = docs.filter(function (d) { return Books.format(d.name); })
+        .map(function (d) { return { name: d.name, size: d.size || 0 }; });
+      if (!books.length) { toast('书架里还没有 TXT 或 EPUB'); return; }
+      books.sort(function (a, b) {
+        var ra = Books.record(a.name) || {}, rb = Books.record(b.name) || {};
+        var readA = ra.percent > 0 ? 1 : 0, readB = rb.percent > 0 ? 1 : 0;
+        if (readA !== readB) return readB - readA;
+        return (rb.openedAt || 0) - (ra.openedAt || 0) || String(a.name).localeCompare(String(b.name));
+      });
+      ReadSheet.open(el, trigger, books, function (name) {
+        if (!disposed) openFile(name);
+      });
     }
 
     /* 系统返回键：多选态先取消选择，不退页 */
@@ -286,8 +305,10 @@
 
     function perform(act, anchor) {
       if (act === 'create') return Nav.go('create');
+      if (act === 'read') return openReadPicker(anchor);
       if (act === 'more') {
         return popover([
+          { ico: 'book-open', label: '阅读', value: 'read' },
           { ico: 'file-plus', label: '新建文件', value: 'create' },
           { ico: 'download', label: '导入文件', value: 'import' },
           { ico: 'sort', label: '排序', value: 'sort' }

@@ -26,8 +26,8 @@ module.exports = async function ({ test, app, settle }) {
 
       w.Nav.reset('shelf');
       select('[data-act=more]').click();
-      assert.deepEqual(labels(), ['新建文件', '导入文件', '排序']);
-      select('.pop-item[data-i="2"]').click();
+      assert.deepEqual(labels(), ['阅读', '新建文件', '导入文件', '排序']);
+      select('.pop-item[data-i="3"]').click();
       await settle(w);
       assert.equal(select('.pop'), null);
       assert.equal(select('.sheet-title').textContent, '排序');

@@ -1,6 +1,6 @@
 # 信笺 · 运行版
 
-> 在手机上写代码、随时运行，顺手聊两句。**0.9.0** · Android 5.0+ · 约 45 MB
+> 在手机上写代码、随时运行，顺手聊两句。**0.9.1** · Android 5.0+ · 约 45 MB
 
 [功能](#功能) · [快速开始](#快速开始) · [运行支持](#运行支持) · [鸽屋](#鸽屋局域网聊天) · [FUO 与 AI](#fuo-与-ai) · [权限与隐私](#权限与隐私) · [构建](#构建源码) · [常见问题](#常见问题)
 
@@ -30,7 +30,7 @@
 
 ## 快速开始
 
-1. 到仓库的 **Releases** 页面下载 `xinjian-run-0.9.0.apk`
+1. 到仓库的 **Releases** 页面下载 `xinjian-run-0.9.1.apk`
 2. 在手机上允许安装来自浏览器的应用，安装并打开
 3. 底栏进入「书架」→ 新建文件，选格式，就可以开始写
 
@@ -216,3 +216,13 @@ python tests\run-design.py         # 界面与主题（需要 Playwright + Chrom
 感谢 [QuickJS](https://bellard.org/quickjs/)、[Pyodide](https://pyodide.org/)、[Wandbox](https://wandbox.org/)、[YOWASP](https://yowasp.org/) 与 [Lottie](https://airbnb.io/lottie/) 等开源项目，以及所有提出问题和建议的朋友。
 
 赞助与联系方式见应用内「小家 → 赞助」。
+
+---
+
+## 许可证
+
+信笺以 **GNU General Public License v3.0 or later** 发布，全文见 [LICENSE](LICENSE)。
+
+随包的第三方组件各自保留原许可证（QuickJS / quickjs-emscripten、Lottie、Pyodide（MPL-2.0）、LLVM/Clang（Apache-2.0 WITH LLVM-exception）、YoWASP Clang、XCC、Browser WASI Shim 以及各 wheel）。逐项核对见 [NOTICE.md](NOTICE.md) 与 [LICENSE-AUDIT.md](LICENSE-AUDIT.md)。
+
+图标、应用名称与头像等美术素材的再分发条件仍在核对，见 LICENSE-AUDIT.md 的待确认清单。

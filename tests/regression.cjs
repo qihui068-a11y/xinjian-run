@@ -288,6 +288,7 @@ function input(w, source) {
 await require('./motion.cjs')({ test, app, settle });
   await require('./update.cjs')({ test, app });
   await require('./popover.cjs')({ test, app, settle });
+  await require('./shelf-reader.cjs')({ test, app, settle });
   await require('./runner-io.cjs')({ test, app });
   await test('Large source tokenizer completes without hanging or source loss', async () => {
     const a = app(); try {

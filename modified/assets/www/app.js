@@ -90,6 +90,7 @@
     'bell': '<path d="M5 9a7 7 0 0 1 14 0v5l2 3H3l2-3ZM9 21h6"/>',
     'more': '<circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none"/>',
     'play': '<path d="M6 3 21 12 6 21Z"/>',
+    'book-open': '<path d="M12 6.6C10.1 4.9 7.5 4 4.2 4H2.5v13.4h1.7c3.3 0 5.9.9 7.8 2.6 1.9-1.7 4.5-2.6 7.8-2.6h1.7V4h-1.7c-3.3 0-5.9.9-7.8 2.6Z"/><path d="M12 6.6V20"/>',
     'stop': '<rect x="5" y="5" width="14" height="14" rx="2"/>',
     'terminal': '<path d="m3 5 7 7-7 7m10 0h9"/>',
     'plus': '<path d="M12 4v16M4 12h16"/>',
