@@ -36,7 +36,12 @@ param(
 
     # 用正式包名 tt.xinjian.cn.codeedit.run 构建。
     # 只有拿到 xinjian.jks 才能覆盖手机上已装的正式版；默认构建并存包 tt.xinjian.cn.dev。
-    [switch]$AsRelease
+    [switch]$AsRelease,
+
+    # 并存包用哪个后缀（tt.xinjian.cn.<Channel>）。应用内更新按这个后缀找
+    # xinjian-run-<版本>-<Channel>.apk，所以要跟发布资产对上。
+    [ValidatePattern('^[a-z][a-z0-9]{0,15}$')]
+    [string]$Channel = 'dshreader'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -48,7 +53,7 @@ $Activity = 'tt.xinjian.cn.MainActivity'
 if ($AsRelease) {
     $Pkg = 'tt.xinjian.cn.codeedit.run'
 } else {
-    $Pkg = 'tt.xinjian.cn.dshreader'
+    $Pkg = "tt.xinjian.cn.$Channel"
 }
 $RemoteRoot = "/sdcard/Android/data/$Pkg/files"
 $DevKsPass = 'dev123456'
@@ -227,8 +232,8 @@ function Invoke-Build {
     if (-not $AsRelease) {
         $mf = Join-Path $work 'modified\AndroidManifest.xml'
         $xml = [System.IO.File]::ReadAllText($mf)
-        $xml = $xml.Replace('package="tt.xinjian.cn.codeedit.run"', 'package="tt.xinjian.cn.dshreader"')
-        $xml = $xml.Replace('tt.xinjian.cn.codeedit.run.updates', 'tt.xinjian.cn.dshreader.updates')
+        $xml = $xml.Replace('package="tt.xinjian.cn.codeedit.run"', "package=`"$Pkg`"")
+        $xml = $xml.Replace('tt.xinjian.cn.codeedit.run.updates', "$Pkg.updates")
         # 桌面上要和正式版区分开，否则两个一样的图标分不清谁是谁
         $xml = $xml.Replace('android:label="信笺"', 'android:label="信笺·阅读测试"')
         [System.IO.File]::WriteAllText($mf, $xml, (New-Object System.Text.UTF8Encoding($false)))

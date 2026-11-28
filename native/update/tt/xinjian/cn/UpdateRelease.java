@@ -16,6 +16,19 @@ final class UpdateRelease {
     private static final Pattern VERSION = Pattern.compile("v?(" + DIGITS + ")" + LEGACY_SUFFIX);
     private static final Pattern CACHE_NAME = Pattern.compile("update-" + DIGITS + LEGACY_SUFFIX + "-[a-f0-9]{64}\\.apk");
     private static final long MAX_APK_BYTES = 64L * 1024 * 1024;
+    private static final String OFFICIAL = "tt.xinjian.cn.codeedit.run";
+    private static final Pattern CHANNEL = Pattern.compile("[a-z][a-z0-9]{0,15}");
+
+    /**
+     * 正式包读 xinjian-run-&lt;版本&gt;.apk；并存包（tt.xinjian.cn.dev 等）读带后缀的同名资产，
+     * 因为不同包名/签名的安装包不能互相覆盖。
+     */
+    static String channel(String packageName) {
+        if (OFFICIAL.equals(packageName)) return "";
+        int dot = packageName.lastIndexOf('.');
+        String tail = dot < 0 ? "" : packageName.substring(dot + 1);
+        return CHANNEL.matcher(tail).matches() ? "-" + tail : "";
+    }
 
     final String version;
     final String url;
@@ -53,7 +66,7 @@ final class UpdateRelease {
         return 0;
     }
 
-    static UpdateRelease read(JSONObject release, String installed) throws IOException, JSONException {
+    static UpdateRelease read(JSONObject release, String installed, String channel) throws IOException, JSONException {
         String tag = release.getString("tag_name");
         if (!tag.startsWith("v") || release.optBoolean("draft") || release.optBoolean("prerelease")) {
             throw new IOException("未找到正式版本");
@@ -61,7 +74,7 @@ final class UpdateRelease {
         String next = numericVersion(tag);
         if (compare(next, numericVersion(installed)) <= 0) return null;
 
-        String name = "xinjian-run-" + next + ".apk";
+        String name = "xinjian-run-" + next + channel + ".apk";
         String url = "https://github.com/" + REPOSITORY + "/releases/download/" + tag + "/" + name;
         JSONArray assets = release.getJSONArray("assets");
         for (int i = 0; i < assets.length(); i++) {
@@ -75,6 +88,6 @@ final class UpdateRelease {
             }
             return new UpdateRelease(tag.substring(1), url, digest.substring(7), bytes);
         }
-        throw new IOException("最新版暂未提供安装包");
+        throw new IOException(channel.isEmpty() ? "最新版暂未提供安装包" : "这个测试包还没有对应的安装包");
     }
 }
